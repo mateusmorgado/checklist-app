@@ -78,7 +78,8 @@ function Run({ list, onClose }) {
     if (done.includes(i)) {
       clearTimeout(timers.current[i]);
       setDone(d => d.filter(x => x !== i));
-      setSettled(s => s.filter(x => x !== i));
+      // Once everything is ticked the order is frozen: later taps change the tick, never the position.
+      if (done.length < list.items.length) setSettled(s => s.filter(x => x !== i));
       return;
     }
     setDone(d => [...d, i]);
