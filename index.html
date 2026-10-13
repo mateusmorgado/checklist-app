@@ -64,15 +64,34 @@ function Home({ lists, onRun, onEdit }) {
 }
 
 // Run: first item at the bottom, working upward. Checkmarks on the right.
+// A ticked item stays put for one second, then moves to the top of the stack.
 function Run({ list, onClose }) {
-  const [done, setDone] = useState([]);
-  const toggle = i => setDone(d => d.includes(i) ? d.filter(x => x !== i) : [...d, i]);
+  const [done, setDone] = useState([]);       // ticked item indexes
+  const [settled, setSettled] = useState([]); // ticked items already moved to the top, in the order they moved
+  const timers = useRef({});
+  useEffect(() => () => Object.values(timers.current).forEach(clearTimeout), []);
+
+  const toggle = i => {
+    if (done.includes(i)) {
+      clearTimeout(timers.current[i]);
+      setDone(d => d.filter(x => x !== i));
+      setSettled(s => s.filter(x => x !== i));
+      return;
+    }
+    setDone(d => [...d, i]);
+    timers.current[i] = setTimeout(() => setSettled(s => (s.includes(i) ? s : [...s, i])), 1000);
+  };
+
+  const order = [
+    ...list.items.map((_, i) => i).filter(i => !settled.includes(i)),
+    ...settled,
+  ];
   const complete = done.length === list.items.length;
   return h('div', { className: 'screen' },
     h('h1', null, list.title),
     h('div', { className: 'stack' },
-      list.items.map((item, i) => h('button', { key: i, className: done.includes(i) ? 'done' : '', onClick: () => toggle(i) },
-        h('span', null, item),
+      order.map(i => h('button', { key: i, className: done.includes(i) ? 'done' : '', onClick: () => toggle(i) },
+        h('span', null, list.items[i]),
         h('span', { className: 'mark' }, done.includes(i) ? '☑' : '☐')))),
     h('div', { className: 'bar' },
       h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close')));
