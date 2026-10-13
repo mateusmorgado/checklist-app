@@ -26,6 +26,12 @@
   .row { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: 8px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: grab; position: relative; }
   .row.lifted { z-index: 1; background: var(--lift); font-weight: 500; cursor: grabbing; }
   .x { margin-right: auto; width: 44px; height: 44px; font-size: 22px; line-height: 1; color: var(--muted); flex: none; }
+  .label { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; text-align: right; }
+  .detail { font-size: 13px; line-height: 1.25; color: var(--muted); overflow-wrap: anywhere; }
+  .row.selected { background: var(--lift); }
+  .entry { display: flex; align-items: center; gap: 16px; width: 100%; flex: none; height: 56px; }
+  .entry input { flex: 1; min-width: 0; width: auto; }
+  .entry button { flex: none; }
   .mark { font-size: 24px; line-height: 1; flex: none; }
   .bar { display: flex; flex-direction: row-reverse; align-items: center; gap: 28px; height: 56px; flex: none; }
   input { font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 10px 0; width: 100%; box-sizing: border-box; text-align: right; flex: none; }
@@ -41,14 +47,23 @@
 const { useState, useEffect, useLayoutEffect, useRef, createElement: h } = React;
 const KEY = 'checklists';
 const SAMPLE = [
-  { id: 'a', title: 'Preflight', items: ['Check fuel', 'Check flaps', 'Check radio', 'Check lights'] },
-  { id: 'b', title: 'Leaving home', items: ['Keys', 'Wallet', 'Phone', 'Stove off'] },
+  { id: 'a', title: 'Preflight', items: [
+    { text: 'Check fuel', detail: 'Both tanks, visual check and drain a sample' },
+    { text: 'Check flaps', detail: '' },
+    { text: 'Check radio', detail: '' },
+    { text: 'Check lights', detail: '' } ] },
+  { id: 'b', title: 'Leaving home', items: ['Keys', 'Wallet', 'Phone', 'Stove off'].map(text => ({ text, detail: '' })) },
 ];
+
+// Older saved lists stored items as plain strings.
+const normalize = lists => lists.map(l => ({
+  ...l, items: l.items.map(i => (typeof i === 'string' ? { text: i, detail: '' } : i)),
+}));
 
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : SAMPLE;
+    return raw ? normalize(JSON.parse(raw)) : SAMPLE;
   } catch (e) { return SAMPLE; }
 }
 function save(lists) {
@@ -95,22 +110,25 @@ function Run({ list, onClose }) {
     h('h1', null, list.title),
     h('div', { className: 'stack' },
       order.map(i => h('button', { key: i, className: done.includes(i) ? 'done' : '', onClick: () => toggle(i) },
-        h('span', null, list.items[i]),
+        h('span', { className: 'label' },
+          h('span', null, list.items[i].text),
+          list.items[i].detail && h('span', { className: 'detail' }, list.items[i].detail)),
         h('span', { className: 'mark' }, done.includes(i) ? '☑' : '☐')))),
     h('div', { className: 'bar' },
       h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close')));
 }
 
 // Editor: add one item at a time. Each becomes a bullet, in the same bottom-to-top order the run screen uses.
-// Press and hold a bullet, then drag it up or down to change its place.
+// Tap an item to add details to it. Press and hold an item, then drag it up or down to change its place.
 let nextId = 1;
-const mk = text => ({ id: nextId++, text });
+const mk = (text, detail = '') => ({ id: nextId++, text, detail });
 const HOLD_MS = 350;
 
 function Editor({ list, onSave, onDelete, onCancel }) {
   const [title, setTitle] = useState(list ? list.title : '');
-  const [items, setItems] = useState(() => (list ? list.items.map(mk) : []));
+  const [items, setItems] = useState(() => (list ? list.items.map(i => mk(i.text, i.detail)) : []));
   const [draft, setDraft] = useState('');
+  const [detailFor, setDetailFor] = useState(null); // id of the item whose details the entry field is editing
   const [dragId, setDragId] = useState(null);
   const [offset, setOffset] = useState(0);
   const draftRef = useRef(null);
@@ -118,23 +136,49 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   const stackRef = useRef(null);
   const rowEls = useRef({});
   const press = useRef(null); // { id, x, y, timer, dragging, offset }
+  const justDragged = useRef(false);
 
   // New checklist: focus the title right away so the phone keyboard opens.
   // Layout effects run inside the tap's event, which mobile browsers require for opening the keyboard.
   useLayoutEffect(() => { if (!list && titleRef.current) titleRef.current.focus(); }, []);
   useEffect(() => () => press.current && clearTimeout(press.current.timer), []);
 
-  const add = () => {
+  const target = items.find(i => i.id === detailFor);
+  const focusDraft = () => { if (draftRef.current) draftRef.current.focus(); };
+
+  const commit = () => {
     const t = draft.trim();
-    if (!t) return;
-    setItems(prev => [...prev, mk(t)]);
-    setDraft('');
-    if (draftRef.current) draftRef.current.focus();
+    if (target) {
+      setItems(prev => prev.map(i => (i.id === detailFor ? { ...i, detail: t } : i)));
+      setDetailFor(null);
+      setDraft('');
+    } else if (t) {
+      setItems(prev => [...prev, mk(t)]);
+      setDraft('');
+    }
+    focusDraft();
   };
+
+  const openDetails = id => {
+    if (justDragged.current) { justDragged.current = false; return; }
+    if (detailFor === id) { setDetailFor(null); setDraft(''); return; }
+    const it = items.find(i => i.id === id);
+    setDetailFor(id);
+    setDraft(it.detail);
+    focusDraft();
+  };
+
   const submit = () => {
-    const all = [...items.map(i => i.text), ...(draft.trim() ? [draft.trim()] : [])];
+    let all = items;
+    const t = draft.trim();
+    if (target) all = items.map(i => (i.id === detailFor ? { ...i, detail: t } : i));
+    else if (t) all = [...items, mk(t)];
     if (!title.trim() || all.length === 0) return;
-    onSave({ id: list ? list.id : String(Date.now()), title: title.trim(), items: all });
+    onSave({
+      id: list ? list.id : String(Date.now()),
+      title: title.trim(),
+      items: all.map(i => ({ text: i.text, detail: i.detail })),
+    });
   };
 
   const center = id => {
@@ -143,11 +187,13 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   };
 
   const onDown = (e, id) => {
+    justDragged.current = false;
     if (e.target.closest('.x') || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const el = e.currentTarget, pointerId = e.pointerId;
     const p = { id, x: e.clientX, y: e.clientY, dragging: false, offset: 0 };
     p.timer = setTimeout(() => {
       p.dragging = true;
+      justDragged.current = true;
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       try { el.setPointerCapture(pointerId); } catch (err) {}
       if (navigator.vibrate) navigator.vibrate(10);
@@ -192,31 +238,47 @@ function Editor({ list, onSave, onDelete, onCancel }) {
     h('input', {
       id: 'title', ref: titleRef, placeholder: 'Title', value: title, enterKeyHint: 'next',
       onChange: e => setTitle(e.target.value),
-      onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); if (draftRef.current) draftRef.current.focus(); } },
+      onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); focusDraft(); } },
     }),
     h('div', { className: 'stack', ref: stackRef },
-      items.map(item => h('div', {
-        key: item.id, className: 'row' + (dragId === item.id ? ' lifted' : ''),
+      // DOM order stays fixed (by id) so the dragged element is never moved or loses pointer capture;
+      // the visible position comes from CSS `order`.
+      [...items].sort((a, b) => a.id - b.id).map(item => h('div', {
+        key: item.id,
+        className: 'row' + (dragId === item.id ? ' lifted' : '') + (detailFor === item.id ? ' selected' : ''),
         ref: el => { if (el) rowEls.current[item.id] = el; else delete rowEls.current[item.id]; },
-        style: dragId === item.id ? { transform: 'translateY(' + offset + 'px) scale(1.03)' } : undefined,
+        style: {
+          order: items.indexOf(item),
+          ...(dragId === item.id ? { transform: 'translateY(' + offset + 'px) scale(1.03)' } : null),
+        },
         onPointerDown: e => onDown(e, item.id),
         onPointerMove: e => onMove(e, item.id),
-        onPointerUp: onUp, onPointerCancel: onUp, onPointerLeave: e => { if (dragId !== item.id) onUp(); },
+        onPointerUp: onUp, onPointerCancel: onUp, onPointerLeave: () => { const p = press.current; if (p && !p.dragging && p.id === item.id) onUp(); },
         onContextMenu: e => e.preventDefault(),
+        onClick: e => { if (!e.target.closest('.x')) openDetails(item.id); },
       },
-        h('button', { className: 'x', 'aria-label': 'Remove ' + item.text, onClick: () => setItems(items.filter(i => i.id !== item.id)) }, '×'),
-        h('span', null, item.text),
+        h('button', {
+          className: 'x', 'aria-label': 'Remove ' + item.text,
+          onClick: () => { if (detailFor === item.id) { setDetailFor(null); setDraft(''); } setItems(items.filter(i => i.id !== item.id)); },
+        }, '×'),
+        h('span', { className: 'label' },
+          h('span', null, item.text),
+          item.detail && h('span', { className: 'detail' }, item.detail)),
         h('span', { className: 'mark' }, '•')))),
-    items.length > 1 && h('div', { className: 'muted hint' }, 'Hold and drag to reorder'),
-    h('input', {
-      id: 'draft', ref: draftRef, placeholder: 'Add item', value: draft, enterKeyHint: 'next',
-      onChange: e => setDraft(e.target.value),
-      onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); add(); } },
-    }),
-    h('div', { className: 'bar' },
-      h('button', { onClick: submit }, 'Save'),
+    items.length > 0 && h('div', { className: 'muted hint' }, 'Tap an item to add details. Hold and drag to reorder.'),
+    h('div', { className: 'entry' },
+      h('input', {
+        id: 'draft', ref: draftRef, value: draft, enterKeyHint: target ? 'done' : 'next',
+        placeholder: target ? 'Details for ' + target.text : 'Add item',
+        onChange: e => setDraft(e.target.value),
+        onKeyDown: e => {
+          if (e.key === 'Enter') { e.preventDefault(); commit(); }
+          if (e.key === 'Escape' && target) { setDetailFor(null); setDraft(''); }
+        },
+      }),
+      list && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
       h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
-      list && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete')));
+      h('button', { onClick: submit }, 'Save')));
 }
 
 function App() {
