@@ -6,11 +6,11 @@
 <title>Checklist</title>
 <style>
   /* Full-viewport, no scroll. Everything is anchored bottom-right for the right thumb. */
-  :root { --bg: #ffffff; --fg: #111111; --muted: #8a8a8a; --line: #e2e2e2; }
+  :root { --bg: #ffffff; --fg: #111111; --muted: #8a8a8a; --line: #e2e2e2; --lift: #f1f1f1; }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg: #111111; --fg: #f2f2f2; --muted: #8a8a8a; --line: #2e2e2e; color-scheme: dark; }
+    :root:not([data-theme="light"]) { --bg: #111111; --fg: #f2f2f2; --muted: #8a8a8a; --line: #2e2e2e; --lift: #1e1e1e; color-scheme: dark; }
   }
-  :root[data-theme="dark"] { --bg: #111111; --fg: #f2f2f2; --muted: #8a8a8a; --line: #2e2e2e; color-scheme: dark; }
+  :root[data-theme="dark"] { --bg: #111111; --fg: #f2f2f2; --muted: #8a8a8a; --line: #2e2e2e; --lift: #1e1e1e; color-scheme: dark; }
   html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
   body { background: var(--bg); color: var(--fg); font: 18px/1.3 system-ui, -apple-system, sans-serif; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   #root { height: 100%; }
@@ -23,6 +23,9 @@
   button:focus-visible, input:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
   .muted { color: var(--muted); }
   .done { color: var(--muted); }
+  .row { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: 8px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: grab; position: relative; }
+  .row.lifted { z-index: 1; background: var(--lift); font-weight: 500; cursor: grabbing; }
+  .x { margin-right: auto; width: 44px; height: 44px; font-size: 22px; line-height: 1; color: var(--muted); flex: none; }
   .mark { font-size: 24px; line-height: 1; flex: none; }
   .bar { display: flex; flex-direction: row-reverse; align-items: center; gap: 28px; height: 56px; flex: none; }
   input { font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 10px 0; width: 100%; box-sizing: border-box; text-align: right; flex: none; }
@@ -98,28 +101,90 @@ function Run({ list, onClose }) {
 }
 
 // Editor: add one item at a time. Each becomes a bullet, in the same bottom-to-top order the run screen uses.
+// Press and hold a bullet, then drag it up or down to change its place.
+let nextId = 1;
+const mk = text => ({ id: nextId++, text });
+const HOLD_MS = 350;
+
 function Editor({ list, onSave, onDelete, onCancel }) {
   const [title, setTitle] = useState(list ? list.title : '');
-  const [items, setItems] = useState(list ? list.items : []);
+  const [items, setItems] = useState(() => (list ? list.items.map(mk) : []));
   const [draft, setDraft] = useState('');
+  const [dragId, setDragId] = useState(null);
+  const [offset, setOffset] = useState(0);
   const draftRef = useRef(null);
   const titleRef = useRef(null);
+  const stackRef = useRef(null);
+  const rowEls = useRef({});
+  const press = useRef(null); // { id, x, y, timer, dragging, offset }
 
   // New checklist: focus the title right away so the phone keyboard opens.
   // Layout effects run inside the tap's event, which mobile browsers require for opening the keyboard.
   useLayoutEffect(() => { if (!list && titleRef.current) titleRef.current.focus(); }, []);
+  useEffect(() => () => press.current && clearTimeout(press.current.timer), []);
 
   const add = () => {
     const t = draft.trim();
     if (!t) return;
-    setItems(prev => [...prev, t]);
+    setItems(prev => [...prev, mk(t)]);
     setDraft('');
     if (draftRef.current) draftRef.current.focus();
   };
   const submit = () => {
-    const all = draft.trim() ? [...items, draft.trim()] : items;
+    const all = [...items.map(i => i.text), ...(draft.trim() ? [draft.trim()] : [])];
     if (!title.trim() || all.length === 0) return;
     onSave({ id: list ? list.id : String(Date.now()), title: title.trim(), items: all });
+  };
+
+  const center = id => {
+    const r = rowEls.current[id].getBoundingClientRect();
+    return r.top + r.height / 2;
+  };
+
+  const onDown = (e, id) => {
+    if (e.target.closest('.x') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const el = e.currentTarget, pointerId = e.pointerId;
+    const p = { id, x: e.clientX, y: e.clientY, dragging: false, offset: 0 };
+    p.timer = setTimeout(() => {
+      p.dragging = true;
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      try { el.setPointerCapture(pointerId); } catch (err) {}
+      if (navigator.vibrate) navigator.vibrate(10);
+      setDragId(id);
+    }, HOLD_MS);
+    press.current = p;
+  };
+
+  const onMove = (e, id) => {
+    const p = press.current;
+    if (!p || p.id !== id) return;
+    if (!p.dragging) {
+      if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) { clearTimeout(p.timer); press.current = null; }
+      return;
+    }
+    const box = stackRef.current.getBoundingClientRect();
+    const y = Math.min(Math.max(e.clientY, box.top), box.bottom);
+    const i = items.findIndex(it => it.id === id);
+    // Stack is column-reverse: a higher index sits higher on screen.
+    const above = items[i + 1], below = items[i - 1];
+    if (above && y < center(above.id)) {
+      p.offset = y - center(above.id);
+      setItems(items.map((it, k) => (k === i ? above : k === i + 1 ? items[i] : it)));
+    } else if (below && y > center(below.id)) {
+      p.offset = y - center(below.id);
+      setItems(items.map((it, k) => (k === i ? below : k === i - 1 ? items[i] : it)));
+    } else {
+      p.offset = y - (center(id) - p.offset);
+    }
+    setOffset(p.offset);
+  };
+
+  const onUp = () => {
+    const p = press.current;
+    if (p) clearTimeout(p.timer);
+    press.current = null;
+    setDragId(null);
+    setOffset(0);
   };
 
   return h('div', { className: 'screen' },
@@ -128,11 +193,20 @@ function Editor({ list, onSave, onDelete, onCancel }) {
       onChange: e => setTitle(e.target.value),
       onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); if (draftRef.current) draftRef.current.focus(); } },
     }),
-    h('div', { className: 'stack' },
-      items.map((item, i) => h('button', { key: i, onClick: () => setItems(items.filter((_, j) => j !== i)) },
-        h('span', null, item),
+    h('div', { className: 'stack', ref: stackRef },
+      items.map(item => h('div', {
+        key: item.id, className: 'row' + (dragId === item.id ? ' lifted' : ''),
+        ref: el => { if (el) rowEls.current[item.id] = el; else delete rowEls.current[item.id]; },
+        style: dragId === item.id ? { transform: 'translateY(' + offset + 'px) scale(1.03)' } : undefined,
+        onPointerDown: e => onDown(e, item.id),
+        onPointerMove: e => onMove(e, item.id),
+        onPointerUp: onUp, onPointerCancel: onUp, onPointerLeave: e => { if (dragId !== item.id) onUp(); },
+        onContextMenu: e => e.preventDefault(),
+      },
+        h('button', { className: 'x', 'aria-label': 'Remove ' + item.text, onClick: () => setItems(items.filter(i => i.id !== item.id)) }, '×'),
+        h('span', null, item.text),
         h('span', { className: 'mark' }, '•')))),
-    items.length > 0 && h('div', { className: 'muted hint' }, 'Tap an item to remove it'),
+    items.length > 1 && h('div', { className: 'muted hint' }, 'Hold and drag to reorder'),
     h('input', {
       id: 'draft', ref: draftRef, placeholder: 'Add item', value: draft, enterKeyHint: 'next',
       onChange: e => setDraft(e.target.value),
