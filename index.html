@@ -35,7 +35,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script>
-const { useState, useEffect, useRef, createElement: h } = React;
+const { useState, useEffect, useLayoutEffect, useRef, createElement: h } = React;
 const KEY = 'checklists';
 const SAMPLE = [
   { id: 'a', title: 'Preflight', items: ['Check fuel', 'Check flaps', 'Check radio', 'Check lights'] },
@@ -84,6 +84,11 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   const [items, setItems] = useState(list ? list.items : []);
   const [draft, setDraft] = useState('');
   const draftRef = useRef(null);
+  const titleRef = useRef(null);
+
+  // New checklist: focus the title right away so the phone keyboard opens.
+  // Layout effects run inside the tap's event, which mobile browsers require for opening the keyboard.
+  useLayoutEffect(() => { if (!list && titleRef.current) titleRef.current.focus(); }, []);
 
   const add = () => {
     const t = draft.trim();
@@ -99,7 +104,11 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   };
 
   return h('div', { className: 'screen' },
-    h('input', { id: 'title', placeholder: 'Title', value: title, onChange: e => setTitle(e.target.value) }),
+    h('input', {
+      id: 'title', ref: titleRef, placeholder: 'Title', value: title, enterKeyHint: 'next',
+      onChange: e => setTitle(e.target.value),
+      onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); if (draftRef.current) draftRef.current.focus(); } },
+    }),
     h('div', { className: 'stack' },
       items.map((item, i) => h('button', { key: i, onClick: () => setItems(items.filter((_, j) => j !== i)) },
         h('span', null, item),
