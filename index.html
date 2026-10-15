@@ -37,6 +37,9 @@
   .edit > .hint { grid-area: hint; }
   .edit > .entry { grid-area: entry; width: 100%; }
   .edit > .actions { grid-area: actions; }
+  /* Explanatory text sits at the top of the screen; the controls stay at the bottom. */
+  .screen.edit.intro { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "intro" "points" "actions"; }
+  .edit > .intro-text { grid-area: intro; align-self: start; font-size: 15px; line-height: 1.4; }
   .actions { display: flex; align-items: center; justify-content: flex-end; gap: 20px; height: 56px; }
   .actions button { flex: none; }
   .mark { font-size: 24px; line-height: 1; flex: none; }
@@ -45,6 +48,15 @@
   input::placeholder { color: var(--muted); }
   .hint { font-size: 14px; flex: none; text-align: right; }
   .err { color: var(--err); }
+  .edit > .refs { grid-area: points; align-self: stretch; width: 100%; min-height: 0; overflow-y: auto; touch-action: pan-y; }
+  .refs-in { text-align: right; font-size: 14px; line-height: 1.35; }
+  .refs-in h1 { margin: 0 0 8px; }
+  .refs-in h2 { font-size: 15px; font-weight: 500; margin: 14px 0 4px; }
+  .refs-in p { margin: 0 0 6px; }
+  .refs-in .muted { font-size: 13px; }
+  .refs-in ul { list-style: none; margin: 0; padding: 0; }
+  .refs-in li { margin: 0 0 8px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+  .refs-in a { color: inherit; text-decoration: underline; }
   .prop { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: 8px; cursor: pointer; }
   .prop.selected { background: var(--lift); }
 </style>
@@ -118,6 +130,15 @@ function speak(text) {
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
   } catch (e) {}
 }
+
+// References behind the feedback settings, cited in ABNT style: (SURNAME, YEAR).
+const REFERENCES = [
+  { key: 'degani', author: 'DEGANI, A.; WIENER, E. L.', title: 'Cockpit checklists: concepts, design, and use.', journal: 'Human Factors', rest: ', v. 35, n. 2, p. 28–43, 1993.' },
+  { key: 'macleod', author: 'MACLEOD, C. M.; GOPIE, N.; HOURIHAN, K. L.; NEARY, K. R.; OZUBKO, J. D.', title: 'The production effect: delineation of a phenomenon.', journal: 'Journal of Experimental Psychology: Learning, Memory, and Cognition', rest: ', v. 36, n. 3, p. 671–685, 2010.', doi: '10.1037/a0018785' },
+  { key: 'nigg', author: 'NIGG, J. T. et al.', title: 'Systematic review and meta-analysis: do white noise or pink noise help with task performance in youth with attention-deficit/hyperactivity disorder or with elevated attention problems?', journal: 'Journal of the American Academy of Child and Adolescent Psychiatry', rest: ', v. 63, n. 8, p. 778–788, 2024.', doi: '10.1016/j.jaac.2023.12.014' },
+  { key: 'posner', author: 'POSNER, M. I.; PETERSEN, S. E.', title: 'The attention system of the human brain.', journal: 'Annual Review of Neuroscience', rest: ', v. 13, p. 25–42, 1990.' },
+  { key: 'soderlund', author: 'SÖDERLUND, G.; SIKSTRÖM, S.; SMART, A.', title: 'Listen to the noise: noise is beneficial for cognitive performance in ADHD.', journal: 'Journal of Child Psychology and Psychiatry', rest: ', v. 48, n. 8, p. 840–847, 2007.', doi: '10.1111/j.1469-7610.2007.01749.x' },
+];
 
 // Quantity formulas, e.g. "nights + 1" or "ceil(nights / 2)". Numbers, question names, + - * / ( ) and
 // ceil floor round min max. A small parser on purpose: formulas are never passed to eval().
@@ -469,10 +490,13 @@ function Editor({ list, onSave, onDelete, onCancel }) {
 
   if (step === 'feedback') {
     const rows = [
-      ['sound', 'Sound', sound, () => { const on = !sound; setSound(on); if (on) playTick(); }],
-      ['voice', 'Voice', voice, () => { const on = !voice; setVoice(on); if (on) speak('Voice on'); }],
+      ['sound', 'Attention tone', sound, () => { const on = !sound; setSound(on); if (on) playTick(); }],
+      ['voice', 'Confirmation cue', voice, () => { const on = !voice; setVoice(on); if (on) speak('Confirmation cue on'); }],
     ];
-    return h('div', { className: 'screen edit' },
+    return h('div', { className: 'screen edit intro' },
+      h('div', { className: 'muted hint intro-text' },
+        'When you tick an item: the Confirmation cue repeats the item out loud (MACLEOD et al., 2010). ' +
+        'The Attention tone plays a short sound to keep you focused on the task (POSNER; PETERSEN, 1990).'),
       h('div', { className: 'points' },
         h('h1', null, title),
         h('div', { className: 'stack' },
@@ -482,10 +506,33 @@ function Editor({ list, onSave, onDelete, onCancel }) {
             h('span', { className: 'label' },
               h('span', { className: 'detail' }, label),
               h('span', null, on ? 'on' : 'off')))))),
-      h('div', { className: 'muted hint' }, 'When you tick an item: Sound plays a tick. Voice says the item out loud.'),
       h('div', { className: 'actions' },
         h('button', { className: 'muted', onClick: () => setStep('name') }, 'Back'),
+        h('button', { id: 'fb-refs', className: 'muted', onClick: () => setStep('references') }, 'References'),
         h('button', { id: 'fb-next', onClick: () => setStep('points') }, 'Next')));
+  }
+
+  if (step === 'references') {
+    return h('div', { className: 'screen edit' },
+      h('div', { className: 'refs' },
+        h('div', { className: 'refs-in' },
+          h('h1', null, 'References'),
+          h('p', { className: 'muted' }, 'These studies inspired the two settings. None of them tested this app.'),
+          h('h2', null, 'Confirmation cue'),
+          h('p', null, 'Saying an item aloud makes it more memorable than reading it silently (MACLEOD et al., 2010). ' +
+            'Aviation checklists use spoken challenge and response between pilots (DEGANI; WIENER, 1993).'),
+          h('h2', null, 'Attention tone'),
+          h('p', null, 'Warning cues raise short-term alertness, the "alerting" part of the attention system (POSNER; PETERSEN, 1990). ' +
+            'In ADHD, steady white or pink noise gave a small benefit to task performance (SÖDERLUND; SIKSTRÖM; SMART, 2007; NIGG et al., 2024). ' +
+            'Those studies used steady noise, not a short beep, and noise can hurt people without ADHD.'),
+          h('h2', null, 'Bibliography'),
+          h('ul', null, REFERENCES.map(r => h('li', { key: r.key },
+            r.author + ' ' + r.title + ' ',
+            h('em', null, r.journal), r.rest,
+            r.doi ? [' DOI: ', h('a', { key: 'doi', href: 'https://doi.org/' + r.doi, target: '_blank', rel: 'noopener noreferrer' }, r.doi), '.'] : null))),
+          h('p', { className: 'muted' }, 'Checked against abstracts and publisher records, not the full texts.'))),
+      h('div', { className: 'actions' },
+        h('button', { id: 'refs-back', onClick: () => setStep('feedback') }, 'Back')));
   }
 
   if (step === 'item' && cur) {
