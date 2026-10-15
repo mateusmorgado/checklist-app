@@ -62,11 +62,11 @@ const SAMPLE = [
     { text: 'Check flaps' }, { text: 'Check radio' }, { text: 'Check lights' } ] },
   { id: 'b', title: 'Leaving home', items: ['Keys', 'Wallet', 'Phone', 'Stove off'] },
   // Example of questions and quantities: asks "Nights?" before the run.
-  { id: 'c', title: 'Weekend trip', questions: [{ id: 'q1', name: 'nights', label: 'Nights?' }], items: [
+  { id: 'c', title: 'Weekend trip', questions: [{ id: 'q1', name: 'nights', type: 'number', text: 'nights', label: 'How many nights?' }], items: [
     { text: 'Shirts', qty: 'nights' }, { text: 'Socks', qty: 'nights + 1' },
     { text: 'Charger', detail: 'Phone and watch', required: true }, { text: 'Passport', required: true } ] },
   // Example of a yes/no question: "Sauna?" counts as 1 for yes and 0 for no, so a towel is only asked for on yes.
-  { id: 'd', title: 'Gym', questions: [{ id: 'q2', name: 'sauna', label: 'Sauna?', type: 'yesno' }], items: [
+  { id: 'd', title: 'Gym', questions: [{ id: 'q2', name: 'sauna', type: 'yesno', text: 'I go to the sauna', label: 'I go to the sauna?' }], items: [
     { text: 'Shoes' }, { text: 'Water bottle' }, { text: 'Towel', detail: 'For the sauna', qty: 'sauna' } ] },
 ];
 
@@ -137,6 +137,20 @@ function evalQty(expr, vars) {
   return result;
 }
 const fmtQty = n => String(Math.round(n * 100) / 100);
+
+// Questions read as sentences: "If I go to the sauna" (yes/no) or "How many nights" (number).
+const qSentence = q => (q.type === 'yesno' ? 'If ' : 'How many ') + (q.text || q.label.replace(/\?+$/, '').toLowerCase());
+// The name used in formulas is the last word of what was typed ("I go to the sauna" -> sauna), kept unique.
+function questionName(text, taken) {
+  const words = text.toLowerCase().match(/[a-z0-9]+/g) || [];
+  let base = words[words.length - 1] || '';
+  if (!base) return '';
+  if (/^\d/.test(base)) base = 'q' + base;
+  if (QTY_FNS[base]) base += '_q';
+  let name = base, n = 2;
+  while (taken.includes(name)) name = base + n++;
+  return name;
+}
 
 // Home: the list of checklists, first one at the bottom. "+ New" is the lowest control.
 function Home({ lists, onRun, onEdit }) {
@@ -258,7 +272,9 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   const [questions, setQuestions] = useState(() => (list ? list.questions : []));
   const [draft, setDraft] = useState('');
   const [qdraft, setQdraft] = useState('');
-  const [qtype, setQtype] = useState('number'); // type of the next question added
+  const [qtype, setQtype] = useState('yesno'); // type of the question being added
+  const [qstage, setQstage] = useState('list'); // questions step: list -> type -> cond -> then
+  const [qcur, setQcur] = useState(null); // id of the question whose items are being added
   const [error, setError] = useState('');
   const [itemId, setItemId] = useState(null); // item being edited on the item step
   const [field, setField] = useState('detail'); // 'detail' | 'qty'
@@ -278,7 +294,7 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   useLayoutEffect(() => {
     const el = step === 'name' ? titleRef.current : draftRef.current;
     if (el) el.focus();
-  }, [step]);
+  }, [step, qstage]);
   useEffect(() => () => press.current && clearTimeout(press.current.timer), []);
 
   const focusDraft = () => { if (draftRef.current) draftRef.current.focus(); };
@@ -314,17 +330,33 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   };
   const setProp = (key, value) => setItems(prev => prev.map(i => (i.id === itemId ? { ...i, [key]: value } : i)));
 
+  // cond stage: creates the question and moves on to "then add ...".
   const addQuestion = () => {
-    const text = qdraft.trim().replace(/\?+$/, '').trim();
-    let name = slug(text);
+    const text = qdraft.trim().replace(/\?+$/, '').replace(/^(if|how many)\s+/i, '').trim();
+    const name = questionName(text, names);
     if (!name) return;
-    if (/^\d/.test(name)) name = 'q' + name;
-    if (QTY_FNS[name]) { setError('"' + name + '" is a formula word. Pick another name.'); return; }
-    if (names.includes(name)) { setError('"' + name + '" is already a question.'); return; }
-    setQuestions(prev => [...prev, { id: 'q' + nextId++, name, type: qtype, label: text.charAt(0).toUpperCase() + text.slice(1) + '?' }]);
+    const q = {
+      id: 'q' + nextId++, name, type: qtype, text,
+      label: qtype === 'yesno' ? text.charAt(0).toUpperCase() + text.slice(1) + '?' : 'How many ' + text + '?',
+    };
+    setQuestions(prev => [...prev, q]);
+    setQcur(q.id);
     setQdraft('');
-    setError('');
-    focusDraft();
+    setQstage('then');
+  };
+  // then stage: each entry adds a normal item whose quantity is the answer, so it shows up only when it should.
+  const addLinked = () => {
+    const t = qdraft.trim();
+    const q = questions.find(x => x.id === qcur);
+    if (!t || !q) { setQdraft(''); setQstage('list'); return; }
+    setItems(prev => [...prev, mk(t, '', q.name)]);
+    setQdraft('');
+  };
+  const linkedTo = q => items.filter(i => i.qty.trim() === q.name);
+  // Removing a question keeps its items; they just lose the quantity that tied them to it.
+  const removeQuestion = q => {
+    setQuestions(prev => prev.filter(x => x.id !== q.id));
+    setItems(prev => prev.map(i => (i.qty.trim() === q.name ? { ...i, qty: '' } : i)));
   };
 
   const submit = () => {
@@ -457,31 +489,70 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   }
 
   if (step === 'questions') {
+    const q = questions.find(x => x.id === qcur);
+    const toList = () => { setQdraft(''); setQstage('list'); };
+
+    if (qstage === 'type') {
+      return h('div', { className: 'screen edit' },
+        h('div', { className: 'points' }, h('h1', null, 'New question')),
+        h('div', { className: 'muted hint' }, 'Question type'),
+        h('div', { className: 'actions' },
+          h('button', { className: 'muted', onClick: toList }, 'Cancel'),
+          h('button', { id: 'type-number', onClick: () => { setQtype('number'); setQdraft(''); setQstage('cond'); } }, 'Number'),
+          h('button', { id: 'type-yesno', onClick: () => { setQtype('yesno'); setQdraft(''); setQstage('cond'); } }, 'Yes / no')));
+    }
+
+    if (qstage === 'cond') {
+      return h('div', { className: 'screen edit' },
+        h('div', { className: 'muted hint' }, qtype === 'yesno' ? 'Question: if…' : 'Question: how many…'),
+        h('div', { className: 'entry' },
+          h('input', {
+            id: 'qdraft', ref: draftRef, value: qdraft, enterKeyHint: 'next',
+            placeholder: qtype === 'yesno' ? 'I go to the sauna' : 'nights',
+            onChange: e => setQdraft(e.target.value),
+            onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addQuestion(); } },
+          })),
+        h('div', { className: 'actions' },
+          h('button', { className: 'muted', onClick: toList }, 'Cancel'),
+          h('button', { className: qdraft.trim() ? '' : 'muted', onClick: addQuestion }, 'Next')));
+    }
+
+    if (qstage === 'then' && q) {
+      return h('div', { className: 'screen edit' },
+        h('div', { className: 'points' },
+          h('h1', null, qSentence(q)),
+          h('div', { className: 'stack' },
+            linkedTo(q).map(i => h('div', { key: i.id },
+              h('span', { className: 'label' }, h('span', null, i.text)),
+              h('span', { className: 'mark' }, '•'))))),
+        h('div', { className: 'muted hint' }, q.type === 'yesno' ? 'then… (add ____)' : 'then… (add ____, quantity = ' + q.name + ')'),
+        h('div', { className: 'entry' },
+          h('input', {
+            id: 'qthen', ref: draftRef, value: qdraft, placeholder: 'Towel', enterKeyHint: 'next',
+            onChange: e => setQdraft(e.target.value),
+            onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addLinked(); } },
+          })),
+        h('div', { className: 'actions' },
+          h('button', { onClick: () => { addLinked(); setQstage('list'); } }, 'Done')));
+    }
+
     return h('div', { className: 'screen edit' },
       h('div', { className: 'points' },
         h('h1', null, 'Questions'),
         h('div', { className: 'stack' },
-          questions.map(q => h('div', { key: q.id },
-            h('button', { className: 'x', 'aria-label': 'Remove ' + q.label, onClick: () => setQuestions(questions.filter(x => x.id !== q.id)) }, '×'),
-            h('span', { className: 'label' },
-              h('span', null, q.label),
-              h('span', { className: 'detail' }, q.name + ' · ' + (q.type === 'yesno' ? 'yes / no' : 'number'))))))),
-      h('div', { className: 'hint ' + (error ? 'err' : 'muted') },
-        error || (qtype === 'yesno'
-          ? 'Yes counts as 1, no as 0. Use the name as a quantity, e.g. a towel: sauna.'
-          : 'Asked before each run. Use the name in a quantity, e.g. nights + 1.')),
-      h('div', { className: 'entry' },
-        h('input', {
-          id: 'qdraft', ref: draftRef, value: qdraft, placeholder: qtype === 'yesno' ? 'Question, e.g. sauna' : 'Question, e.g. nights', enterKeyHint: 'next',
-          onChange: e => setQdraft(e.target.value),
-          onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addQuestion(); } },
-        })),
+          questions.map(x => {
+            const linked = linkedTo(x);
+            return h('div', { key: x.id },
+              h('button', { className: 'x', 'aria-label': 'Remove ' + x.label, onClick: () => removeQuestion(x) }, '×'),
+              h('span', { className: 'label' },
+                h('span', null, qSentence(x)),
+                h('span', { className: 'detail' }, linked.length ? 'then add ' + linked.map(i => i.text).join(', ') : 'no items yet')));
+          }))),
+      h('div', { className: 'muted hint' },
+        questions.length ? 'Asked before each run. Use a name in a quantity, e.g. nights + 1.' : 'Example: if I go to the sauna, then add a towel.'),
       h('div', { className: 'actions' },
-        h('button', {
-          id: 'qtype', className: 'muted', onClick: () => setQtype(qtype === 'number' ? 'yesno' : 'number'),
-          onMouseDown: e => e.preventDefault(), // keep focus (and the phone keyboard) on the field
-        }, 'Type: ' + (qtype === 'yesno' ? 'yes / no' : 'number')),
-        h('button', { onClick: () => { setError(''); setStep('points'); } }, 'Back')));
+        h('button', { id: 'add-question', onClick: () => setQstage('type') }, '+ Question'),
+        h('button', { onClick: () => setStep('points') }, 'Back')));
   }
 
   return h('div', { className: 'screen edit' },
@@ -526,7 +597,7 @@ function Editor({ list, onSave, onDelete, onCancel }) {
     h('div', { className: 'actions' },
       list && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
       h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
-      h('button', { className: 'muted', onClick: () => { setError(''); setStep('questions'); } },
+      h('button', { className: 'muted', onClick: () => { setError(''); setQstage('list'); setStep('questions'); } },
         'Questions' + (questions.length ? ' ' + questions.length : '')),
       h('button', { onClick: submit }, 'Save')));
 }
