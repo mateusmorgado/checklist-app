@@ -25,3 +25,4 @@ https://claude.ai/share/97cbc056-6bb6-4524-96e8-3218395231b4
 ## Ideas for issues
 
 - **Voice repetition:** read each item aloud (text to speech) and let the user answer by voice or tap, like a challenge-and-response checklist. Useful when hands are busy.
+- **Advanced checklists and logging:** a checklist item could ask for a value when it is ticked: a yes/no, a number or a short text, and that value is logged. Examples: checking your mood (a number from 1 to 5 plus a note), or a "clean socks" count that goes down each trip, so the next packing list brings fewer.
