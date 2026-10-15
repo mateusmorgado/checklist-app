@@ -6,11 +6,11 @@
 <title>Checklist</title>
 <style>
   /* Full-viewport, no scroll. Everything is anchored bottom-right for the right thumb. */
-  :root { --bg: #ffffff; --fg: #111111; --muted: #8a8a8a; --line: #e2e2e2; --lift: #f1f1f1; }
+  :root { --bg: #ffffff; --fg: #111111; --muted: #8a8a8a; --line: #e2e2e2; --lift: #f1f1f1; --err: #b3261e; }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg: #111111; --fg: #f2f2f2; --muted: #8a8a8a; --line: #2e2e2e; --lift: #1e1e1e; color-scheme: dark; }
+    :root:not([data-theme="light"]) { --bg: #111111; --fg: #f2f2f2; --muted: #8a8a8a; --line: #2e2e2e; --lift: #1e1e1e; --err: #ff8a80; color-scheme: dark; }
   }
-  :root[data-theme="dark"] { --bg: #111111; --fg: #f2f2f2; --muted: #8a8a8a; --line: #2e2e2e; --lift: #1e1e1e; color-scheme: dark; }
+  :root[data-theme="dark"] { --bg: #111111; --fg: #f2f2f2; --muted: #8a8a8a; --line: #2e2e2e; --lift: #1e1e1e; --err: #ff8a80; color-scheme: dark; }
   html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
   body { background: var(--bg); color: var(--fg); font: 18px/1.3 system-ui, -apple-system, sans-serif; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   #root { height: 100%; }
@@ -37,13 +37,16 @@
   .edit > .hint { grid-area: hint; }
   .edit > .entry { grid-area: entry; width: 100%; }
   .edit > .actions { grid-area: actions; }
-  .actions { display: flex; align-items: center; justify-content: flex-end; gap: 28px; height: 56px; }
+  .actions { display: flex; align-items: center; justify-content: flex-end; gap: 20px; height: 56px; }
   .actions button { flex: none; }
   .mark { font-size: 24px; line-height: 1; flex: none; }
   .bar { display: flex; flex-direction: row-reverse; align-items: center; gap: 28px; height: 56px; flex: none; }
   input { font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 10px 0; width: 100%; box-sizing: border-box; text-align: right; flex: none; }
   input::placeholder { color: var(--muted); }
-  .hint { font-size: 14px; flex: none; }
+  .hint { font-size: 14px; flex: none; text-align: right; }
+  .err { color: var(--err); }
+  .prop { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: 8px; cursor: pointer; }
+  .prop.selected { background: var(--lift); }
 </style>
 </head>
 <body>
@@ -56,26 +59,81 @@ const KEY = 'checklists';
 const SAMPLE = [
   { id: 'a', title: 'Preflight', items: [
     { text: 'Check fuel', detail: 'Both tanks, visual check and drain a sample' },
-    { text: 'Check flaps', detail: '' },
-    { text: 'Check radio', detail: '' },
-    { text: 'Check lights', detail: '' } ] },
-  { id: 'b', title: 'Leaving home', items: ['Keys', 'Wallet', 'Phone', 'Stove off'].map(text => ({ text, detail: '' })) },
+    { text: 'Check flaps' }, { text: 'Check radio' }, { text: 'Check lights' } ] },
+  { id: 'b', title: 'Leaving home', items: ['Keys', 'Wallet', 'Phone', 'Stove off'] },
+  // Example of questions and quantities: asks "Nights?" before the run.
+  { id: 'c', title: 'Weekend trip', questions: [{ id: 'q1', name: 'nights', label: 'Nights?' }], items: [
+    { text: 'Shirts', qty: 'nights' }, { text: 'Socks', qty: 'nights + 1' },
+    { text: 'Charger', detail: 'Phone and watch', required: true }, { text: 'Passport', required: true } ] },
 ];
 
-// Older saved lists stored items as plain strings.
+// Older saved lists stored items as plain strings and had no questions, quantities or required flags.
 const normalize = lists => lists.map(l => ({
-  ...l, items: l.items.map(i => (typeof i === 'string' ? { text: i, detail: '' } : i)),
+  ...l,
+  questions: l.questions || [],
+  items: l.items.map(i => {
+    const o = typeof i === 'string' ? { text: i } : i;
+    return { text: o.text, detail: o.detail || '', qty: o.qty || '', required: !!o.required };
+  }),
 }));
 
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? normalize(JSON.parse(raw)) : SAMPLE;
-  } catch (e) { return SAMPLE; }
+    return normalize(raw ? JSON.parse(raw) : SAMPLE);
+  } catch (e) { return normalize(SAMPLE); }
 }
 function save(lists) {
   try { localStorage.setItem(KEY, JSON.stringify(lists)); } catch (e) {}
 }
+
+// Quantity formulas, e.g. "nights + 1" or "ceil(nights / 2)". Numbers, question names, + - * / ( ) and
+// ceil floor round min max. A small parser on purpose: formulas are never passed to eval().
+const QTY_FNS = { ceil: [1, 1, Math.ceil], floor: [1, 1, Math.floor], round: [1, 1, Math.round], min: [1, 9, Math.min], max: [1, 9, Math.max] };
+function evalQty(expr, vars) {
+  const toks = String(expr).toLowerCase().match(/\d+\.?\d*|\.\d+|[a-z_][a-z0-9_]*|[-+*/(),]|\S/g) || [];
+  let pos = 0;
+  const peek = () => toks[pos];
+  const next = () => toks[pos++];
+  const expect = t => { if (next() !== t) throw new Error('Expected "' + t + '"'); };
+  function primary() {
+    const t = next();
+    if (t === undefined) throw new Error('Formula ends too early');
+    if (/^[\d.]/.test(t)) return parseFloat(t);
+    if (t === '(') { const v = sum(); expect(')'); return v; }
+    if (t === '-') return -primary();
+    if (/^[a-z_]/.test(t)) {
+      if (peek() === '(') {
+        const fn = QTY_FNS[t];
+        if (!fn) throw new Error('Unknown function "' + t + '"');
+        next();
+        const args = [];
+        if (peek() !== ')') { do { args.push(sum()); } while (peek() === ',' && next()); }
+        expect(')');
+        if (args.length < fn[0] || args.length > fn[1]) throw new Error('Wrong number of values for ' + t);
+        return fn[2](...args);
+      }
+      if (!Object.prototype.hasOwnProperty.call(vars, t)) throw new Error('Unknown name "' + t + '"');
+      return vars[t];
+    }
+    throw new Error('Unexpected "' + t + '"');
+  }
+  function term() {
+    let v = primary();
+    while (peek() === '*' || peek() === '/') v = next() === '*' ? v * primary() : v / primary();
+    return v;
+  }
+  function sum() {
+    let v = term();
+    while (peek() === '+' || peek() === '-') v = next() === '+' ? v + term() : v - term();
+    return v;
+  }
+  const result = sum();
+  if (pos < toks.length) throw new Error('Unexpected "' + toks[pos] + '"');
+  if (!Number.isFinite(result)) throw new Error('Not a number');
+  return result;
+}
+const fmtQty = n => String(Math.round(n * 100) / 100);
 
 // Home: the list of checklists, first one at the bottom. "+ New" is the lowest control.
 function Home({ lists, onRun, onEdit }) {
@@ -88,9 +146,52 @@ function Home({ lists, onRun, onEdit }) {
     h('div', { className: 'bar' }, h('button', { onClick: () => onEdit(null) }, '+ New')));
 }
 
+// Ask: one number question per screen before a run. Answers feed the quantity formulas.
+function Ask({ list, onDone, onCancel }) {
+  const qs = list.questions;
+  const [i, setI] = useState(0);
+  const [vals, setVals] = useState(() => qs.map(() => '1'));
+  const ref = useRef(null);
+  useLayoutEffect(() => { if (ref.current) { ref.current.focus(); ref.current.select(); } }, [i]);
+  const num = k => Number(vals[k].replace(',', '.'));
+  const valid = vals[i].trim() !== '' && Number.isFinite(num(i));
+  const last = i === qs.length - 1;
+  const next = () => {
+    if (!valid) { if (ref.current) ref.current.focus(); return; }
+    if (!last) { setI(i + 1); return; }
+    onDone(Object.fromEntries(qs.map((q, k) => [q.name, num(k)])));
+  };
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, qs[i].label)),
+    h('div', { className: 'muted hint' }, list.title + (qs.length > 1 ? ' · ' + (i + 1) + ' of ' + qs.length : '')),
+    h('div', { className: 'entry' },
+      h('input', {
+        id: 'answer', ref, inputMode: 'decimal', value: vals[i], enterKeyHint: last ? 'go' : 'next',
+        onChange: e => setVals(v => v.map((x, k) => (k === i ? e.target.value : x))),
+        onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); next(); } },
+      })),
+    h('div', { className: 'actions' },
+      h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+      i > 0 && h('button', { className: 'muted', onClick: () => setI(i - 1) }, 'Back'),
+      h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next')));
+}
+
+function Run({ list, onClose }) {
+  const [answers, setAnswers] = useState(null); // null while the questions are still being asked
+  if (list.questions.length > 0 && !answers) return h(Ask, { list, onDone: setAnswers, onCancel: onClose });
+  const items = list.items
+    .map(it => {
+      let n = null;
+      if (it.qty) { try { n = evalQty(it.qty, answers || {}); } catch (e) { n = null; } }
+      return { ...it, n };
+    })
+    .filter(it => it.n === null || it.n > 0); // a quantity of 0 leaves the item out of this run
+  return h(RunList, { title: list.title, items, onClose });
+}
+
 // Run: first item at the bottom, working upward. Checkmarks on the right.
 // A ticked item stays put for one second, then moves to the top of the stack.
-function Run({ list, onClose }) {
+function RunList({ title, items, onClose }) {
   const [done, setDone] = useState([]);       // ticked item indexes
   const [settled, setSettled] = useState([]); // ticked items already moved to the top, in the order they moved
   const timers = useRef({});
@@ -101,7 +202,7 @@ function Run({ list, onClose }) {
       clearTimeout(timers.current[i]);
       setDone(d => d.filter(x => x !== i));
       // Once everything is ticked the order is frozen: later taps change the tick, never the position.
-      if (done.length < list.items.length) setSettled(s => s.filter(x => x !== i));
+      if (done.length < items.length) setSettled(s => s.filter(x => x !== i));
       return;
     }
     setDone(d => [...d, i]);
@@ -109,33 +210,41 @@ function Run({ list, onClose }) {
   };
 
   const order = [
-    ...list.items.map((_, i) => i).filter(i => !settled.includes(i)),
+    ...items.map((_, i) => i).filter(i => !settled.includes(i)),
     ...settled,
   ];
-  const complete = done.length === list.items.length;
+  // With required items, only those have to be ticked before Done; otherwise everything does.
+  const required = items.map((it, i) => (it.required ? i : -1)).filter(i => i >= 0);
+  const complete = required.length ? required.every(i => done.includes(i)) : done.length === items.length;
   return h('div', { className: 'screen' },
-    h('h1', null, list.title),
+    h('h1', null, title),
     h('div', { className: 'stack' },
       order.map(i => h('button', { key: i, className: done.includes(i) ? 'done' : '', onClick: () => toggle(i) },
         h('span', { className: 'label' },
-          h('span', null, list.items[i].text),
-          list.items[i].detail && h('span', { className: 'detail' }, list.items[i].detail)),
+          h('span', null, items[i].text + (items[i].n !== null ? ' ×' + fmtQty(items[i].n) : '')),
+          items[i].required && h('span', { className: 'detail' }, 'required'),
+          items[i].detail && h('span', { className: 'detail' }, items[i].detail)),
         h('span', { className: 'mark' }, done.includes(i) ? '☑' : '☐')))),
     h('div', { className: 'bar' },
       h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close')));
 }
 
-// Editor: add one item at a time. Each becomes a bullet, in the same bottom-to-top order the run screen uses.
-// Tap an item to add details to it. Press and hold an item, then drag it up or down to change its place.
+// Editor steps: name -> points (add, reorder) -> item (details, quantity, required) and questions.
+// Press and hold an item, then drag it up or down to change its place.
 let nextId = 1;
-const mk = (text, detail = '') => ({ id: nextId++, text, detail });
+const mk = (text, detail = '', qty = '', required = false) => ({ id: nextId++, text, detail, qty, required });
 const HOLD_MS = 350;
+const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
 function Editor({ list, onSave, onDelete, onCancel }) {
   const [title, setTitle] = useState(list ? list.title : '');
-  const [items, setItems] = useState(() => (list ? list.items.map(i => mk(i.text, i.detail)) : []));
+  const [items, setItems] = useState(() => (list ? list.items.map(i => mk(i.text, i.detail, i.qty, i.required)) : []));
+  const [questions, setQuestions] = useState(() => (list ? list.questions : []));
   const [draft, setDraft] = useState('');
-  const [detailFor, setDetailFor] = useState(null); // id of the item whose details the entry field is editing
+  const [qdraft, setQdraft] = useState('');
+  const [error, setError] = useState('');
+  const [itemId, setItemId] = useState(null); // item being edited on the item step
+  const [field, setField] = useState('detail'); // 'detail' | 'qty'
   const [dragId, setDragId] = useState(null);
   const [offset, setOffset] = useState(0);
   // New checklists start by asking for the name; existing ones open straight on their points.
@@ -155,41 +264,63 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   }, [step]);
   useEffect(() => () => press.current && clearTimeout(press.current.timer), []);
 
-  const target = items.find(i => i.id === detailFor);
   const focusDraft = () => { if (draftRef.current) draftRef.current.focus(); };
+  const cur = items.find(i => i.id === itemId);
+  const names = questions.map(q => q.name);
+  const defaults = () => Object.fromEntries(names.map(n => [n, 1]));
+  const qtyProblem = i => {
+    if (!i.qty.trim()) return null;
+    try { evalQty(i.qty, defaults()); return null; } catch (e) { return e.message; }
+  };
+  const usable = names.length ? 'Use: ' + names.join(', ') : 'No questions yet (Back, then Questions)';
 
-  const commit = () => {
+  const add = () => {
     const t = draft.trim();
-    if (target) {
-      setItems(prev => prev.map(i => (i.id === detailFor ? { ...i, detail: t } : i)));
-      setDetailFor(null);
-      setDraft('');
-    } else if (t) {
-      setItems(prev => [...prev, mk(t)]);
-      setDraft('');
-    }
+    if (!t) return;
+    setItems(prev => [...prev, mk(t)]);
+    setDraft('');
+    setError('');
     focusDraft();
   };
 
-  const openDetails = id => {
+  const openItem = id => {
     if (justDragged.current) { justDragged.current = false; return; }
-    if (detailFor === id) { setDetailFor(null); setDraft(''); return; }
-    const it = items.find(i => i.id === id);
-    setDetailFor(id);
-    setDraft(it.detail);
+    setItemId(id);
+    setField('detail');
+    setError('');
+    setStep('item');
+  };
+  const closeItem = () => {
+    setItems(prev => prev.map(i => (i.id === itemId ? { ...i, detail: i.detail.trim(), qty: i.qty.trim() } : i)));
+    setItemId(null);
+    setStep('points');
+  };
+  const setProp = (key, value) => setItems(prev => prev.map(i => (i.id === itemId ? { ...i, [key]: value } : i)));
+
+  const addQuestion = () => {
+    const text = qdraft.trim().replace(/\?+$/, '').trim();
+    let name = slug(text);
+    if (!name) return;
+    if (/^\d/.test(name)) name = 'q' + name;
+    if (QTY_FNS[name]) { setError('"' + name + '" is a formula word. Pick another name.'); return; }
+    if (names.includes(name)) { setError('"' + name + '" is already a question.'); return; }
+    setQuestions(prev => [...prev, { id: 'q' + nextId++, name, label: text.charAt(0).toUpperCase() + text.slice(1) + '?' }]);
+    setQdraft('');
+    setError('');
     focusDraft();
   };
 
   const submit = () => {
-    let all = items;
-    const t = draft.trim();
-    if (target) all = items.map(i => (i.id === detailFor ? { ...i, detail: t } : i));
-    else if (t) all = [...items, mk(t)];
+    const all = (draft.trim() ? [...items, mk(draft.trim())] : items)
+      .map(i => ({ ...i, detail: i.detail.trim(), qty: i.qty.trim() }));
     if (!title.trim() || all.length === 0) return;
+    const bad = all.find(qtyProblem);
+    if (bad) { setError('"' + bad.text + '": ' + qtyProblem(bad)); return; }
     onSave({
       id: list ? list.id : String(Date.now()),
       title: title.trim(),
-      items: all.map(i => ({ text: i.text, detail: i.detail })),
+      questions,
+      items: all.map(i => ({ text: i.text, detail: i.detail, qty: i.qty, required: i.required })),
     });
   };
 
@@ -265,51 +396,115 @@ function Editor({ list, onSave, onDelete, onCancel }) {
         h('button', { className: title.trim() ? '' : 'muted', onClick: goNext }, 'Next')));
   }
 
+  if (step === 'item' && cur) {
+    let hint = 'Shown under the item while running.', bad = false;
+    if (field === 'qty') {
+      if (!cur.qty.trim()) hint = 'Optional. ' + usable;
+      else {
+        try { hint = '= ' + fmtQty(evalQty(cur.qty, defaults())) + ' when every answer is 1. ' + usable; }
+        catch (e) { hint = e.message + '. ' + usable; bad = true; }
+      }
+    }
+    const props = [['detail', 'Details', cur.detail], ['qty', 'Quantity', cur.qty]];
+    return h('div', { className: 'screen edit' },
+      h('div', { className: 'points' },
+        h('h1', { onClick: closeItem, style: { cursor: 'pointer' } }, cur.text),
+        h('div', { className: 'stack' },
+          props.map(([key, label, value]) => h('div', {
+            key, className: 'prop' + (field === key ? ' selected' : ''),
+            onClick: () => { setField(key); focusDraft(); },
+          },
+            h('span', { className: 'label' },
+              h('span', { className: 'detail' }, label),
+              h('span', null, value || '—'))))),
+      ),
+      h('div', { className: 'hint ' + (bad ? 'err' : 'muted') }, hint),
+      h('div', { className: 'entry' },
+        h('input', {
+          id: 'field', ref: draftRef, value: cur[field],
+          placeholder: field === 'detail' ? 'Details' : 'Quantity, e.g. nights + 1',
+          enterKeyHint: field === 'detail' ? 'next' : 'done',
+          onChange: e => setProp(field, e.target.value),
+          onKeyDown: e => {
+            if (e.key === 'Enter') { e.preventDefault(); if (field === 'detail') setField('qty'); else closeItem(); }
+            if (e.key === 'Escape') closeItem();
+          },
+        })),
+      h('div', { className: 'actions' },
+        h('button', {
+          className: cur.required ? '' : 'muted', onClick: () => setProp('required', !cur.required),
+          onMouseDown: e => e.preventDefault(), // keep focus (and the phone keyboard) on the field
+        },
+          'Required: ' + (cur.required ? 'yes' : 'no')),
+        h('button', { onClick: closeItem }, 'Back')));
+  }
+
+  if (step === 'questions') {
+    return h('div', { className: 'screen edit' },
+      h('div', { className: 'points' },
+        h('h1', null, 'Questions'),
+        h('div', { className: 'stack' },
+          questions.map(q => h('div', { key: q.id },
+            h('button', { className: 'x', 'aria-label': 'Remove ' + q.label, onClick: () => setQuestions(questions.filter(x => x.id !== q.id)) }, '×'),
+            h('span', { className: 'label' },
+              h('span', null, q.label),
+              h('span', { className: 'detail' }, q.name)))))),
+      h('div', { className: 'hint ' + (error ? 'err' : 'muted') },
+        error || 'Asked before each run. Use the name in a quantity, e.g. nights + 1.'),
+      h('div', { className: 'entry' },
+        h('input', {
+          id: 'qdraft', ref: draftRef, value: qdraft, placeholder: 'Question, e.g. nights', enterKeyHint: 'next',
+          onChange: e => setQdraft(e.target.value),
+          onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addQuestion(); } },
+        })),
+      h('div', { className: 'actions' },
+        h('button', { onClick: () => { setError(''); setStep('points'); } }, 'Back')));
+  }
+
   return h('div', { className: 'screen edit' },
     h('div', { className: 'points' },
-    h('h1', {
-      onClick: () => { if (detailFor) { setDetailFor(null); setDraft(''); } setStep('name'); },
-      style: { cursor: 'pointer' },
-    }, title),
+    h('h1', { onClick: () => setStep('name'), style: { cursor: 'pointer' } }, title),
     h('div', { className: 'stack', ref: stackRef },
       // DOM order stays fixed (by id) so the dragged element is never moved or loses pointer capture;
       // the visible position comes from CSS `order`.
-      [...items].sort((a, b) => a.id - b.id).map(item => h('div', {
-        key: item.id,
-        className: 'row' + (dragId === item.id ? ' lifted' : '') + (detailFor === item.id ? ' selected' : ''),
-        ref: el => { if (el) rowEls.current[item.id] = el; else delete rowEls.current[item.id]; },
-        style: {
-          order: items.indexOf(item),
-          ...(dragId === item.id ? { transform: 'translateY(' + offset + 'px) scale(1.03)' } : null),
+      [...items].sort((a, b) => a.id - b.id).map(item => {
+        const note = [item.required ? 'required' : null, item.qty ? '× ' + item.qty : null, item.detail || null].filter(Boolean).join(' · ');
+        return h('div', {
+          key: item.id,
+          className: 'row' + (dragId === item.id ? ' lifted' : ''),
+          ref: el => { if (el) rowEls.current[item.id] = el; else delete rowEls.current[item.id]; },
+          style: {
+            order: items.indexOf(item),
+            ...(dragId === item.id ? { transform: 'translateY(' + offset + 'px) scale(1.03)' } : null),
+          },
+          onPointerDown: e => onDown(e, item.id),
+          onPointerMove: e => onMove(e, item.id),
+          onPointerUp: onUp, onPointerCancel: onUp, onPointerLeave: () => { const p = press.current; if (p && !p.dragging && p.id === item.id) onUp(); },
+          onContextMenu: e => e.preventDefault(),
+          onClick: e => { if (!e.target.closest('.x')) openItem(item.id); },
         },
-        onPointerDown: e => onDown(e, item.id),
-        onPointerMove: e => onMove(e, item.id),
-        onPointerUp: onUp, onPointerCancel: onUp, onPointerLeave: () => { const p = press.current; if (p && !p.dragging && p.id === item.id) onUp(); },
-        onContextMenu: e => e.preventDefault(),
-        onClick: e => { if (!e.target.closest('.x')) openDetails(item.id); },
-      },
-        h('button', {
-          className: 'x', 'aria-label': 'Remove ' + item.text,
-          onClick: () => { if (detailFor === item.id) { setDetailFor(null); setDraft(''); } setItems(items.filter(i => i.id !== item.id)); },
-        }, '×'),
-        h('span', { className: 'label' },
-          h('span', null, item.text),
-          item.detail && h('span', { className: 'detail' }, item.detail)),
-        h('span', { className: 'mark' }, '•'))))),
-    items.length > 0 && h('div', { className: 'muted hint' }, 'Tap an item to add details. Hold and drag to reorder. Tap the name to rename.'),
+          h('button', {
+            className: 'x', 'aria-label': 'Remove ' + item.text,
+            onClick: () => setItems(items.filter(i => i.id !== item.id)),
+          }, '×'),
+          h('span', { className: 'label' },
+            h('span', null, item.text),
+            note && h('span', { className: 'detail' }, note)),
+          h('span', { className: 'mark' }, '•'));
+      }))),
+    h('div', { className: 'hint ' + (error ? 'err' : 'muted') },
+      error || (items.length > 0 ? 'Tap an item to edit it. Hold and drag to reorder. Tap the name to rename.' : '')),
     h('div', { className: 'entry' },
       h('input', {
-        id: 'draft', ref: draftRef, value: draft, enterKeyHint: target ? 'done' : 'next',
-        placeholder: target ? 'Details for ' + target.text : 'Add item',
+        id: 'draft', ref: draftRef, value: draft, placeholder: 'Add item', enterKeyHint: 'next',
         onChange: e => setDraft(e.target.value),
-        onKeyDown: e => {
-          if (e.key === 'Enter') { e.preventDefault(); commit(); }
-          if (e.key === 'Escape' && target) { setDetailFor(null); setDraft(''); }
-        },
+        onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); add(); } },
       })),
     h('div', { className: 'actions' },
       list && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
       h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+      h('button', { className: 'muted', onClick: () => { setError(''); setStep('questions'); } },
+        'Questions' + (questions.length ? ' ' + questions.length : '')),
       h('button', { onClick: submit }, 'Save')));
 }
 
