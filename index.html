@@ -131,13 +131,24 @@ function speak(text) {
   } catch (e) {}
 }
 
-// References behind the feedback settings, cited in ABNT style: (SURNAME, YEAR).
+// References behind the feedback settings, in APA 7th edition style (alphabetical by first author).
+// Entries without a DOI were not confirmed against a DOI record.
 const REFERENCES = [
-  { key: 'degani', author: 'DEGANI, A.; WIENER, E. L.', title: 'Cockpit checklists: concepts, design, and use.', journal: 'Human Factors', rest: ', v. 35, n. 2, p. 28–43, 1993.' },
-  { key: 'macleod', author: 'MACLEOD, C. M.; GOPIE, N.; HOURIHAN, K. L.; NEARY, K. R.; OZUBKO, J. D.', title: 'The production effect: delineation of a phenomenon.', journal: 'Journal of Experimental Psychology: Learning, Memory, and Cognition', rest: ', v. 36, n. 3, p. 671–685, 2010.', doi: '10.1037/a0018785' },
-  { key: 'nigg', author: 'NIGG, J. T. et al.', title: 'Systematic review and meta-analysis: do white noise or pink noise help with task performance in youth with attention-deficit/hyperactivity disorder or with elevated attention problems?', journal: 'Journal of the American Academy of Child and Adolescent Psychiatry', rest: ', v. 63, n. 8, p. 778–788, 2024.', doi: '10.1016/j.jaac.2023.12.014' },
-  { key: 'posner', author: 'POSNER, M. I.; PETERSEN, S. E.', title: 'The attention system of the human brain.', journal: 'Annual Review of Neuroscience', rest: ', v. 13, p. 25–42, 1990.' },
-  { key: 'soderlund', author: 'SÖDERLUND, G.; SIKSTRÖM, S.; SMART, A.', title: 'Listen to the noise: noise is beneficial for cognitive performance in ADHD.', journal: 'Journal of Child Psychology and Psychiatry', rest: ', v. 48, n. 8, p. 840–847, 2007.', doi: '10.1111/j.1469-7610.2007.01749.x' },
+  { key: 'degani', authors: 'Degani, A., & Wiener, E. L.', year: 1993, title: 'Cockpit checklists: Concepts, design, and use',
+    journal: 'Human Factors', volume: '35', issue: '2', pages: '28–43' },
+  { key: 'macleod', authors: 'MacLeod, C. M., Gopie, N., Hourihan, K. L., Neary, K. R., & Ozubko, J. D.', year: 2010,
+    title: 'The production effect: Delineation of a phenomenon', journal: 'Journal of Experimental Psychology: Learning, Memory, and Cognition',
+    volume: '36', issue: '3', pages: '671–685', doi: '10.1037/a0018785' },
+  { key: 'nigg', authors: 'Nigg, J., Bruton, A., Kozlowski, M., Johnstone, J., & Karalunas, S.', year: 2024,
+    title: 'Systematic review and meta-analysis: Do white noise or pink noise help with task performance in youth with attention-deficit/hyperactivity disorder or with elevated attention problems?',
+    journal: 'Journal of the American Academy of Child and Adolescent Psychiatry', volume: '63', issue: '8', pages: '778–788', doi: '10.1016/j.jaac.2023.12.014' },
+  { key: 'posner', authors: 'Posner, M. I., & Petersen, S. E.', year: 1990, title: 'The attention system of the human brain',
+    journal: 'Annual Review of Neuroscience', volume: '13', pages: '25–42' },
+  { key: 'soderlund', authors: 'Söderlund, G., Sikström, S., & Smart, A.', year: 2007,
+    title: 'Listen to the noise: Noise is beneficial for cognitive performance in ADHD', journal: 'Journal of Child Psychology and Psychiatry',
+    volume: '48', issue: '8', pages: '840–847', doi: '10.1111/j.1469-7610.2007.01749.x' },
+  { key: 'szalma', authors: 'Szalma, J., & Hancock, P.', year: 2011, title: 'Noise effects on human performance: A meta-analytic synthesis',
+    journal: 'Psychological Bulletin', volume: '137', issue: '4', pages: '682–707', doi: '10.1037/a0023987' },
 ];
 
 // Quantity formulas, e.g. "nights + 1" or "ceil(nights / 2)". Numbers, question names, + - * / ( ) and
@@ -495,8 +506,8 @@ function Editor({ list, onSave, onDelete, onCancel }) {
     ];
     return h('div', { className: 'screen edit intro' },
       h('div', { className: 'muted hint intro-text' },
-        'When you tick an item: the Confirmation cue repeats the item out loud (MACLEOD et al., 2010). ' +
-        'The Attention tone plays a short sound to keep you focused on the task (POSNER; PETERSEN, 1990).'),
+        'When you tick an item: the Confirmation cue repeats the item out loud (MacLeod et al., 2010). ' +
+        'The Attention tone plays a short sound to keep you focused on the task (Posner & Petersen, 1990).'),
       h('div', { className: 'points' },
         h('h1', null, title),
         h('div', { className: 'stack' },
@@ -519,17 +530,19 @@ function Editor({ list, onSave, onDelete, onCancel }) {
           h('h1', null, 'References'),
           h('p', { className: 'muted' }, 'These studies inspired the two settings. None of them tested this app.'),
           h('h2', null, 'Confirmation cue'),
-          h('p', null, 'Saying an item aloud makes it more memorable than reading it silently (MACLEOD et al., 2010). ' +
-            'Aviation checklists use spoken challenge and response between pilots (DEGANI; WIENER, 1993).'),
+          h('p', null, 'Saying an item aloud makes it more memorable than reading it silently (MacLeod et al., 2010). ' +
+            'Aviation checklists use spoken challenge and response between pilots (Degani & Wiener, 1993).'),
           h('h2', null, 'Attention tone'),
-          h('p', null, 'Warning cues raise short-term alertness, the "alerting" part of the attention system (POSNER; PETERSEN, 1990). ' +
-            'In ADHD, steady white or pink noise gave a small benefit to task performance (SÖDERLUND; SIKSTRÖM; SMART, 2007; NIGG et al., 2024). ' +
-            'Those studies used steady noise, not a short beep, and noise can hurt people without ADHD.'),
-          h('h2', null, 'Bibliography'),
+          h('p', null, 'Warning cues raise short-term alertness, the "alerting" part of the attention system (Posner & Petersen, 1990). ' +
+            'In ADHD, steady white or pink noise gave a small benefit to task performance (Nigg et al., 2024; Söderlund et al., 2007). ' +
+            'Those studies used steady noise, not a short beep. In people without ADHD the evidence is mixed: noise hurt the control group ' +
+            'in one study with children (Söderlund et al., 2007), the 2024 meta-analysis found no significant difference by diagnosis, ' +
+            'and effects depend on volume and task (Szalma & Hancock, 2011).'),
+          h('h2', null, 'Reference list'),
           h('ul', null, REFERENCES.map(r => h('li', { key: r.key },
-            r.author + ' ' + r.title + ' ',
-            h('em', null, r.journal), r.rest,
-            r.doi ? [' DOI: ', h('a', { key: 'doi', href: 'https://doi.org/' + r.doi, target: '_blank', rel: 'noopener noreferrer' }, r.doi), '.'] : null))),
+            r.authors + ' (' + r.year + '). ' + r.title + (/[.?]$/.test(r.title) ? ' ' : '. '),
+            h('em', null, r.journal + ', ' + r.volume), r.issue ? '(' + r.issue + ')' : '', ', ' + r.pages + '.',
+            r.doi ? [' ', h('a', { key: 'doi', href: 'https://doi.org/' + r.doi, target: '_blank', rel: 'noopener noreferrer' }, 'https://doi.org/' + r.doi)] : null))),
           h('p', { className: 'muted' }, 'Checked against abstracts and publisher records, not the full texts.'))),
       h('div', { className: 'actions' },
         h('button', { id: 'refs-back', onClick: () => setStep('feedback') }, 'Back')));
