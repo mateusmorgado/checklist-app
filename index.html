@@ -65,12 +65,15 @@ const SAMPLE = [
   { id: 'c', title: 'Weekend trip', questions: [{ id: 'q1', name: 'nights', label: 'Nights?' }], items: [
     { text: 'Shirts', qty: 'nights' }, { text: 'Socks', qty: 'nights + 1' },
     { text: 'Charger', detail: 'Phone and watch', required: true }, { text: 'Passport', required: true } ] },
+  // Example of a yes/no question: "Sauna?" counts as 1 for yes and 0 for no, so a towel is only asked for on yes.
+  { id: 'd', title: 'Gym', questions: [{ id: 'q2', name: 'sauna', label: 'Sauna?', type: 'yesno' }], items: [
+    { text: 'Shoes' }, { text: 'Water bottle' }, { text: 'Towel', detail: 'For the sauna', qty: 'sauna' } ] },
 ];
 
 // Older saved lists stored items as plain strings and had no questions, quantities or required flags.
 const normalize = lists => lists.map(l => ({
   ...l,
-  questions: l.questions || [],
+  questions: (l.questions || []).map(q => ({ ...q, type: q.type || 'number' })),
   items: l.items.map(i => {
     const o = typeof i === 'string' ? { text: i } : i;
     return { text: o.text, detail: o.detail || '', qty: o.qty || '', required: !!o.required };
@@ -146,25 +149,35 @@ function Home({ lists, onRun, onEdit }) {
     h('div', { className: 'bar' }, h('button', { onClick: () => onEdit(null) }, '+ New')));
 }
 
-// Ask: one number question per screen before a run. Answers feed the quantity formulas.
+// Ask: one question per screen before a run. Numbers are typed, yes/no is one tap (yes = 1, no = 0).
+// The answers feed the quantity formulas.
 function Ask({ list, onDone, onCancel }) {
   const qs = list.questions;
   const [i, setI] = useState(0);
-  const [vals, setVals] = useState(() => qs.map(() => '1'));
+  const [vals, setVals] = useState(() => qs.map(q => (q.type === 'yesno' ? null : '1')));
   const ref = useRef(null);
+  const q = qs[i];
   useLayoutEffect(() => { if (ref.current) { ref.current.focus(); ref.current.select(); } }, [i]);
-  const num = k => Number(vals[k].replace(',', '.'));
-  const valid = vals[i].trim() !== '' && Number.isFinite(num(i));
+  const num = v => Number(String(v).replace(',', '.'));
   const last = i === qs.length - 1;
+  const go = all => {
+    if (!last) { setI(i + 1); return; }
+    onDone(Object.fromEntries(qs.map((x, k) => [x.name, num(all[k])])));
+  };
+  const answerYesNo = yes => {
+    const all = vals.map((v, k) => (k === i ? (yes ? '1' : '0') : v));
+    setVals(all);
+    go(all);
+  };
+  const valid = q.type === 'yesno' ? vals[i] !== null : vals[i].trim() !== '' && Number.isFinite(num(vals[i]));
   const next = () => {
     if (!valid) { if (ref.current) ref.current.focus(); return; }
-    if (!last) { setI(i + 1); return; }
-    onDone(Object.fromEntries(qs.map((q, k) => [q.name, num(k)])));
+    go(vals);
   };
   return h('div', { className: 'screen edit' },
-    h('div', { className: 'points' }, h('h1', null, qs[i].label)),
+    h('div', { className: 'points' }, h('h1', null, q.label)),
     h('div', { className: 'muted hint' }, list.title + (qs.length > 1 ? ' · ' + (i + 1) + ' of ' + qs.length : '')),
-    h('div', { className: 'entry' },
+    q.type === 'yesno' ? null : h('div', { className: 'entry' },
       h('input', {
         id: 'answer', ref, inputMode: 'decimal', value: vals[i], enterKeyHint: last ? 'go' : 'next',
         onChange: e => setVals(v => v.map((x, k) => (k === i ? e.target.value : x))),
@@ -173,7 +186,10 @@ function Ask({ list, onDone, onCancel }) {
     h('div', { className: 'actions' },
       h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
       i > 0 && h('button', { className: 'muted', onClick: () => setI(i - 1) }, 'Back'),
-      h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next')));
+      q.type === 'yesno'
+        ? [h('button', { key: 'no', id: 'no', onClick: () => answerYesNo(false) }, 'No'),
+           h('button', { key: 'yes', id: 'yes', onClick: () => answerYesNo(true) }, 'Yes')]
+        : h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next')));
 }
 
 function Run({ list, onClose }) {
@@ -221,7 +237,7 @@ function RunList({ title, items, onClose }) {
     h('div', { className: 'stack' },
       order.map(i => h('button', { key: i, className: done.includes(i) ? 'done' : '', onClick: () => toggle(i) },
         h('span', { className: 'label' },
-          h('span', null, items[i].text + (items[i].n !== null ? ' ×' + fmtQty(items[i].n) : '')),
+          h('span', null, items[i].text + (items[i].n !== null && items[i].n !== 1 ? ' ×' + fmtQty(items[i].n) : '')),
           items[i].required && h('span', { className: 'detail' }, 'required'),
           items[i].detail && h('span', { className: 'detail' }, items[i].detail)),
         h('span', { className: 'mark' }, done.includes(i) ? '☑' : '☐')))),
@@ -242,6 +258,7 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   const [questions, setQuestions] = useState(() => (list ? list.questions : []));
   const [draft, setDraft] = useState('');
   const [qdraft, setQdraft] = useState('');
+  const [qtype, setQtype] = useState('number'); // type of the next question added
   const [error, setError] = useState('');
   const [itemId, setItemId] = useState(null); // item being edited on the item step
   const [field, setField] = useState('detail'); // 'detail' | 'qty'
@@ -304,7 +321,7 @@ function Editor({ list, onSave, onDelete, onCancel }) {
     if (/^\d/.test(name)) name = 'q' + name;
     if (QTY_FNS[name]) { setError('"' + name + '" is a formula word. Pick another name.'); return; }
     if (names.includes(name)) { setError('"' + name + '" is already a question.'); return; }
-    setQuestions(prev => [...prev, { id: 'q' + nextId++, name, label: text.charAt(0).toUpperCase() + text.slice(1) + '?' }]);
+    setQuestions(prev => [...prev, { id: 'q' + nextId++, name, type: qtype, label: text.charAt(0).toUpperCase() + text.slice(1) + '?' }]);
     setQdraft('');
     setError('');
     focusDraft();
@@ -401,7 +418,7 @@ function Editor({ list, onSave, onDelete, onCancel }) {
     if (field === 'qty') {
       if (!cur.qty.trim()) hint = 'Optional. ' + usable;
       else {
-        try { hint = '= ' + fmtQty(evalQty(cur.qty, defaults())) + ' when every answer is 1. ' + usable; }
+        try { hint = '= ' + fmtQty(evalQty(cur.qty, defaults())) + ' when every answer is 1 (yes). ' + usable; }
         catch (e) { hint = e.message + '. ' + usable; bad = true; }
       }
     }
@@ -448,16 +465,22 @@ function Editor({ list, onSave, onDelete, onCancel }) {
             h('button', { className: 'x', 'aria-label': 'Remove ' + q.label, onClick: () => setQuestions(questions.filter(x => x.id !== q.id)) }, '×'),
             h('span', { className: 'label' },
               h('span', null, q.label),
-              h('span', { className: 'detail' }, q.name)))))),
+              h('span', { className: 'detail' }, q.name + ' · ' + (q.type === 'yesno' ? 'yes / no' : 'number'))))))),
       h('div', { className: 'hint ' + (error ? 'err' : 'muted') },
-        error || 'Asked before each run. Use the name in a quantity, e.g. nights + 1.'),
+        error || (qtype === 'yesno'
+          ? 'Yes counts as 1, no as 0. Use the name as a quantity, e.g. a towel: sauna.'
+          : 'Asked before each run. Use the name in a quantity, e.g. nights + 1.')),
       h('div', { className: 'entry' },
         h('input', {
-          id: 'qdraft', ref: draftRef, value: qdraft, placeholder: 'Question, e.g. nights', enterKeyHint: 'next',
+          id: 'qdraft', ref: draftRef, value: qdraft, placeholder: qtype === 'yesno' ? 'Question, e.g. sauna' : 'Question, e.g. nights', enterKeyHint: 'next',
           onChange: e => setQdraft(e.target.value),
           onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addQuestion(); } },
         })),
       h('div', { className: 'actions' },
+        h('button', {
+          id: 'qtype', className: 'muted', onClick: () => setQtype(qtype === 'number' ? 'yesno' : 'number'),
+          onMouseDown: e => e.preventDefault(), // keep focus (and the phone keyboard) on the field
+        }, 'Type: ' + (qtype === 'yesno' ? 'yes / no' : 'number')),
         h('button', { onClick: () => { setError(''); setStep('points'); } }, 'Back')));
   }
 
