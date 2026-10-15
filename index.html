@@ -29,9 +29,16 @@
   .label { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; text-align: right; }
   .detail { font-size: 13px; line-height: 1.25; color: var(--muted); overflow-wrap: anywhere; }
   .row.selected { background: var(--lift); }
-  .entry { display: flex; align-items: center; gap: 16px; width: 100%; flex: none; height: 56px; }
-  .entry input { flex: 1; min-width: 0; width: auto; }
-  .entry button { flex: none; }
+  /* Editor: grid with the points, then the entry field on its own line, then the buttons. */
+  .screen.edit { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "points" "hint" "entry" "actions"; row-gap: 8px; justify-items: end; align-items: end; justify-content: stretch; }
+  .edit > .points { grid-area: points; width: 100%; min-height: 0; max-height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; }
+  .edit > .points > h1 { margin: 0 0 4px; flex: none; }
+  .edit > .hint { grid-area: hint; }
+  .edit > .entry { grid-area: entry; width: 100%; }
+  .edit > .actions { grid-area: actions; }
+  .actions { display: flex; align-items: center; justify-content: flex-end; gap: 28px; height: 56px; }
+  .actions button { flex: none; }
   .mark { font-size: 24px; line-height: 1; flex: none; }
   .bar { display: flex; flex-direction: row-reverse; align-items: center; gap: 28px; height: 56px; flex: none; }
   input { font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 10px 0; width: 100%; box-sizing: border-box; text-align: right; flex: none; }
@@ -245,19 +252,21 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   };
 
   if (step === 'name') {
-    return h('div', { className: 'screen' },
+    return h('div', { className: 'screen edit' },
       h('div', { className: 'muted hint' }, 'Name'),
       h('div', { className: 'entry' },
         h('input', {
           id: 'title', ref: titleRef, placeholder: 'Checklist name', value: title, enterKeyHint: 'next',
           onChange: e => setTitle(e.target.value),
           onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); goNext(); } },
-        }),
+        })),
+      h('div', { className: 'actions' },
         h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
         h('button', { className: title.trim() ? '' : 'muted', onClick: goNext }, 'Next')));
   }
 
-  return h('div', { className: 'screen' },
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' },
     h('h1', {
       onClick: () => { if (detailFor) { setDetailFor(null); setDraft(''); } setStep('name'); },
       style: { cursor: 'pointer' },
@@ -286,7 +295,7 @@ function Editor({ list, onSave, onDelete, onCancel }) {
         h('span', { className: 'label' },
           h('span', null, item.text),
           item.detail && h('span', { className: 'detail' }, item.detail)),
-        h('span', { className: 'mark' }, '•')))),
+        h('span', { className: 'mark' }, '•'))))),
     items.length > 0 && h('div', { className: 'muted hint' }, 'Tap an item to add details. Hold and drag to reorder. Tap the name to rename.'),
     h('div', { className: 'entry' },
       h('input', {
@@ -297,7 +306,8 @@ function Editor({ list, onSave, onDelete, onCancel }) {
           if (e.key === 'Enter') { e.preventDefault(); commit(); }
           if (e.key === 'Escape' && target) { setDetailFor(null); setDraft(''); }
         },
-      }),
+      })),
+    h('div', { className: 'actions' },
       list && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
       h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
       h('button', { onClick: submit }, 'Save')));
