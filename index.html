@@ -131,6 +131,8 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   const [detailFor, setDetailFor] = useState(null); // id of the item whose details the entry field is editing
   const [dragId, setDragId] = useState(null);
   const [offset, setOffset] = useState(0);
+  // New checklists start by asking for the name; existing ones open straight on their points.
+  const [step, setStep] = useState(list ? 'points' : 'name');
   const draftRef = useRef(null);
   const titleRef = useRef(null);
   const stackRef = useRef(null);
@@ -138,9 +140,12 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   const press = useRef(null); // { id, x, y, timer, dragging, offset }
   const justDragged = useRef(false);
 
-  // New checklist: focus the title right away so the phone keyboard opens.
+  // Focus the field of the current step so the phone keyboard opens and stays open between steps.
   // Layout effects run inside the tap's event, which mobile browsers require for opening the keyboard.
-  useLayoutEffect(() => { if (!list && titleRef.current) titleRef.current.focus(); }, []);
+  useLayoutEffect(() => {
+    const el = step === 'name' ? titleRef.current : draftRef.current;
+    if (el) el.focus();
+  }, [step]);
   useEffect(() => () => press.current && clearTimeout(press.current.timer), []);
 
   const target = items.find(i => i.id === detailFor);
@@ -234,12 +239,29 @@ function Editor({ list, onSave, onDelete, onCancel }) {
     setOffset(0);
   };
 
+  const goNext = () => {
+    if (title.trim()) setStep('points');
+    else if (titleRef.current) titleRef.current.focus(); // keep the keyboard open while the name is blank
+  };
+
+  if (step === 'name') {
+    return h('div', { className: 'screen' },
+      h('div', { className: 'muted hint' }, 'Name'),
+      h('div', { className: 'entry' },
+        h('input', {
+          id: 'title', ref: titleRef, placeholder: 'Checklist name', value: title, enterKeyHint: 'next',
+          onChange: e => setTitle(e.target.value),
+          onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); goNext(); } },
+        }),
+        h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+        h('button', { className: title.trim() ? '' : 'muted', onClick: goNext }, 'Next')));
+  }
+
   return h('div', { className: 'screen' },
-    h('input', {
-      id: 'title', ref: titleRef, placeholder: 'Title', value: title, enterKeyHint: 'next',
-      onChange: e => setTitle(e.target.value),
-      onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); focusDraft(); } },
-    }),
+    h('h1', {
+      onClick: () => { if (detailFor) { setDetailFor(null); setDraft(''); } setStep('name'); },
+      style: { cursor: 'pointer' },
+    }, title),
     h('div', { className: 'stack', ref: stackRef },
       // DOM order stays fixed (by id) so the dragged element is never moved or loses pointer capture;
       // the visible position comes from CSS `order`.
@@ -265,7 +287,7 @@ function Editor({ list, onSave, onDelete, onCancel }) {
           h('span', null, item.text),
           item.detail && h('span', { className: 'detail' }, item.detail)),
         h('span', { className: 'mark' }, '•')))),
-    items.length > 0 && h('div', { className: 'muted hint' }, 'Tap an item to add details. Hold and drag to reorder.'),
+    items.length > 0 && h('div', { className: 'muted hint' }, 'Tap an item to add details. Hold and drag to reorder. Tap the name to rename.'),
     h('div', { className: 'entry' },
       h('input', {
         id: 'draft', ref: draftRef, value: draft, enterKeyHint: target ? 'done' : 'next',
