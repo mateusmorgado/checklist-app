@@ -73,6 +73,8 @@ const SAMPLE = [
 // Older saved lists stored items as plain strings and had no questions, quantities or required flags.
 const normalize = lists => lists.map(l => ({
   ...l,
+  sound: !!l.sound,
+  voice: !!l.voice,
   questions: (l.questions || []).map(q => ({ ...q, type: q.type || 'number' })),
   items: l.items.map(i => {
     const o = typeof i === 'string' ? { text: i } : i;
@@ -88,6 +90,33 @@ function load() {
 }
 function save(lists) {
   try { localStorage.setItem(KEY, JSON.stringify(lists)); } catch (e) {}
+}
+
+// Feedback when an item is ticked. Both are optional per checklist and fail silently where unsupported.
+let audioCtx = null;
+function playTick() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audioCtx = audioCtx || new AC();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t = audioCtx.currentTime, osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, t);
+    osc.frequency.exponentialRampToValueAtTime(1320, t + 0.06);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.18, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + 0.15);
+  } catch (e) {}
+}
+function speak(text) {
+  try {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  } catch (e) {}
 }
 
 // Quantity formulas, e.g. "nights + 1" or "ceil(nights / 2)". Numbers, question names, + - * / ( ) and
@@ -216,44 +245,33 @@ function Run({ list, onClose }) {
       return { ...it, n };
     })
     .filter(it => it.n === null || it.n > 0); // a quantity of 0 leaves the item out of this run
-  return h(RunList, { title: list.title, items, onClose });
+  return h(RunList, { title: list.title, items, sound: list.sound, voice: list.voice, onClose });
 }
 
 // Run: first item at the bottom, working upward. Checkmarks on the right.
-// A ticked item stays put for one second, then moves to the top of the stack.
-function RunList({ title, items, onClose }) {
-  const [done, setDone] = useState([]);       // ticked item indexes
-  const [settled, setSettled] = useState([]); // ticked items already moved to the top, in the order they moved
-  const timers = useRef({});
-  useEffect(() => () => Object.values(timers.current).forEach(clearTimeout), []);
+// A ticked item stays where it is (dimmed with a tick), so nothing moves under the finger.
+// The checklist's own settings decide whether ticking plays a sound and/or says the item out loud.
+function RunList({ title, items, sound, voice, onClose }) {
+  const [done, setDone] = useState([]); // ticked item indexes
 
   const toggle = i => {
-    if (done.includes(i)) {
-      clearTimeout(timers.current[i]);
-      setDone(d => d.filter(x => x !== i));
-      // Once everything is ticked the order is frozen: later taps change the tick, never the position.
-      if (done.length < items.length) setSettled(s => s.filter(x => x !== i));
-      return;
-    }
+    if (done.includes(i)) { setDone(d => d.filter(x => x !== i)); return; }
     setDone(d => [...d, i]);
-    timers.current[i] = setTimeout(() => setSettled(s => (s.includes(i) ? s : [...s, i])), 1000);
+    if (sound) playTick();
+    if (voice) speak(items[i].text + (items[i].n !== null && items[i].n !== 1 ? ', ' + fmtQty(items[i].n) : ''));
   };
 
-  const order = [
-    ...items.map((_, i) => i).filter(i => !settled.includes(i)),
-    ...settled,
-  ];
   // With required items, only those have to be ticked before Done; otherwise everything does.
   const required = items.map((it, i) => (it.required ? i : -1)).filter(i => i >= 0);
   const complete = required.length ? required.every(i => done.includes(i)) : done.length === items.length;
   return h('div', { className: 'screen' },
     h('h1', null, title),
     h('div', { className: 'stack' },
-      order.map(i => h('button', { key: i, className: done.includes(i) ? 'done' : '', onClick: () => toggle(i) },
+      items.map((it, i) => h('button', { key: i, className: done.includes(i) ? 'done' : '', onClick: () => toggle(i) },
         h('span', { className: 'label' },
-          h('span', null, items[i].text + (items[i].n !== null && items[i].n !== 1 ? ' ×' + fmtQty(items[i].n) : '')),
-          items[i].required && h('span', { className: 'detail' }, 'required'),
-          items[i].detail && h('span', { className: 'detail' }, items[i].detail)),
+          h('span', null, it.text + (it.n !== null && it.n !== 1 ? ' ×' + fmtQty(it.n) : '')),
+          it.required && h('span', { className: 'detail' }, 'required'),
+          it.detail && h('span', { className: 'detail' }, it.detail)),
         h('span', { className: 'mark' }, done.includes(i) ? '☑' : '☐')))),
     h('div', { className: 'bar' },
       h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close')));
@@ -274,6 +292,8 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   const [qdraft, setQdraft] = useState('');
   const [qtype, setQtype] = useState('yesno'); // type of the question being added
   const [qstage, setQstage] = useState('list'); // questions step: list -> type -> cond -> then
+  const [sound, setSound] = useState(() => (list ? list.sound : false));
+  const [voice, setVoice] = useState(() => (list ? list.voice : false));
   const [qcur, setQcur] = useState(null); // id of the question whose items are being added
   const [error, setError] = useState('');
   const [itemId, setItemId] = useState(null); // item being edited on the item step
@@ -368,6 +388,8 @@ function Editor({ list, onSave, onDelete, onCancel }) {
     onSave({
       id: list ? list.id : String(Date.now()),
       title: title.trim(),
+      sound,
+      voice,
       questions,
       items: all.map(i => ({ text: i.text, detail: i.detail, qty: i.qty, required: i.required })),
     });
@@ -427,7 +449,7 @@ function Editor({ list, onSave, onDelete, onCancel }) {
   };
 
   const goNext = () => {
-    if (title.trim()) setStep('points');
+    if (title.trim()) setStep('feedback');
     else if (titleRef.current) titleRef.current.focus(); // keep the keyboard open while the name is blank
   };
 
@@ -443,6 +465,27 @@ function Editor({ list, onSave, onDelete, onCancel }) {
       h('div', { className: 'actions' },
         h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
         h('button', { className: title.trim() ? '' : 'muted', onClick: goNext }, 'Next')));
+  }
+
+  if (step === 'feedback') {
+    const rows = [
+      ['sound', 'Sound', sound, () => { const on = !sound; setSound(on); if (on) playTick(); }],
+      ['voice', 'Voice', voice, () => { const on = !voice; setVoice(on); if (on) speak('Voice on'); }],
+    ];
+    return h('div', { className: 'screen edit' },
+      h('div', { className: 'points' },
+        h('h1', null, title),
+        h('div', { className: 'stack' },
+          rows.map(([key, label, on, toggle]) => h('button', {
+            key, id: 'fb-' + key, className: 'prop' + (on ? ' selected' : ''), onClick: toggle,
+          },
+            h('span', { className: 'label' },
+              h('span', { className: 'detail' }, label),
+              h('span', null, on ? 'on' : 'off')))))),
+      h('div', { className: 'muted hint' }, 'When you tick an item: Sound plays a tick. Voice says the item out loud.'),
+      h('div', { className: 'actions' },
+        h('button', { className: 'muted', onClick: () => setStep('name') }, 'Back'),
+        h('button', { id: 'fb-next', onClick: () => setStep('points') }, 'Next')));
   }
 
   if (step === 'item' && cur) {
