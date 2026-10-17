@@ -49,20 +49,20 @@
     --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
     --bg: #ffffff; --surface: #ffffff; --fg: #111111; --muted: #666666; --line: #ececec; --line-strong: #767676;
     --lift: #f5f5f5; --accent: #111111; --accent-fg: #ffffff; --ok: #1a6b34; --warn: #8a5200; --err: #b3261e;
-    --focus: #0a4fd6; --placeholder: #767676;
+    --focus: #0a4fd6; --placeholder: #767676; --cancel-bg: #fdecea; --cancel-fg: #9b1c14;
     --radius: 6px; --border: 1px; --shadow: none; --hit-min: 48px; --row-h: 56px;
   }
   @media (prefers-color-scheme: dark) {
     :root[data-design="classic"][data-mode="system"]:not([data-theme="light"]) {
       --bg: #0b0b0b; --surface: #0b0b0b; --fg: #eeeeee; --muted: #a0a0a0; --line: #262626; --line-strong: #8a8a8a;
       --lift: #161616; --accent: #eeeeee; --accent-fg: #0b0b0b; --ok: #6bd68a; --warn: #f0b24a; --err: #ff8a80;
-      --focus: #8bb7ff; --placeholder: #8a8a8a; color-scheme: dark;
+      --focus: #8bb7ff; --placeholder: #8a8a8a; --cancel-bg: #3a1614; --cancel-fg: #ffb4ab; color-scheme: dark;
     }
   }
   :root[data-design="classic"][data-mode="dark"], :root[data-design="classic"][data-mode="system"][data-theme="dark"] {
     --bg: #0b0b0b; --surface: #0b0b0b; --fg: #eeeeee; --muted: #a0a0a0; --line: #262626; --line-strong: #8a8a8a;
     --lift: #161616; --accent: #eeeeee; --accent-fg: #0b0b0b; --ok: #6bd68a; --warn: #f0b24a; --err: #ff8a80;
-    --focus: #8bb7ff; --placeholder: #8a8a8a; color-scheme: dark;
+    --focus: #8bb7ff; --placeholder: #8a8a8a; --cancel-bg: #3a1614; --cancel-fg: #ffb4ab; color-scheme: dark;
   }
   html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
   body { background: var(--bg); color: var(--fg); font: 18px/1.3 var(--font); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -105,6 +105,13 @@
   .entry-if input { flex: 1 1 auto; min-width: 0; width: auto; text-align: left; }
   .edit > .actions { grid-area: actions; }
   /* Explanatory text sits at the top of the screen; the controls stay at the bottom. */
+  .screen.edit.has-tools { grid-template-rows: minmax(0, 1fr) auto auto auto auto; grid-template-areas: "points" "hint" "entry" "tools" "actions"; }
+  .edit > .actions.tools { grid-area: tools; margin-right: -8px; }
+  .edit > .actions.final { grid-area: actions; width: 100%; justify-content: space-between; margin-right: 0; }
+  .edit > .actions.final button { padding-left: 12px; padding-right: 12px; }
+  .actions button.cancel, .bar button.cancel { background: var(--cancel-bg); color: var(--cancel-fg); border-radius: var(--radius); }
+  :root[data-design] .actions button.muted.cancel { background: var(--cancel-bg); color: var(--cancel-fg); text-decoration: none; }
+  :root[data-design="airplane"] .actions button.muted.cancel { border: 1px solid var(--cancel-fg); }
   .screen.edit.intro { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "intro" "points" "actions"; }
   .edit > .intro-text { grid-area: intro; align-self: start; font-size: 15px; line-height: 1.4; }
   /* Button rows: 48px hit areas. The negative margin and small gap keep the text exactly where it was. */
@@ -140,6 +147,12 @@
   .refs-in ul { list-style: none; margin: 0; padding: 0; }
   .refs-in li { margin: 0 0 10px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
   .refs-in a { color: inherit; text-decoration: underline; }
+  .manifesto .lead { font-size: 17px; line-height: 1.4; margin-bottom: 8px; }
+  .manifesto p { margin: 0 0 8px; }
+  /* Home: right-aligned link under the logo (the logo is on the left).  */
+  .home-top { align-self: stretch; margin-bottom: auto; display: flex; flex-direction: column; }
+  :root[data-design] .home-top .logo { margin-bottom: 0; }
+  .manifesto-link { align-self: flex-end; min-height: var(--hit-min); min-width: var(--hit-min); padding: 0 4px; font-size: 14px; }
   /* @@REFS-CSS-END */
   .prop { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); cursor: pointer; }
   .prop.selected { background: var(--lift); }
@@ -197,7 +210,7 @@
     --font-mono: 'B612 Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
     --bg: #05080b; --surface: #0b1117; --fg: #f2f4f5; --muted: #93a3ad; --line: #26343e; --line-strong: #5f7886;
     --lift: #121c24; --accent: #2fe0f5; --accent-fg: #031014; --ok: #3df07a; --warn: #ffb000; --err: #ff5a5a;
-    --focus: #ffffff; --placeholder: #6f8190; --radius: 0px; --border: 1px; --shadow: none; color-scheme: dark;
+    --focus: #ffffff; --placeholder: #6f8190; --cancel-bg: transparent; --cancel-fg: #ff7b7b; --radius: 0px; --border: 1px; --shadow: none; color-scheme: dark;
   }
   :root[data-design="airplane"] body { font-size: 16px; letter-spacing: .01em; }
   :root[data-design="airplane"] *, :root[data-design="airplane"] *::before, :root[data-design="airplane"] *::after { transition: none !important; animation: none !important; }
@@ -244,7 +257,7 @@
     --bg: #d9f4e6; --surface: #ffffff; --fg: #111111; --muted: #3f4d46; --line: #111111; --line-strong: #111111;
     --lift: #bdebd3; --accent: #ff7a59; --accent-fg: #111111; --ok: #0a6b3a; --warn: #8a4b00; --err: #b3122d;
     --ok-fill: #7be8a4; --warn-fill: #ffc247; --err-fill: #ff8fa0;
-    --focus: #1d3fe0; --placeholder: #6b6b6b; --radius: 6px; --border: 3px; --shadow: -4px -4px 0 0 var(--line);
+    --focus: #1d3fe0; --placeholder: #6b6b6b; --cancel-bg: #ff8fa0; --cancel-fg: #111111; --radius: 6px; --border: 3px; --shadow: -4px -4px 0 0 var(--line);
     --gradient: radial-gradient(60% 45% at 12% 8%, #b9e8ff 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #ffd9c9 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #aef0cf 0, transparent 70%), #d9f4e6;
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
   }
@@ -252,14 +265,14 @@
     :root[data-design="modern"][data-mode="system"]:not([data-theme="light"]) {
       --bg: #0e1a15; --surface: #15251d; --fg: #eafaf2; --muted: #a8c4b6; --line: #eafaf2; --line-strong: #eafaf2;
       --lift: #1f3a2e; --accent: #ff8a6b; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a;
-      --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #86a395; color-scheme: dark;
+      --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #86a395; --cancel-bg: #ff8fa0; --cancel-fg: #111111; color-scheme: dark;
       --gradient: radial-gradient(60% 45% at 12% 8%, #1d3f66 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #6b3a2a 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0f5a40 0, transparent 70%), #0e1a15;
     }
   }
   :root[data-design="modern"][data-mode="dark"], :root[data-design="modern"][data-mode="system"][data-theme="dark"] {
     --bg: #0e1a15; --surface: #15251d; --fg: #eafaf2; --muted: #a8c4b6; --line: #eafaf2; --line-strong: #eafaf2;
     --lift: #1f3a2e; --accent: #ff8a6b; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a;
-    --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #86a395; color-scheme: dark;
+    --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #86a395; --cancel-bg: #ff8fa0; --cancel-fg: #111111; color-scheme: dark;
     --gradient: radial-gradient(60% 45% at 12% 8%, #1d3f66 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #6b3a2a 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0f5a40 0, transparent 70%), #0e1a15;
   }
   /* One static background layer: grain over a mesh gradient (soft-light blend on the body only, never on scrollers). */
@@ -809,9 +822,10 @@ function Logo() {
 }
 
 // Home: the list of checklists, first one at the bottom. "+ New" is the lowest control.
-function Home({ lists, onRun, onEdit, onSettings, onQuick }) {
+function Home({ lists, onRun, onEdit, onSettings, onQuick, onManifesto }) {
   return h('div', { className: 'screen' },
-    h(Logo),
+    h('div', { className: 'home-top' }, h(Logo),
+      h('button', { id: 'manifesto-link', className: 'muted manifesto-link', onClick: onManifesto }, 'Manifesto')),
     h('div', { className: 'stack' },
       lists.map(c => h('div', { key: c.id, className: 'item home-item' },
         h('button', { className: 'muted hint edit-link', onClick: () => onEdit(c) }, 'edit'),
@@ -903,7 +917,7 @@ function Ask({ list, onDone, onCancel }) {
         onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); next(); } },
       })),
     h('div', { className: 'actions' },
-      h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+      h('button', { className: 'muted cancel', onClick: onCancel }, 'Cancel'),
       i > 0 && h('button', { className: 'muted', onClick: () => setI(i - 1) }, 'Back'),
       q.type === 'yesno'
         ? [h('button', { key: 'no', id: 'no', onClick: () => answerYesNo(false) }, 'No'),
@@ -984,6 +998,40 @@ function ReferencesPage({ onBack }) {
           h('p', { className: 'muted' }, 'Checked against abstracts and publisher records, not the full texts.'))),
       h('div', { className: 'actions' },
         h('button', { id: 'refs-back', onClick: onBack }, 'Back')));
+}
+
+// Manifesto: why the app exists. Opened from the link under the logo on Home.
+const MANIFESTO_SOURCES = [
+  'Gawande, A. (2009). The checklist manifesto: How to get things right. Metropolitan Books.',
+  'Haynes, A. B., Weiser, T. G., Berry, W. R., et al. (2009). A surgical safety checklist to reduce morbidity and mortality in a global population. New England Journal of Medicine, 360(5), 491–499.',
+  'Pronovost, P., Needham, D., Berenholtz, S., et al. (2006). An intervention to decrease catheter-related bloodstream infections in the ICU. New England Journal of Medicine, 355(26), 2725–2732.',
+];
+function ManifestoPage({ onBack }) {
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'refs' },
+      h('div', { className: 'refs-in manifesto' },
+        h('h1', null, 'Manifesto'),
+        h('p', { className: 'lead' }, 'Smart people forget simple things. A checklist is how the best professionals stop relying on memory for the parts that must not fail.'),
+        h('h2', null, 'Where it comes from'),
+        h('p', null, 'In 1935 the US Army tested Boeing\'s new bomber, the Model 299. It crashed on take-off and two of the five crew died. ' +
+          'The plane was not faulty: it was so complex that an experienced pilot missed one step. The pilots did not answer with more training. ' +
+          'They wrote a short list of what to check before take-off, landing and taxiing, and the plane went on to fly millions of miles (Gawande, 2009). ' +
+          'Aviation has used checklists ever since, both for normal flights and for emergencies.'),
+        h('h2', null, 'Doctors followed the pilots'),
+        h('p', null, 'In intensive care units, a five-step checklist for inserting central lines cut a serious infection rate from a median of 2.7 to 0 per 1,000 catheter days, and the gain held for 18 months (Pronovost et al., 2006). ' +
+          'The World Health Organization\'s surgical safety checklist, tried in eight hospitals around the world, was followed by major complications falling from 11% to 7% and deaths from 1.5% to 0.8% (Haynes et al., 2009). ' +
+          'Results depend on how well a checklist is used, but the idea travelled from the cockpit to the operating room.'),
+        h('h2', null, 'Why checklists matter'),
+        h('p', null, 'Under pressure, tired or distracted, we skip steps we know by heart. A checklist moves the routine out of your head and onto the page, ' +
+          'so your attention is free for what really needs judgement. It is not a to-do list: it is the same short list, run when it is needed, the same way every time.'),
+        h('h2', null, 'How it can improve your life'),
+        h('p', null, 'The same trick works for a trip, leaving the house, a gym bag, a work launch or a morning routine. ' +
+          'Fewer forgotten things, less worry in the back of your mind, and calmer starts. Every time something is forgotten, add it once and it will not be forgotten again. ' +
+          'A checklist will not make you disciplined, but it makes the routine cheap enough to keep.'),
+        h('h2', null, 'Sources'),
+        h('ul', null, MANIFESTO_SOURCES.map((t, k) => h('li', { key: k }, t))),
+        h('p', { className: 'muted' }, 'Figures are quoted from the sources above, not from this app.'))),
+    h('div', { className: 'actions' }, h('button', { id: 'manifesto-back', onClick: onBack }, 'Back')));
 }
 
 /* @@REFSPAGE-END */
@@ -1174,7 +1222,7 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
           onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); goNext(); } },
         })),
       h('div', { className: 'actions' },
-        h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+        h('button', { className: 'muted cancel', onClick: onCancel }, 'Cancel'),
         h('button', { className: title.trim() ? '' : 'muted', onClick: goNext }, 'Next')));
   }
 
@@ -1257,7 +1305,7 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
             onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addQuestion(); } },
           })),
         h('div', { className: 'actions' },
-          h('button', { className: 'muted', onClick: toList }, 'Cancel'),
+          h('button', { className: 'muted cancel', onClick: toList }, 'Cancel'),
           h('button', { className: qdraft.trim() ? '' : 'muted', onClick: addQuestion }, 'Next')));
     }
 
@@ -1267,8 +1315,7 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
           h('h1', null, qSentence(q)),
           h('div', { className: 'stack' },
             linkedTo(q).map(i => h('div', { key: i.id },
-              h('span', { className: 'label' }, h('span', null, i.text)),
-              h('span', { className: 'mark' }, '•'))))),
+              h('span', { className: 'label' }, h('span', null, '– ' + i.text)))))),
         h('div', { className: 'muted hint' }, 'If the answer is Yes, add these items:'),
         h('div', { className: 'entry' },
           h('input', {
@@ -1277,7 +1324,8 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
             onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addLinked(); } },
           })),
         h('div', { className: 'actions' },
-          h('button', { onClick: () => { addLinked(); setQstage('list'); } }, 'Done')));
+          h('button', { id: 'add-more', className: qdraft.trim() ? '' : 'muted', 'aria-label': 'Add another item', onMouseDown: e => e.preventDefault(), onClick: () => { addLinked(); if (draftRef.current) draftRef.current.focus(); } }, '+'),
+          h('button', { id: 'done-then', onClick: () => { addLinked(); setQstage('list'); } }, 'Done')));
     }
 
     return h('div', { className: 'screen edit' },
@@ -1299,7 +1347,7 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
         h('button', { onClick: () => setStep('points') }, 'Back')));
   }
 
-  return h('div', { className: 'screen edit' },
+  return h('div', { className: 'screen edit has-tools' },
     h('div', { className: 'points' },
     h('h1', { onClick: () => setStep('name'), style: { cursor: 'pointer' } }, title),
     h('div', { className: 'stack', ref: stackRef },
@@ -1338,12 +1386,12 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
         onChange: e => setDraft(e.target.value),
         onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); add(); } },
       })),
-    h('div', { className: 'actions' },
+    h('div', { className: 'actions tools' },
+      h('button', { id: 'questions', className: 'muted', onClick: () => { setError(''); setQstage('list'); setStep('questions'); } }, 'Questions'),
+      h('button', { id: 'cues', className: 'muted', onClick: () => { setError(''); setFbFrom('points'); setStep('feedback'); } }, 'Cues')),
+    h('div', { className: 'actions final' },
+      h('button', { className: 'muted cancel', onClick: onCancel }, 'Cancel'),
       list && !isDraft && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
-      h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
-      h('button', { id: 'cues', className: 'muted', onClick: () => { setError(''); setFbFrom('points'); setStep('feedback'); } }, 'Cues'),
-      h('button', { className: 'muted', onClick: () => { setError(''); setQstage('list'); setStep('questions'); } },
-        'Questions' + (questions.length ? ' ' + questions.length : '')),
       h('button', { onClick: submit }, 'Save')));
 }
 
@@ -1370,13 +1418,14 @@ function App() {
   if (screen.name === 'settings-tone') return h(ToneSettings, { settings, onChange: change, onBack: toSettings });
   if (screen.name === 'settings-ai') return h(QuickSettings, { settings, onChange: change, onBack: toSettings });
   if (screen.name === 'references') return h(ReferencesPage, { onBack: toSettings });
+  if (screen.name === 'manifesto') return h(ManifestoPage, { onBack: home });
   if (screen.name === 'quick') return h(QuickScreen, {
     settings, onCancel: home, onOpenSettings: () => setScreen({ name: 'settings-ai' }),
     onDraft: list => setScreen({ name: 'edit', list: { ...list, id: String(Date.now()) }, draft: true }),
   });
   return h(Home, {
     lists, onSettings: toSettings, onQuick: () => setScreen({ name: 'quick' }),
-    onRun: list => setScreen({ name: 'run', list }), onEdit: list => setScreen({ name: 'edit', list }),
+    onRun: list => setScreen({ name: 'run', list }), onEdit: list => setScreen({ name: 'edit', list }), onManifesto: () => setScreen({ name: 'manifesto' }),
   });
 }
 
