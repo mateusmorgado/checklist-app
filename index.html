@@ -147,6 +147,13 @@
   .refs-in ul { list-style: none; margin: 0; padding: 0; }
   .refs-in li { margin: 0 0 10px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
   .refs-in a { color: inherit; text-decoration: underline; }
+  /* Run: completion bar. It fills smoothly as items are ticked and turns green when everything is done. */
+  .progress { flex: none; width: 100%; display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
+  .progress-track { flex: 1 1 auto; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .progress-fill { height: 100%; width: 0; background: var(--fg); border-radius: inherit; transition: width .6s cubic-bezier(.22, .8, .24, 1), background-color .4s ease; }
+  .progress.full .progress-fill { background: var(--ok); }
+  .progress-label { flex: none; min-width: 3.4em; text-align: right; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  @media (prefers-reduced-motion: reduce) { .progress-fill { transition: none; } }
   .manifesto .lead { font-size: 17px; line-height: 1.4; margin-bottom: 8px; }
   .manifesto p { margin: 0 0 8px; }
   /* Home: right-aligned link under the logo (the logo is on the left).  */
@@ -201,6 +208,7 @@
   :root[data-design="classic"] .logo-word { font-size: 22px; letter-spacing: -.02em; }
   :root[data-design="classic"] .logo-a { font-weight: 400; }
   :root[data-design="classic"] .logo-b { font-weight: 700; font-style: normal; }
+  :root[data-design="classic"] .progress-track { height: 3px; }
   /* @@DESIGN-CLASSIC-END */
 
   /* @@DESIGN-AIRPLANE-START  (glass cockpit; always dark, static, thin square outlines) */
@@ -248,6 +256,10 @@
   :root[data-design="airplane"] .logo-word { font-size: 15px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; display: flex; align-items: center; }
   :root[data-design="airplane"] .logo-b { font-style: normal; font-size: 10.5px; letter-spacing: .14em; color: var(--warn); border: 1px solid var(--warn); padding: 3px 5px; margin-left: 8px; }
   :root[data-design="airplane"] .refs-in li { color: var(--muted); }
+  :root[data-design="airplane"] .progress-track { height: 12px; border: 1px solid var(--line-strong); border-radius: 0; background: var(--surface); padding: 2px; box-sizing: border-box; }
+  :root[data-design="airplane"] .progress-fill { border-radius: 0; background: repeating-linear-gradient(90deg, var(--ok) 0 10px, transparent 10px 13px); }
+  :root[data-design="airplane"] .progress.full .progress-fill { background: var(--ok); }
+  :root[data-design="airplane"] .progress-label { font-family: var(--font-mono); color: var(--ok); letter-spacing: .06em; }
   /* @@DESIGN-AIRPLANE-END */
 
   /* @@DESIGN-MODERN-START  (neobrutalism + grain: cream page, opaque cards, thick borders, hard up-left shadows) */
@@ -319,6 +331,12 @@
   :root[data-design="modern"] .logo-word { font-weight: 800; font-size: 25px; letter-spacing: -.03em; }
   :root[data-design="modern"] .logo-b { font-style: normal; background: var(--accent); color: var(--accent-fg); padding: 0 4px; margin-left: 3px; }
   :root[data-design="modern"] .refs-in a { color: var(--focus); }
+  :root[data-design="modern"] .progress { padding: 5px 0 0 5px; box-sizing: border-box; }
+  :root[data-design="modern"] .progress-track { height: 22px; border: var(--border) solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); box-sizing: border-box; }
+  :root[data-design="modern"] .progress-fill { background: var(--accent); border-radius: 0; border-right: var(--border) solid var(--line); box-sizing: border-box; }
+  :root[data-design="modern"] .progress-fill[style*="width: 0%"] { border-right-width: 0; }
+  :root[data-design="modern"] .progress.full .progress-fill { background: var(--ok-fill); }
+  :root[data-design="modern"] .progress-label { font-family: var(--font-display); font-weight: 700; color: var(--fg); }
   /* @@DESIGN-MODERN-END */
 </style>
 </head>
@@ -734,6 +752,7 @@ function sanitizeSettings(raw) {
     effects: pick(r.effects, window.APPEARANCE.EFFECTS, 'full'),
     direction: pick(r.direction, window.APPEARANCE.DIRECTIONS, 'up'),
     voiceDefault: r.voiceDefault === true,
+    progress: r.progress !== false,
     tone: { choice: pick(tone.choice, TONE_CHOICES, 'tick'), volume: pick(tone.volume, TONE_VOLUMES, 'medium') },
     ai: {
       key: typeof ai.key === 'string' ? ai.key.slice(0, 300) : '',
@@ -865,6 +884,7 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
         h('div', { className: 'sec' }, 'Appearance'),
         h('div', { className: 'rows' },
           row('set-mode', 'Mode', cap(settings.mode) + (settings.design === 'airplane' ? ' (Airplane is always dark)' : ''), () => cycle('mode', window.APPEARANCE.MODES)),
+          row('set-progress', 'Progress bar', settings.progress ? 'On' : 'Off', () => onChange({ progress: !settings.progress })),
           row('set-effects', 'Effects', settings.effects === 'full' ? 'Full' : 'Reduced', () => cycle('effects', window.APPEARANCE.EFFECTS))),
         h('div', { className: 'sec' }, 'List direction'),
         h('div', { className: 'rows' },
@@ -925,7 +945,7 @@ function Ask({ list, onDone, onCancel }) {
         : h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next')));
 }
 
-function Run({ list, tone, onClose }) {
+function Run({ list, tone, progress, onClose }) {
   const [answers, setAnswers] = useState(null); // null while the questions are still being asked
   if (list.questions.length > 0 && !answers) return h(Ask, { list, onDone: setAnswers, onCancel: onClose });
   const items = list.items
@@ -935,13 +955,13 @@ function Run({ list, tone, onClose }) {
       return { ...it, n };
     })
     .filter(it => it.n === null || it.n > 0); // a quantity of 0 leaves the item out of this run
-  return h(RunList, { title: list.title, items, sound: list.sound, voice: list.voice, tone, onClose });
+  return h(RunList, { title: list.title, items, sound: list.sound, voice: list.voice, tone, progress, onClose });
 }
 
 // Run: first item at the bottom, working upward. Checkmarks on the right.
 // A ticked item stays where it is (dimmed with a tick), so nothing moves under the finger.
 // The checklist's own settings decide whether ticking plays a sound and/or says the item out loud.
-function RunList({ title, items, sound, voice, tone, onClose }) {
+function RunList({ title, items, sound, voice, tone, progress, onClose }) {
   const [done, setDone] = useState([]); // ticked item indexes
   const nextOpen = items.findIndex((_, k) => !done.includes(k)); // the first open item gets a quiet marker (no motion)
   // Layout effects run inside the tap that started the run, which browsers require before audio may start.
@@ -959,6 +979,13 @@ function RunList({ title, items, sound, voice, tone, onClose }) {
   const complete = required.length ? required.every(i => done.includes(i)) : done.length === items.length;
   return h('div', { className: 'screen' },
     h('h1', null, title),
+    progress && h('div', {
+      className: 'progress' + (done.length === items.length && items.length > 0 ? ' full' : ''), role: 'progressbar', 'aria-label': 'Completed items',
+      'aria-valuemin': 0, 'aria-valuemax': items.length, 'aria-valuenow': done.length, 'aria-valuetext': done.length + ' of ' + items.length,
+    },
+      h('div', { className: 'progress-track' },
+        h('div', { className: 'progress-fill', style: { width: (items.length ? done.length / items.length * 100 : 0) + '%' } })),
+      h('span', { className: 'progress-label' }, done.length + ' / ' + items.length)),
     h('div', { className: 'stack' },
       items.map((it, i) => h('button', {
         key: i, className: 'item' + (done.includes(i) ? ' done' : '') + (i === nextOpen ? ' next' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
@@ -1408,7 +1435,7 @@ function App() {
   }));
   const toSettings = () => setScreen({ name: 'settings' });
 
-  if (screen.name === 'run') return h(Run, { list: screen.list, tone: settings.tone, onClose: home });
+  if (screen.name === 'run') return h(Run, { list: screen.list, tone: settings.tone, progress: settings.progress, onClose: home });
   if (screen.name === 'edit') return h(Editor, {
     list: screen.list, draft: screen.draft, voiceDefault: settings.voiceDefault, onCancel: home,
     onDelete: id => update(lists.filter(l => l.id !== id)),
