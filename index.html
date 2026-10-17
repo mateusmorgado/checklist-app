@@ -139,6 +139,9 @@
   .err { color: var(--err); }
   /* @@REFS-CSS-START */
   .edit > .refs { grid-area: points; align-self: stretch; width: 100%; min-height: 0; overflow-y: auto; touch-action: pan-y; }
+  /* Slim scrollbar with a gap, so it never touches the right-aligned text. */
+  .edit > .refs, .settings-scroll { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .edit > .refs { padding-right: 14px; box-sizing: border-box; }
   .refs-in { text-align: right; font-size: 15px; line-height: 1.5; }
   .refs-in h1 { margin: 0 0 8px; }
   .refs-in h2 { font-size: 15px; font-weight: 500; margin: 14px 0 4px; }
@@ -148,6 +151,8 @@
   .refs-in li { margin: 0 0 10px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
   .refs-in a { color: inherit; text-decoration: underline; }
   /* Run: completion bar. It fills smoothly as items are ticked and turns green when everything is done. */
+  .run-top { align-self: stretch; margin-bottom: auto; display: flex; flex-direction: column; align-items: flex-end; }
+  .run-top h1 { margin-bottom: 12px; }
   .progress { flex: none; width: 100%; display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
   .progress-track { flex: 1 1 auto; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
   .progress-fill { height: 100%; width: 0; background: var(--fg); border-radius: inherit; transition: width .6s cubic-bezier(.22, .8, .24, 1), background-color .4s ease; }
@@ -968,9 +973,14 @@ function RunList({ title, items, sound, voice, tone, progress, onClose }) {
   useLayoutEffect(() => { if (sound) toneStart(tone); return () => toneStop(); }, []);
 
   const toggle = i => {
-    if (done.includes(i)) { setDone(d => d.filter(x => x !== i)); return; }
+    if (done.includes(i)) {
+      setDone(d => d.filter(x => x !== i));
+      if (sound && done.length === items.length) toneStart(tone); // unticking after the last one brings the sound back
+      return;
+    }
     setDone(d => [...d, i]);
     if (sound) toneTick(tone);
+    if (sound && done.length + 1 === items.length) toneStop(); // every item is ticked: the soundscape ends
     if (voice) speak(items[i].text + (items[i].n !== null && items[i].n !== 1 ? ', ' + fmtQty(items[i].n) : ''));
   };
 
@@ -978,6 +988,7 @@ function RunList({ title, items, sound, voice, tone, progress, onClose }) {
   const required = items.map((it, i) => (it.required ? i : -1)).filter(i => i >= 0);
   const complete = required.length ? required.every(i => done.includes(i)) : done.length === items.length;
   return h('div', { className: 'screen' },
+    h('div', { className: 'run-top' },
     h('h1', null, title),
     progress && h('div', {
       className: 'progress' + (done.length === items.length && items.length > 0 ? ' full' : ''), role: 'progressbar', 'aria-label': 'Completed items',
@@ -985,7 +996,7 @@ function RunList({ title, items, sound, voice, tone, progress, onClose }) {
     },
       h('div', { className: 'progress-track' },
         h('div', { className: 'progress-fill', style: { width: (items.length ? done.length / items.length * 100 : 0) + '%' } })),
-      h('span', { className: 'progress-label' }, done.length + ' / ' + items.length)),
+      h('span', { className: 'progress-label' }, done.length + ' / ' + items.length))),
     h('div', { className: 'stack' },
       items.map((it, i) => h('button', {
         key: i, className: 'item' + (done.includes(i) ? ' done' : '') + (i === nextOpen ? ' next' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
@@ -997,7 +1008,7 @@ function RunList({ title, items, sound, voice, tone, progress, onClose }) {
         h('span', { className: 'mark', 'data-done': done.includes(i) ? '1' : '0', 'aria-hidden': 'true' }, done.includes(i) ? '☑' : '☐')))),
     h('div', { className: 'bar' },
       h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close'),
-      h(ToneControls, { sound, tone })));
+      h(ToneControls, { sound: sound && done.length < items.length, tone })));
 }
 
 /* @@REFSPAGE-START */
