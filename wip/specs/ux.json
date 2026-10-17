@@ -1,0 +1,121 @@
+[
+ {
+  "title": "Make the whole row the tap target: 56px rows, 28-44px visible tick, 48px hit area, 8px+ gaps, activate on click",
+  "why": "Ticking is the highest-frequency action and is done one-handed. Bigger hit areas cut mis-taps and sliding off cancels an accidental press. Applies identically in all three designs; the dense Airplane skin shrinks outlines, never hit areas.",
+  "effort": "small",
+  "evidence": "EVIDENCE-BACKED: Parhi et al. MobileHCI 2006 (9.2-9.6 mm discrete targets), Google/Lighthouse 48px with 8px spacing, WCAG 2.5.8 (24px floor, AA) and 2.5.2 pointer cancellation (A). Hoober 2013 grip split (49 percent one-handed) is dated but consistent.",
+  "risk": "Expanded ::before hit areas can overlap neighbouring rows; clip them and keep the 8px gap. Do not activate on pointerdown."
+ },
+ {
+  "title": "Undo instead of 'Are you sure?' for reversible actions (un-tick is instant; delete checklist, delete point, reset run use an Undo toast)",
+  "why": "Mis-taps happen one-handed; confirmation dialogs cause dialog fatigue and double-tap hits. Undo is faster and safer.",
+  "effort": "medium",
+  "evidence": "EXPERT GUIDANCE with medium support: Raskin (A List Apart 2007), Gmail 5 s undo, design systems 5 s/10 s toasts. WCAG 2.2.1 timing concern for screen-reader users.",
+  "risk": "Auto-dismissing toasts fail assistive-tech users: pause the countdown on touch/focus, make Undo a 48px button, keep a persistent 'Undo last' control, place the toast above the dock (bottom: dock height + safe area + 8px)."
+ },
+ {
+  "title": "Three redundant item states: pending (empty box), done (check glyph), skipped (dash plus the word 'Skipped')",
+  "why": "Colour cannot be the only carrier of state (colour-blind users, grayscale, forced-colors), and the Airplane and Modern palettes lean on colour.",
+  "effort": "small",
+  "evidence": "EVIDENCE-BACKED (standard): WCAG 1.4.1 and 4.1.2. The skipped/override state itself is modelled on Boeing ECL's 'overridden' status (secondary sources, drawing style unverified).",
+  "risk": "Adds a 'skip' action; place it so it cannot be hit by accident (for example in item detail, not on the row)."
+ },
+ {
+  "title": "Determinate progress text 'x of n, N left' plus a segmented bar near the bottom-right, required counted separately",
+  "why": "Shows what remains, near the thumb, and tells the user whether Done is safe; neutral wording avoids shaming.",
+  "effort": "small",
+  "evidence": "MIXED: goal-gradient and endowed-progress effects come from loyalty-card field studies (Nunes and Dreze 2006, Kivetz 2006), effect for checklists unknown. Visibility of system status is an NN/g heuristic. Do NOT pre-fill progress (would misrepresent a checklist).",
+  "risk": "Low. Keep updates on tick only, no tweening, so it does not pull attention."
+ },
+ {
+  "title": "Make the next open item the most salient element without motion; never reorder or hide items",
+  "why": "Helps resumption after interruption and keeps task position stable. Stable positions aid recall of where you were.",
+  "effort": "small",
+  "evidence": "PARTLY EVIDENCE: salient cues speed resumption and a hint before the last step reduces post-completion errors (Trafton/Altmann, Chung and Byrne; general population, secondhand). FOLKLORE: that showing one item at a time reduces load for ADHD users is untested; offer hiding future items only as an opt-in setting, if at all.",
+  "risk": "Do not dim done items below 4.5:1 text contrast; no pulsing highlight."
+ },
+ {
+  "title": "Guard the Done step: show 'N required left' on the button, offer 'keep going / close anyway' instead of a generic dialog; mid-run Close shows '3 of 8 done'",
+  "why": "The final step is the one most often skipped; Close/Done must not sit where the last tick landed.",
+  "effort": "small",
+  "evidence": "PARTLY EVIDENCE: post-completion-error literature (secondhand), Fitts's law on touch (big close targets are easy to hit by accident), Boeing ECL withholds 'complete' until all done (patent/paper). Spacing rule (one full target of separation) is expert guidance.",
+  "risk": "Do not block silently; always allow an explicit override."
+ },
+ {
+  "title": "Non-drag reorder in the editor: 48px handle plus visible up/down buttons (or 'move to position'), drag kept as an enhancement",
+  "why": "Drag is hard one-handed, on a bus, or with tremor, and is a WCAG failure when it is the only way.",
+  "effort": "medium",
+  "evidence": "EVIDENCE-BACKED (standard): WCAG 2.2 SC 2.5.7 (AA), failure F108, technique G219. Long-press-to-drag delay about 400 ms to match Android (medium confidence).",
+  "risk": "Extra buttons add visual density in the Airplane design; reveal them on tap of the row."
+ },
+ {
+  "title": "Settings: Design (Classic / Airplane / Modern), Mode (System / Light / Dark), Reduce effects, Grain, Left-handed layout; persist in localStorage with try/catch and a blocking inline script that sets data attributes before first paint",
+  "why": "The requested three-design switch needs orthogonal attributes (data-design, data-mode) and no flash of the wrong theme. A system/light/dark three-state beats a binary toggle. An in-app Reduce effects covers users who never set the OS preference.",
+  "effort": "medium",
+  "evidence": "EXPERT GUIDANCE: web.dev theme-switch pattern, MDN color-scheme, Playwright emulation. localStorage may throw in private mode, so render correctly without it.",
+  "risk": "Airplane is dark-only: when Mode = Light it should still render dark and say so, or the setting is hidden for that design. Settings controls themselves must meet AA in every design."
+ },
+ {
+  "title": "Left-handed mirror (default Right) via data-hand that flips stack anchor, checkmarks, action row and the Modern shadow direction together",
+  "why": "Roughly one in three one-handed users is on the left thumb; the right-anchored layout is the right default but not the only mode.",
+  "effort": "medium",
+  "evidence": "MEDIUM: Hoober split 67/33 right/left thumb quoted by Osmani (original text not retrievable); the thumb-zone concept is Hoober's, the colour map is secondary.",
+  "risk": "Doubles layout test matrix; use logical properties (inset-inline-end, flex-direction row-reverse) so one rule set serves both."
+ },
+ {
+  "title": "Instant, single, multimodal tick feedback: visual state in the same frame, optional sound/speech triggered synchronously from the tap, Android-only 10-20 ms vibrate as a bonus, double-tap guard",
+  "why": "Immediate confirmation matches delay aversion and the 0.1 s instant limit; iOS ignores navigator.vibrate so sound and visual must stand alone; fast double taps must not double-fire sound or un-tick.",
+  "effort": "small",
+  "evidence": "MIXED: Nielsen response-time limits (high), INP under 200 ms (high), delay aversion in ADHD lab tasks (children, inference to UI), periodic alert cues give only short-lived benefit (n=15). Haptic efficacy for ADHD: no evidence.",
+  "risk": "Never block input during feedback animation (over about 300 ms causes self-undo by double tap). Avoid doubling speechSynthesis with a live region when a screen reader is on."
+ },
+ {
+  "title": "Fixed viewport done safely: 100dvh, safe-area padding, and an inner scroll only when the stack overflows (large text, 320px, 400 percent zoom)",
+  "why": "A never-scrolling shell clips content at large OS text sizes and when browser toolbars collapse; Close/Done could become unreachable or cover the focused item.",
+  "effort": "medium",
+  "evidence": "EVIDENCE-BACKED (standard): WCAG 1.4.10 reflow, 1.4.12 text spacing, 2.4.11 focus not obscured (failure F110 describes a sticky footer over content). 100vh and position:fixed unreliability on mobile web is expert guidance (Josh Clark).",
+  "risk": "The inner scroller must have scroll-padding-bottom equal to the dock height and must not host grain or filters (WebKit 287982)."
+ },
+ {
+  "title": "Reading-friendly references page: 17px/1.6, left-aligned, letter-spacing .03-.05em, word-spacing .08em, max 60ch, flat panel, no grain, no italics or caps for running text",
+  "why": "The only long-reading screen; ADHD and reading disorders co-occur often (20-60 percent estimates), and crowding is the best-evidenced lever.",
+  "effort": "small",
+  "evidence": "PARTLY EVIDENCE: Zorzi 2012 PNAS (extra letter spacing helped children with dyslexia; short sentences, not adults on phones), Rello 2013 (sans-serif/mono fine, OpenDyslexic no benefit). Exact values are inference. Do NOT ship a dyslexia font or Bionic Reading (no benefit shown).",
+  "risk": "Keep the 1.4.12 override test passing (no fixed row heights)."
+ },
+ {
+  "title": "Ask screen: big No/Yes buttons (52px+), number input with inputmode=numeric/pattern, 16px+ font, +/- steppers, one question per screen, explicit validation message",
+  "why": "Fewer mis-taps and no iOS zoom-on-focus; input edge cases (empty, negative, decimal, huge, paste) need defined behaviour.",
+  "effort": "small",
+  "evidence": "EXPERT GUIDANCE: web mobile best practice (zoom-on-focus is general knowledge, not verified in the research); target sizes as above.",
+  "risk": "Define min/max and what happens on empty; test paste of non-numeric text and very long numbers."
+ },
+ {
+  "title": "No push notifications, badges, streaks, points or confetti; one brief factual completion line; neutral copy ('2 items left', not 'You missed 2')",
+  "why": "Notifications raise inattention even in non-ADHD adults; gamification evidence in ADHD is small and mixed; streak harm is plausible but unverified; deficit-framed copy is resisted by users.",
+  "effort": "small",
+  "evidence": "MIXED: Kushlev CHI 2016 (n=221 non-clinical, self-report) evidence; gamification reviews mixed; Spiel et al. CHI 2022 critical review; streak-harm claims are FOLKLORE (vendor blogs).",
+  "risk": "None; it is a restraint. Keep completion feedback under about 300 ms and optional per checklist."
+ },
+ {
+  "title": "Forced-colors and prefers-contrast support: real outlines for focus and state, check glyph as SVG or border, grain and gradients removed under prefers-contrast: more, forced-colors, and prefers-reduced-transparency",
+  "why": "Modern's hard shadows and Airplane's thin outlines disappear or lose meaning when the OS overrides colours; shadow-only indicators vanish.",
+  "effort": "medium",
+  "evidence": "EVIDENCE-BACKED (standard/MDN): forced-colors drops box-shadow, prefers-contrast available since 2022, WCAG 1.4.11 and 2.4.7. prefers-reduced-transparency support is narrow (Chrome/Edge 118+).",
+  "risk": "Needs forced-colors emulation in tests; the in-app Grain and Reduce-effects switches remain the primary control."
+ },
+ {
+  "title": "Optional opt-in time aids per checklist: expected duration line and a coarse (per minute) elapsed-time text, plus an optional 'when' trigger line on the Ask/Run header",
+  "why": "Time-perception deficits in ADHD are well replicated; visual timers and if-then triggers are plausible aids.",
+  "effort": "medium",
+  "evidence": "MIXED/FOLKLORE: timing deficit meta-analyses are strong (Noreika 2013, 2020 meta-analysis), but no trial shows visual timers improve on-task behaviour; implementation intentions helped children in lab inhibition tasks (Gawrilow and Gollwitzer 2008). Ship as experiments, measure, and keep off by default.",
+  "risk": "Avoid second-by-second countdowns, red urgency and auto-advance; they raise time pressure and conflict with adjustable-timing expectations."
+ },
+ {
+  "title": "Validate with real neurodivergent users and measure: time to first tick, skipped items, abandoned runs, subjective load; A/B the up-left versus down-right Modern shadow",
+  "why": "Evidence for task-support UI in adults with ADHD is thin; most numbers are from children, labs or the general population.",
+  "effort": "large",
+  "evidence": "EVIDENCE GAP acknowledged by the research (Spiel et al. 2022; JMIR 2016 app review). NASA-TLX was used in the one child-ADHD app study found.",
+  "risk": "Needs recruitment and a test build with design switching (which this feature provides)."
+ }
+]

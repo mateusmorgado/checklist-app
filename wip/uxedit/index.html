@@ -1,0 +1,1274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checklist</title>
+<script>
+/* Applies the saved design before first paint so there is no flash of the wrong look.
+   Also used by the app when the design changes. Everything is wrapped: storage may be blocked. */
+(function () {
+  var DESIGNS = ['classic', 'airplane', 'modern'], MODES = ['system', 'light', 'dark'], EFFECTS = ['full', 'reduced'];
+  var FONTS = {
+    airplane: 'family=B612:wght@400;700&family=B612+Mono:wght@400;700',
+    modern: 'family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Space+Grotesk:wght@400..700'
+  };
+  function pick(v, list, d) { return list.indexOf(v) >= 0 ? v : d; }
+  window.APPEARANCE = { DESIGNS: DESIGNS, MODES: MODES, EFFECTS: EFFECTS };
+  window.applyAppearance = function (s) {
+    s = s || {};
+    var root = document.documentElement, design = pick(s.design, DESIGNS, 'classic');
+    root.setAttribute('data-design', design);
+    root.setAttribute('data-mode', pick(s.mode, MODES, 'system'));
+    root.setAttribute('data-effects', pick(s.effects, EFFECTS, 'full'));
+    if (FONTS[design] && !document.getElementById('font-' + design)) {
+      var link = document.createElement('link');
+      link.id = 'font-' + design; link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?' + FONTS[design] + '&display=swap';
+      document.head.appendChild(link);
+    }
+  };
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem('settings') || '{}') || {}; } catch (e) {}
+  window.applyAppearance(saved);
+})();
+</script>
+<style>
+  /* Full-viewport, no scroll. Everything is anchored bottom-right for the right thumb.
+     Every colour, font and shape comes from tokens. A design is a block of tokens plus a few component rules,
+     scoped by :root[data-design]. Classic is the base look; it follows the OS light/dark setting unless
+     Settings forces a mode. Add new design rules only inside their own marked block. */
+  :root, :root[data-design="classic"] {
+    --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-display: var(--font);
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --bg: #ffffff; --surface: #ffffff; --fg: #111111; --muted: #5c5c5c; --line: #d6d6d6; --line-strong: #767676;
+    --lift: #f3f3f3; --accent: #111111; --accent-fg: #ffffff; --ok: #17692e; --warn: #8a5200; --err: #b3261e;
+    --focus: #0a4fd6; --placeholder: #767676;
+    --radius: 8px; --border: 1px; --shadow: none; --hit-min: 48px; --row-h: 56px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-design="classic"][data-mode="system"]:not([data-theme="light"]) {
+      --bg: #111111; --surface: #161616; --fg: #f2f2f2; --muted: #a3a3a3; --line: #333333; --line-strong: #8a8a8a;
+      --lift: #1e1e1e; --accent: #f2f2f2; --accent-fg: #111111; --ok: #58d078; --warn: #f0b24a; --err: #ff8a80;
+      --focus: #7fb0ff; --placeholder: #8a8a8a; color-scheme: dark;
+    }
+  }
+  :root[data-design="classic"][data-mode="dark"], :root[data-design="classic"][data-mode="system"][data-theme="dark"] {
+    --bg: #111111; --surface: #161616; --fg: #f2f2f2; --muted: #a3a3a3; --line: #333333; --line-strong: #8a8a8a;
+    --lift: #1e1e1e; --accent: #f2f2f2; --accent-fg: #111111; --ok: #58d078; --warn: #f0b24a; --err: #ff8a80;
+    --focus: #7fb0ff; --placeholder: #8a8a8a; color-scheme: dark;
+  }
+  html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
+  body { background: var(--bg); color: var(--fg); font: 18px/1.3 var(--font); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  #root { height: 100%; }
+  .screen { height: 100%; box-sizing: border-box; padding: 16px 20px 20px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 8px; }
+  h1 { font-family: var(--font-display); font-size: 22px; font-weight: 500; margin: 0 0 12px; text-align: right; }
+  /* Item stack: first item sits at the bottom, later items stack upward. Rows shrink instead of scrolling. */
+  .stack { flex: 0 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column-reverse; align-items: flex-end; justify-content: flex-start; overflow: hidden; }
+  .stack > * { flex: 0 1 var(--row-h); min-height: 0; max-width: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; }
+  .stack > button, .stack > div.item { width: 100%; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+  .muted { color: var(--muted); }
+  .done { color: var(--muted); }
+  .row { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: grab; position: relative; }
+  .row.lifted { z-index: 1; background: var(--lift); font-weight: 500; cursor: grabbing; }
+  .x { margin-right: auto; width: var(--hit-min); height: var(--hit-min); font-size: 22px; line-height: 1; color: var(--muted); flex: none; }
+  .label { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; text-align: right; }
+  .detail { font-size: 13px; line-height: 1.25; color: var(--muted); overflow-wrap: anywhere; }
+  .row.selected { background: var(--lift); }
+  /* Home rows: the whole row opens the checklist; "edit" sits at the far left like the remove cross in the editor. */
+  .home-item > .edit-link { margin-right: auto; min-width: var(--hit-min); min-height: var(--hit-min); text-align: left; }
+  .home-item > .open { flex: 1; min-height: var(--hit-min); text-align: right; }
+  /* Editor: grid with the points, then the entry field on its own line, then the buttons. */
+  .screen.edit { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "points" "hint" "entry" "actions"; row-gap: 8px; justify-items: end; align-items: end; justify-content: stretch; }
+  .edit > .points { grid-area: points; width: 100%; min-height: 0; max-height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; }
+  .edit > .points > h1 { margin: 0 0 4px; flex: none; }
+  .edit > .hint { grid-area: hint; }
+  .edit > .entry { grid-area: entry; width: 100%; }
+  .edit > .actions { grid-area: actions; }
+  /* Explanatory text sits at the top of the screen; the controls stay at the bottom. */
+  .screen.edit.intro { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "intro" "points" "actions"; }
+  .edit > .intro-text { grid-area: intro; align-self: start; font-size: 15px; line-height: 1.4; }
+  /* Button rows: 48px hit areas. The negative margin and small gap keep the text exactly where it was. */
+  .actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; height: var(--row-h); margin-right: -8px; }
+  .bar { display: flex; flex-direction: row-reverse; align-items: center; gap: 12px; height: var(--row-h); flex: none; margin-right: -8px; }
+  .actions button, .bar button { flex: none; min-height: var(--hit-min); min-width: var(--hit-min); padding: 0 8px; }
+  .mark { font-size: 24px; line-height: 1; flex: none; }
+  input { font: inherit; color: inherit; background: none; border: 0; border-bottom: var(--border) solid var(--line-strong); border-radius: 0; padding: 10px 0; width: 100%; box-sizing: border-box; text-align: right; flex: none; min-height: var(--hit-min); }
+  input::placeholder { color: var(--placeholder); }
+  .hint { font-size: 14px; flex: none; text-align: right; }
+  .err { color: var(--err); }
+  /* @@REFS-CSS-START */
+  .edit > .refs { grid-area: points; align-self: stretch; width: 100%; min-height: 0; overflow-y: auto; touch-action: pan-y; }
+  .refs-in { text-align: right; font-size: 14px; line-height: 1.35; }
+  .refs-in h1 { margin: 0 0 8px; }
+  .refs-in h2 { font-size: 15px; font-weight: 500; margin: 14px 0 4px; }
+  .refs-in p { margin: 0 0 6px; }
+  .refs-in .muted { font-size: 13px; }
+  .refs-in ul { list-style: none; margin: 0; padding: 0; }
+  .refs-in li { margin: 0 0 8px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+  .refs-in a { color: inherit; text-decoration: underline; }
+  /* @@REFS-CSS-END */
+  .prop { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); cursor: pointer; }
+  .prop.selected { background: var(--lift); }
+  /* Settings: a list that scrolls inside itself only when it is taller than the screen. */
+  .screen.settings { justify-content: flex-end; }
+  .settings-scroll { flex: 0 1 auto; min-height: 0; width: 100%; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; }
+  .settings-in { text-align: right; }
+  .settings-in h1 { margin-bottom: 4px; }
+  .sec { font-family: var(--font-display); font-size: 13px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px; }
+  .choices, .rows { display: flex; flex-direction: column; align-items: stretch; }
+  .choice, .srow { width: 100%; box-sizing: border-box; min-height: var(--row-h); padding: 0 8px; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; border-radius: var(--radius); }
+  .choice.selected { background: var(--lift); }
+  .srow .value { color: var(--muted); font-size: 15px; }
+  .srow .name { margin-right: auto; }
+  /* @@SOUND-CSS-START */
+  /* @@SOUND-CSS-END */
+  /* @@QUICK-CSS-START */
+  /* @@QUICK-CSS-END */
+  /* @@UX-RUN-CSS-START */
+  /* @@UX-RUN-CSS-END */
+  /* @@UX-EDIT-CSS-START */
+  /* Viewport: dynamic height (the 100vh line is the fallback) so a collapsing browser toolbar never hides the
+     bottom row; padding keeps controls clear of notches and the home indicator. */
+  html, body { height: 100vh; height: 100dvh; }
+  .shell { position: relative; height: 100%; }
+  .screen { height: 100vh; height: 100dvh;
+    padding: max(16px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+  /* Editor stacks scroll inside themselves when they do not fit. Rows may shrink to the hit minimum, never below it;
+     the inner label keeps the 48px so a row squeezed to 48px still looks whole. Long text makes its row taller. */
+  .edit .stack { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  .edit .stack > * { flex: 0 1 auto; min-height: var(--hit-min); padding-top: 4px; padding-bottom: 4px; box-sizing: border-box; }
+  .edit .stack > * > .label { min-height: var(--hit-min); justify-content: center; }
+  /* Rows scroll with a swipe (pan-y). A drag starts after the hold and then blocks scrolling in script. */
+  .edit .stack > .row { touch-action: pan-y; }
+  .edit .stack :focus-visible { outline-offset: -3px; }
+  .row:focus-visible, .prop:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; }
+  /* Long or unbroken text wraps and is cut after three lines, so one entry cannot take over the screen. */
+  .edit .label > span, .edit .points > h1 { overflow-wrap: anywhere; min-width: 0; max-width: 100%; }
+  .edit .label > span, .edit .points > h1 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+  .edit input { font-size: max(16px, 1em); }
+  /* Item step: a position line and the two move buttons sit between the entry field and the bottom buttons. */
+  .screen.edit.moves-on { grid-template-rows: minmax(0, 1fr) auto auto auto auto; grid-template-areas: "points" "hint" "entry" "moves" "actions"; }
+  .edit > .moves { grid-area: moves; display: flex; flex-direction: column; align-items: flex-end; }
+  .actions button[aria-disabled="true"] { opacity: .45; cursor: default; }
+  /* On the narrowest phones four labels ("Delete Cancel Questions 12 Save") would run off the left edge: tighten the row. */
+  @media (max-width: 359px) {
+    .edit > .actions { gap: 2px; margin-right: -4px; }
+    .edit > .actions button { padding: 0 4px; }
+  }
+  /* Undo toast: absolutely placed just above the bottom row, and the screen reserves the same height above it
+     (--toast-space, measured in script) so nothing is covered. Empty, it takes no space. */
+  .shell.has-toast > .screen > :nth-last-child(2) { margin-bottom: var(--toast-space, 0px); }
+  .toast { position: absolute; z-index: 5; right: max(20px, env(safe-area-inset-right)); max-width: calc(100% - 40px);
+    bottom: calc(max(20px, env(safe-area-inset-bottom)) + var(--row-h) + 16px); display: flex; justify-content: flex-end; pointer-events: none; }
+  .toast-box { pointer-events: auto; box-sizing: border-box; display: flex; align-items: center; gap: 4px; min-height: var(--hit-min);
+    padding: 4px 4px 4px 12px; background: var(--surface); color: var(--fg); border: var(--border) solid var(--line-strong);
+    border-radius: var(--radius); box-shadow: var(--shadow); }
+  .toast-msg { font-size: 15px; min-width: 0; overflow-wrap: anywhere; text-align: right; }
+  .toast-box button { flex: none; min-width: var(--hit-min); min-height: var(--hit-min); padding: 0 12px; font-weight: 700; text-decoration: underline; }
+  /* Selection, drag and focus must not depend on a background or a shadow alone. */
+  @media (prefers-contrast: more) {
+    .row.selected, .row.lifted, .prop.selected { outline: 2px solid var(--fg); outline-offset: -2px; }
+    .row:focus-visible, .prop:focus-visible, .toast-box button:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+    .toast-box { border-width: 2px; border-color: var(--fg); box-shadow: none; }
+    .actions button[aria-disabled="true"] { opacity: 1; text-decoration: line-through; }
+  }
+  @media (forced-colors: active) {
+    .row.selected, .row.lifted, .prop.selected { outline: 2px solid Highlight; outline-offset: -2px; }
+    .row:focus-visible, .prop:focus-visible, .toast-box button:focus-visible { outline: 3px solid Highlight; outline-offset: -3px; }
+    .toast-box { border: 2px solid CanvasText; box-shadow: none; }
+    .actions button[aria-disabled="true"] { opacity: 1; color: GrayText; text-decoration: line-through; }
+  }
+  /* @@UX-EDIT-CSS-END */
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+  :root[data-effects="reduced"] *, :root[data-effects="reduced"] *::before, :root[data-effects="reduced"] *::after { transition: none !important; animation: none !important; }
+
+  /* @@DESIGN-AIRPLANE-START  (cockpit display; always dark) */
+  :root[data-design="airplane"] {
+    --font: 'B612', 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+    --font-mono: 'B612 Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --bg: #05080b; --surface: #0b1117; --fg: #f2f4f5; --muted: #93a3ad; --line: #26343e; --line-strong: #5f7886;
+    --lift: #121c24; --accent: #2fe0f5; --accent-fg: #031014; --ok: #3df07a; --warn: #ffb000; --err: #ff5a5a;
+    --focus: #ffffff; --placeholder: #6f8190; --radius: 0px; --border: 1px; --shadow: none; color-scheme: dark;
+  }
+  /* @@DESIGN-AIRPLANE-END */
+
+  /* @@DESIGN-MODERN-START  (neobrutalism + grain; light first) */
+  :root[data-design="modern"] {
+    --font: 'Space Grotesk', system-ui, 'Helvetica Neue', Arial, sans-serif;
+    --font-display: 'Bricolage Grotesque', 'Arial Black', 'Helvetica Neue', system-ui, sans-serif;
+    --bg: #f3ecdf; --surface: #ffffff; --fg: #111111; --muted: #4d4d4d; --line: #111111; --line-strong: #111111;
+    --lift: #fff3c4; --accent: #ffd23f; --accent-fg: #111111; --ok: #0a6b3a; --warn: #8a4b00; --err: #c4122f;
+    --focus: #1d3fe0; --placeholder: #6b6b6b; --radius: 6px; --border: 3px; --shadow: -4px -4px 0 0 #111111;
+  }
+  /* @@DESIGN-MODERN-END */
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useLayoutEffect, useRef, createElement: h } = React;
+const KEY = 'checklists';
+const SETTINGS_KEY = 'settings';
+const SAMPLE = [
+  { id: 'a', title: 'Preflight', items: [
+    { text: 'Check fuel', detail: 'Both tanks, visual check and drain a sample' },
+    { text: 'Check flaps' }, { text: 'Check radio' }, { text: 'Check lights' } ] },
+  { id: 'b', title: 'Leaving home', items: ['Keys', 'Wallet', 'Phone', 'Stove off'] },
+  // Example of questions and quantities: asks "Nights?" before the run.
+  { id: 'c', title: 'Weekend trip', questions: [{ id: 'q1', name: 'nights', type: 'number', text: 'nights', label: 'How many nights?' }], items: [
+    { text: 'Shirts', qty: 'nights' }, { text: 'Socks', qty: 'nights + 1' },
+    { text: 'Charger', detail: 'Phone and watch', required: true }, { text: 'Passport', required: true } ] },
+  // Example of a yes/no question: "Sauna?" counts as 1 for yes and 0 for no, so a towel is only asked for on yes.
+  { id: 'd', title: 'Gym', questions: [{ id: 'q2', name: 'sauna', type: 'yesno', text: 'I go to the sauna', label: 'I go to the sauna?' }], items: [
+    { text: 'Shoes' }, { text: 'Water bottle' }, { text: 'Towel', detail: 'For the sauna', qty: 'sauna' } ] },
+];
+
+// Older saved lists stored items as plain strings and had no questions, quantities or required flags.
+const normalize = lists => lists.map(l => ({
+  ...l,
+  sound: !!l.sound,
+  voice: !!l.voice,
+  questions: (l.questions || []).map(q => ({ ...q, type: q.type || 'number' })),
+  items: l.items.map(i => {
+    const o = typeof i === 'string' ? { text: i } : i;
+    return { text: o.text, detail: o.detail || '', qty: o.qty || '', required: !!o.required };
+  }),
+}));
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    return normalize(raw ? JSON.parse(raw) : SAMPLE);
+  } catch (e) { return normalize(SAMPLE); }
+}
+function save(lists) {
+  try { localStorage.setItem(KEY, JSON.stringify(lists)); } catch (e) {}
+}
+
+/* @@SOUND-ENGINE-START
+   Feedback when an item is ticked. The sound is optional per checklist and fails silently where unsupported.
+   The tone functions below are the only entry points the rest of the app uses. */
+const TONE_CHOICES = ['tick'];
+const TONE_VOLUMES = ['low', 'medium', 'high'];
+let audioCtx = null;
+function playTick() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audioCtx = audioCtx || new AC();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t = audioCtx.currentTime, osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, t);
+    osc.frequency.exponentialRampToValueAtTime(1320, t + 0.06);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.18, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + 0.15);
+  } catch (e) {}
+}
+function speak(text) {
+  try {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  } catch (e) {}
+}
+function toneStart(tone) {}                    // a run starts (called inside the user's tap)
+function toneStop() {}                         // a run ends or the screen is left
+function toneTick(tone) { playTick(); }        // an item was ticked
+function tonePreview(choice, volume) { playTick(); } // Settings: play a sample
+function ToneControls({ sound, tone }) { return null; } // rendered in the run bar (mute button lives here)
+function ToneSettings({ settings, onChange, onBack }) {
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, 'Attention tone')),
+    h('div', { className: 'muted hint' }, 'Sound options are coming.'),
+    h('div', { className: 'actions' }, h('button', { id: 'tone-back', onClick: onBack }, 'Back')));
+}
+/* @@SOUND-ENGINE-END */
+
+/* @@REFERENCES-START */
+// References behind the feedback settings, in APA 7th edition style (alphabetical by first author).
+// Entries without a DOI were not confirmed against a DOI record.
+const REFERENCES = [
+  { key: 'degani', authors: 'Degani, A., & Wiener, E. L.', year: 1993, title: 'Cockpit checklists: Concepts, design, and use',
+    journal: 'Human Factors', volume: '35', issue: '2', pages: '28–43' },
+  { key: 'macleod', authors: 'MacLeod, C. M., Gopie, N., Hourihan, K. L., Neary, K. R., & Ozubko, J. D.', year: 2010,
+    title: 'The production effect: Delineation of a phenomenon', journal: 'Journal of Experimental Psychology: Learning, Memory, and Cognition',
+    volume: '36', issue: '3', pages: '671–685', doi: '10.1037/a0018785' },
+  { key: 'nigg', authors: 'Nigg, J., Bruton, A., Kozlowski, M., Johnstone, J., & Karalunas, S.', year: 2024,
+    title: 'Systematic review and meta-analysis: Do white noise or pink noise help with task performance in youth with attention-deficit/hyperactivity disorder or with elevated attention problems?',
+    journal: 'Journal of the American Academy of Child and Adolescent Psychiatry', volume: '63', issue: '8', pages: '778–788', doi: '10.1016/j.jaac.2023.12.014' },
+  { key: 'posner', authors: 'Posner, M. I., & Petersen, S. E.', year: 1990, title: 'The attention system of the human brain',
+    journal: 'Annual Review of Neuroscience', volume: '13', pages: '25–42' },
+  { key: 'soderlund', authors: 'Söderlund, G., Sikström, S., & Smart, A.', year: 2007,
+    title: 'Listen to the noise: Noise is beneficial for cognitive performance in ADHD', journal: 'Journal of Child Psychology and Psychiatry',
+    volume: '48', issue: '8', pages: '840–847', doi: '10.1111/j.1469-7610.2007.01749.x' },
+  { key: 'szalma', authors: 'Szalma, J., & Hancock, P.', year: 2011, title: 'Noise effects on human performance: A meta-analytic synthesis',
+    journal: 'Psychological Bulletin', volume: '137', issue: '4', pages: '682–707', doi: '10.1037/a0023987' },
+];
+/* @@REFERENCES-END */
+
+/* @@QUICKLIST-START
+   AI quick list: describe a checklist and get a draft to review. Slot for the Quick list screens and the API call. */
+const DEFAULT_AI = { model: 'claude-haiku-5-5', endpoint: 'https://api.anthropic.com' };
+function QuickSettings({ settings, onChange, onBack }) {
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, 'Quick list')),
+    h('div', { className: 'muted hint' }, 'AI quick list is coming.'),
+    h('div', { className: 'actions' }, h('button', { id: 'ai-back', onClick: onBack }, 'Back')));
+}
+function QuickScreen({ settings, onDraft, onCancel, onOpenSettings }) {
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, 'Quick list')),
+    h('div', { className: 'muted hint' }, 'AI quick list is coming.'),
+    h('div', { className: 'actions' }, h('button', { id: 'quick-back', onClick: onCancel }, 'Back')));
+}
+/* @@QUICKLIST-END */
+
+// App-wide settings, saved in localStorage. Anything unknown or corrupt falls back to the defaults.
+function sanitizeSettings(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const pick = (v, list, d) => (list.includes(v) ? v : d);
+  const text = (v, d, max) => (typeof v === 'string' && v.trim() ? v.slice(0, max) : d);
+  const tone = r.tone && typeof r.tone === 'object' ? r.tone : {};
+  const ai = r.ai && typeof r.ai === 'object' ? r.ai : {};
+  return {
+    design: pick(r.design, window.APPEARANCE.DESIGNS, 'classic'),
+    mode: pick(r.mode, window.APPEARANCE.MODES, 'system'),
+    effects: pick(r.effects, window.APPEARANCE.EFFECTS, 'full'),
+    tone: { choice: pick(tone.choice, TONE_CHOICES, 'tick'), volume: pick(tone.volume, TONE_VOLUMES, 'medium') },
+    ai: {
+      key: typeof ai.key === 'string' ? ai.key.slice(0, 300) : '',
+      model: text(ai.model, DEFAULT_AI.model, 100),
+      endpoint: text(ai.endpoint, DEFAULT_AI.endpoint, 300),
+    },
+  };
+}
+function loadSettings() {
+  try { return sanitizeSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
+  catch (e) { return sanitizeSettings({}); }
+}
+function saveSettings(s) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) {}
+}
+
+// Quantity formulas, e.g. "nights + 1" or "ceil(nights / 2)". Numbers, question names, + - * / ( ) and
+// ceil floor round min max. A small parser on purpose: formulas are never passed to eval().
+const QTY_FNS = { ceil: [1, 1, Math.ceil], floor: [1, 1, Math.floor], round: [1, 1, Math.round], min: [1, 9, Math.min], max: [1, 9, Math.max] };
+function evalQty(expr, vars) {
+  const toks = String(expr).toLowerCase().match(/\d+\.?\d*|\.\d+|[a-z_][a-z0-9_]*|[-+*/(),]|\S/g) || [];
+  let pos = 0;
+  const peek = () => toks[pos];
+  const next = () => toks[pos++];
+  const expect = t => { if (next() !== t) throw new Error('Expected "' + t + '"'); };
+  function primary() {
+    const t = next();
+    if (t === undefined) throw new Error('Formula ends too early');
+    if (/^[\d.]/.test(t)) return parseFloat(t);
+    if (t === '(') { const v = sum(); expect(')'); return v; }
+    if (t === '-') return -primary();
+    if (/^[a-z_]/.test(t)) {
+      if (peek() === '(') {
+        const fn = QTY_FNS[t];
+        if (!fn) throw new Error('Unknown function "' + t + '"');
+        next();
+        const args = [];
+        if (peek() !== ')') { do { args.push(sum()); } while (peek() === ',' && next()); }
+        expect(')');
+        if (args.length < fn[0] || args.length > fn[1]) throw new Error('Wrong number of values for ' + t);
+        return fn[2](...args);
+      }
+      if (!Object.prototype.hasOwnProperty.call(vars, t)) throw new Error('Unknown name "' + t + '"');
+      return vars[t];
+    }
+    throw new Error('Unexpected "' + t + '"');
+  }
+  function term() {
+    let v = primary();
+    while (peek() === '*' || peek() === '/') v = next() === '*' ? v * primary() : v / primary();
+    return v;
+  }
+  function sum() {
+    let v = term();
+    while (peek() === '+' || peek() === '-') v = next() === '+' ? v + term() : v - term();
+    return v;
+  }
+  const result = sum();
+  if (pos < toks.length) throw new Error('Unexpected "' + toks[pos] + '"');
+  if (!Number.isFinite(result)) throw new Error('Not a number');
+  return result;
+}
+const fmtQty = n => String(Math.round(n * 100) / 100);
+
+// Questions read as sentences: "If I go to the sauna" (yes/no) or "How many nights" (number).
+const qSentence = q => (q.type === 'yesno' ? 'If ' : 'How many ') + (q.text || q.label.replace(/\?+$/, '').toLowerCase());
+// The name used in formulas is the last word of what was typed ("I go to the sauna" -> sauna), kept unique.
+function questionName(text, taken) {
+  const words = text.toLowerCase().match(/[a-z0-9]+/g) || [];
+  let base = words[words.length - 1] || '';
+  if (!base) return '';
+  if (/^\d/.test(base)) base = 'q' + base;
+  if (QTY_FNS[base]) base += '_q';
+  let name = base, n = 2;
+  while (taken.includes(name)) name = base + n++;
+  return name;
+}
+
+// Home: the list of checklists, first one at the bottom. "+ New" is the lowest control.
+function Home({ lists, onRun, onEdit, onSettings, onQuick }) {
+  return h('div', { className: 'screen' },
+    h('div', { className: 'stack' },
+      lists.map(c => h('div', { key: c.id, className: 'item home-item' },
+        h('button', { className: 'muted hint edit-link', onClick: () => onEdit(c) }, 'edit'),
+        h('button', { className: 'open', onClick: () => onRun(c) }, c.title)))),
+    lists.length === 0 && h('div', { className: 'muted' }, 'No checklists'),
+    h('div', { className: 'bar' },
+      h('button', { id: 'new', onClick: () => onEdit(null) }, '+ New'),
+      h('button', { id: 'quick', className: 'muted', onClick: onQuick }, 'Quick list'),
+      h('button', { id: 'settings', className: 'muted', onClick: onSettings }, 'Settings')));
+}
+
+// Settings: design, mode and effects up front, then the sub-screens. Changes apply immediately.
+const DESIGN_OPTIONS = [
+  ['classic', 'Classic', 'Minimal and quiet'],
+  ['airplane', 'Airplane', 'Cockpit display, always dark'],
+  ['modern', 'Modern', 'Bold borders and grain'],
+];
+const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+function SettingsHome({ settings, onChange, onNav, onBack }) {
+  const cycle = (key, list) => onChange({ [key]: list[(list.indexOf(settings[key]) + 1) % list.length] });
+  const toneLabel = settings.tone.choice === 'tick' ? 'Tick' : cap(settings.tone.choice);
+  const row = (id, name, value, onClick) => h('button', { key: id, id, className: 'srow', onClick },
+    h('span', { className: 'name' }, name), value ? h('span', { className: 'value' }, value) : null);
+  return h('div', { className: 'screen settings' },
+    h('div', { className: 'settings-scroll' },
+      h('div', { className: 'settings-in' },
+        h('h1', null, 'Settings'),
+        h('div', { className: 'sec' }, 'Design'),
+        h('div', { className: 'choices', role: 'radiogroup', 'aria-label': 'Design' },
+          DESIGN_OPTIONS.map(([id, name, note]) => h('button', {
+            key: id, id: 'design-' + id, role: 'radio', 'aria-checked': settings.design === id ? 'true' : 'false',
+            className: 'choice' + (settings.design === id ? ' selected' : ''), onClick: () => onChange({ design: id }),
+          },
+            h('span', { className: 'label' }, h('span', null, name), h('span', { className: 'detail' }, note)),
+            h('span', { className: 'mark', 'data-done': settings.design === id ? '1' : '0', 'aria-hidden': 'true' }, settings.design === id ? '●' : '○')))),
+        h('div', { className: 'sec' }, 'Appearance'),
+        h('div', { className: 'rows' },
+          row('set-mode', 'Mode', cap(settings.mode) + (settings.design === 'airplane' ? ' (Airplane is always dark)' : ''), () => cycle('mode', window.APPEARANCE.MODES)),
+          row('set-effects', 'Effects', settings.effects === 'full' ? 'Full' : 'Reduced', () => cycle('effects', window.APPEARANCE.EFFECTS))),
+        h('div', { className: 'sec' }, 'More'),
+        h('div', { className: 'rows' },
+          row('set-tone', 'Attention tone', toneLabel, () => onNav('settings-tone')),
+          row('set-ai', 'Quick list (AI)', settings.ai.key ? 'Key saved' : 'No key', () => onNav('settings-ai')),
+          row('set-refs', 'References', '', () => onNav('references'))))),
+    h('div', { className: 'actions' }, h('button', { id: 'settings-back', onClick: onBack }, 'Back')));
+}
+
+// Ask: one question per screen before a run. Numbers are typed, yes/no is one tap (yes = 1, no = 0).
+// The answers feed the quantity formulas.
+function Ask({ list, onDone, onCancel }) {
+  const qs = list.questions;
+  const [i, setI] = useState(0);
+  const [vals, setVals] = useState(() => qs.map(q => (q.type === 'yesno' ? null : '1')));
+  const ref = useRef(null);
+  const q = qs[i];
+  useLayoutEffect(() => { if (ref.current) { ref.current.focus(); ref.current.select(); } }, [i]);
+  const num = v => Number(String(v).replace(',', '.'));
+  const last = i === qs.length - 1;
+  const go = all => {
+    if (!last) { setI(i + 1); return; }
+    onDone(Object.fromEntries(qs.map((x, k) => [x.name, num(all[k])])));
+  };
+  const answerYesNo = yes => {
+    const all = vals.map((v, k) => (k === i ? (yes ? '1' : '0') : v));
+    setVals(all);
+    go(all);
+  };
+  const valid = q.type === 'yesno' ? vals[i] !== null : vals[i].trim() !== '' && Number.isFinite(num(vals[i]));
+  const next = () => {
+    if (!valid) { if (ref.current) ref.current.focus(); return; }
+    go(vals);
+  };
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, q.label)),
+    h('div', { className: 'muted hint' }, list.title + (qs.length > 1 ? ' · ' + (i + 1) + ' of ' + qs.length : '')),
+    q.type === 'yesno' ? null : h('div', { className: 'entry' },
+      h('input', {
+        id: 'answer', ref, inputMode: 'decimal', value: vals[i], enterKeyHint: last ? 'go' : 'next',
+        onChange: e => setVals(v => v.map((x, k) => (k === i ? e.target.value : x))),
+        onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); next(); } },
+      })),
+    h('div', { className: 'actions' },
+      h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+      i > 0 && h('button', { className: 'muted', onClick: () => setI(i - 1) }, 'Back'),
+      q.type === 'yesno'
+        ? [h('button', { key: 'no', id: 'no', onClick: () => answerYesNo(false) }, 'No'),
+           h('button', { key: 'yes', id: 'yes', onClick: () => answerYesNo(true) }, 'Yes')]
+        : h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next')));
+}
+
+function Run({ list, tone, onClose }) {
+  const [answers, setAnswers] = useState(null); // null while the questions are still being asked
+  if (list.questions.length > 0 && !answers) return h(Ask, { list, onDone: setAnswers, onCancel: onClose });
+  const items = list.items
+    .map(it => {
+      let n = null;
+      if (it.qty) { try { n = evalQty(it.qty, answers || {}); } catch (e) { n = null; } }
+      return { ...it, n };
+    })
+    .filter(it => it.n === null || it.n > 0); // a quantity of 0 leaves the item out of this run
+  return h(RunList, { title: list.title, items, sound: list.sound, voice: list.voice, tone, onClose });
+}
+
+// Run: first item at the bottom, working upward. Checkmarks on the right.
+// A ticked item stays where it is (dimmed with a tick), so nothing moves under the finger.
+// The checklist's own settings decide whether ticking plays a sound and/or says the item out loud.
+function RunList({ title, items, sound, voice, tone, onClose }) {
+  const [done, setDone] = useState([]); // ticked item indexes
+  // Layout effects run inside the tap that started the run, which browsers require before audio may start.
+  useLayoutEffect(() => { if (sound) toneStart(tone); return () => toneStop(); }, []);
+
+  const toggle = i => {
+    if (done.includes(i)) { setDone(d => d.filter(x => x !== i)); return; }
+    setDone(d => [...d, i]);
+    if (sound) toneTick(tone);
+    if (voice) speak(items[i].text + (items[i].n !== null && items[i].n !== 1 ? ', ' + fmtQty(items[i].n) : ''));
+  };
+
+  // With required items, only those have to be ticked before Done; otherwise everything does.
+  const required = items.map((it, i) => (it.required ? i : -1)).filter(i => i >= 0);
+  const complete = required.length ? required.every(i => done.includes(i)) : done.length === items.length;
+  return h('div', { className: 'screen' },
+    h('h1', null, title),
+    h('div', { className: 'stack' },
+      items.map((it, i) => h('button', {
+        key: i, className: 'item' + (done.includes(i) ? ' done' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
+      },
+        h('span', { className: 'label' },
+          h('span', null, it.text + (it.n !== null && it.n !== 1 ? ' ×' + fmtQty(it.n) : '')),
+          it.required && h('span', { className: 'detail' }, 'required'),
+          it.detail && h('span', { className: 'detail' }, it.detail)),
+        h('span', { className: 'mark', 'data-done': done.includes(i) ? '1' : '0', 'aria-hidden': 'true' }, done.includes(i) ? '☑' : '☐')))),
+    h('div', { className: 'bar' },
+      h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close'),
+      h(ToneControls, { sound, tone })));
+}
+
+/* @@REFSPAGE-START */
+// References page: the research behind the feedback settings. Used by the editor and by Settings.
+function ReferencesPage({ onBack }) {
+  return h('div', { className: 'screen edit' },
+      h('div', { className: 'refs' },
+        h('div', { className: 'refs-in' },
+          h('h1', null, 'References'),
+          h('p', { className: 'muted' }, 'These studies inspired the two settings. None of them tested this app.'),
+          h('h2', null, 'Confirmation cue'),
+          h('p', null, 'Saying an item aloud makes it more memorable than reading it silently (MacLeod et al., 2010). ' +
+            'Aviation checklists use spoken challenge and response between pilots (Degani & Wiener, 1993).'),
+          h('h2', null, 'Attention tone'),
+          h('p', null, 'Warning cues raise short-term alertness, the "alerting" part of the attention system (Posner & Petersen, 1990). ' +
+            'In ADHD, steady white or pink noise gave a small benefit to task performance (Nigg et al., 2024; Söderlund et al., 2007). ' +
+            'Those studies used steady noise, not a short beep. In people without ADHD the evidence is mixed: noise hurt the control group ' +
+            'in one study with children (Söderlund et al., 2007), the 2024 meta-analysis found no significant difference by diagnosis, ' +
+            'and effects depend on volume and task (Szalma & Hancock, 2011).'),
+          h('h2', null, 'Reference list'),
+          h('ul', null, REFERENCES.map(r => h('li', { key: r.key },
+            r.authors + ' (' + r.year + '). ' + r.title + (/[.?]$/.test(r.title) ? ' ' : '. '),
+            h('em', null, r.journal + ', ' + r.volume), r.issue ? '(' + r.issue + ')' : '', ', ' + r.pages + '.',
+            r.doi ? [' ', h('a', { key: 'doi', href: 'https://doi.org/' + r.doi, target: '_blank', rel: 'noopener noreferrer' }, 'https://doi.org/' + r.doi)] : null))),
+          h('p', { className: 'muted' }, 'Checked against abstracts and publisher records, not the full texts.'))),
+      h('div', { className: 'actions' },
+        h('button', { id: 'refs-back', onClick: onBack }, 'Back')));
+}
+
+/* @@REFSPAGE-END */
+
+// Editor steps: name -> points (add, reorder) -> item (details, quantity, required) and questions.
+// Press and hold an item, then drag it up or down to change its place.
+let nextId = 1;
+const mk = (text, detail = '', qty = '', required = false) => ({ id: nextId++, text, detail, qty, required });
+const HOLD_MS = 350;
+const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+// Limits keep the editor usable on a small screen. Entry over a limit gets a message and is not accepted.
+const LIMITS = { item: 120, title: 60, detail: 200, formula: 120, question: 120, points: 80, questions: 12 };
+const UNDO_MS = 7000;
+// Characters that take no space; text made only of these and whitespace counts as empty.
+const isBlank = t => !String(t).replace(/[\s­​-‍⁠﻿]/g, '');
+// Trim and collapse runs of whitespace (zero-width characters stay: they are part of emoji and some scripts).
+const tidy = t => (isBlank(t) ? '' : String(t).replace(/\s+/g, ' ').trim());
+// Length in code points, so an emoji counts once.
+const charLen = t => Array.from(String(t)).length;
+const tooLong = (what, max, text) => what + ' can be up to ' + max + ' characters (now ' + charLen(text) + ').';
+
+// Undo toast. One lives at the app level (see App) so it survives leaving the editor. It is a polite live region
+// that is always present, so a message put into it is announced. The countdown is paused while it has focus or
+// is touched (WCAG 2.2.1), and resumes with the time that was left, at least 2 s.
+function UndoToast({ undo, onUndo, onDismiss, onSize }) {
+  const boxRef = useRef(null);
+  const [focused, setFocused] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const left = useRef(UNDO_MS);
+  const dismiss = useRef(onDismiss);
+  dismiss.current = onDismiss;
+  const key = undo ? undo.key : 0;
+  const paused = focused || touched;
+  useEffect(() => { left.current = UNDO_MS; setFocused(false); setTouched(false); }, [key]);
+  useEffect(() => {
+    if (!key || paused) return undefined;
+    const from = Date.now();
+    const t = setTimeout(() => dismiss.current(), left.current);
+    return () => { clearTimeout(t); left.current = Math.max(2000, left.current - (Date.now() - from)); };
+  }, [key, paused]);
+  // Tell the app how tall the toast is so the screen can leave that much room above its bottom row.
+  useLayoutEffect(() => {
+    const el = boxRef.current;
+    if (!el) { onSize(0); return undefined; }
+    const measure = () => onSize(el.offsetHeight + 16);
+    measure();
+    if (!window.ResizeObserver) return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [key]);
+  const release = () => setTouched(false);
+  return h('div', { className: 'toast', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
+    undo && h('div', {
+      key, ref: boxRef, className: 'toast-box',
+      onFocus: () => setFocused(true),
+      onBlur: e => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false); },
+      onPointerDown: e => { if (e.pointerType !== 'mouse') setTouched(true); },
+      onPointerUp: release, onPointerCancel: release,
+      onKeyDown: e => { if (e.key === 'Escape') onDismiss(); },
+    },
+      h('span', { className: 'toast-msg' }, undo.message),
+      h('button', { id: 'undo', onClick: onUndo }, 'Undo')));
+}
+
+// notify(message, restore, tag) offers an Undo for the last delete only; earlier deletes are final.
+// unnotify(tag) withdraws it. Both are optional so the editor also works without a toast host.
+function Editor({ list, draft: isDraft, onSave, onDelete, onCancel, notify, unnotify }) {
+  const [title, setTitle] = useState(list ? list.title : '');
+  const [items, setItems] = useState(() => (list ? list.items.map(i => mk(i.text, i.detail, i.qty, i.required)) : []));
+  const [questions, setQuestions] = useState(() => (list ? list.questions : []));
+  const [draft, setDraft] = useState('');
+  const [qdraft, setQdraft] = useState('');
+  const [qtype, setQtype] = useState('yesno'); // type of the question being added
+  const [qstage, setQstage] = useState('list'); // questions step: list -> type -> cond -> then
+  const [sound, setSound] = useState(() => (list ? list.sound : false));
+  const [voice, setVoice] = useState(() => (list ? list.voice : false));
+  const [qcur, setQcur] = useState(null); // id of the question whose items are being added
+  const [error, setError] = useState('');
+  const [itemId, setItemId] = useState(null); // item being edited on the item step
+  const [field, setField] = useState('detail'); // 'detail' | 'qty'
+  const [dragId, setDragId] = useState(null);
+  const [offset, setOffset] = useState(0);
+  const [note, setNote] = useState(''); // status message, e.g. "Moved to position 3 of 5"
+  const [rowFocus, setRowFocus] = useState(null); // the one row that is a tab stop
+  // New checklists start by asking for the name; existing ones open straight on their points.
+  const [step, setStep] = useState(list ? 'points' : 'name');
+  const draftRef = useRef(null);
+  const titleRef = useRef(null);
+  const stackRef = useRef(null);
+  const rowEls = useRef({});
+  const press = useRef(null); // { id, x, y, timer, dragging, offset }
+  const justDragged = useRef(false);
+  const itemsRef = useRef(items); // latest items for the drag loop, which runs between renders
+  itemsRef.current = items;
+  const scrollTo = useRef(null); // id of a row to bring into view after the next render
+  const focusAfter = useRef(null); // id of a row to focus after the next render (keyboard delete keeps its place)
+
+  // Focus the field of the current step so the phone keyboard opens and stays open between steps.
+  // Layout effects run inside the tap's event, which mobile browsers require for opening the keyboard.
+  useLayoutEffect(() => {
+    const el = step === 'name' ? titleRef.current : draftRef.current;
+    if (el) el.focus();
+  }, [step, qstage]);
+  useEffect(() => () => { const p = press.current; if (p) { clearTimeout(p.timer); clearInterval(p.scroller); } }, []);
+  // Messages belong to one step: drop them when the step changes, and drop a status note after a while.
+  useEffect(() => { setError(''); setNote(''); }, [step, qstage]);
+  useEffect(() => {
+    if (!note) return undefined;
+    const t = setTimeout(() => setNote(''), 6000);
+    return () => clearTimeout(t);
+  }, [note]);
+  // Browsers do not scroll a column-reverse stack to a row by themselves, so do it by hand (only the stack scrolls).
+  useLayoutEffect(() => {
+    const id = scrollTo.current, fid = focusAfter.current;
+    scrollTo.current = null;
+    focusAfter.current = null;
+    if (fid != null && rowEls.current[fid]) rowEls.current[fid].focus();
+    const row = id != null && rowEls.current[id], box = stackRef.current;
+    if (!row || !box) return;
+    const r = row.getBoundingClientRect(), b = box.getBoundingClientRect();
+    if (r.top < b.top) box.scrollTop -= b.top - r.top;
+    else if (r.bottom > b.bottom) box.scrollTop += r.bottom - b.bottom;
+  });
+  // While a drag is on, the browser must not turn the finger movement into a scroll of the stack.
+  useEffect(() => {
+    const el = stackRef.current;
+    if (!el) return undefined;
+    const hold = e => { const p = press.current; if (p && p.dragging && e.cancelable) e.preventDefault(); };
+    el.addEventListener('touchmove', hold, { passive: false });
+    return () => el.removeEventListener('touchmove', hold);
+  }, [step]);
+
+  const focusDraft = () => { if (draftRef.current) draftRef.current.focus(); };
+  const cur = items.find(i => i.id === itemId);
+  const names = questions.map(q => q.name);
+  const defaults = () => Object.fromEntries(names.map(n => [n, 1]));
+  const qtyProblem = i => {
+    if (!i.qty.trim()) return null;
+    try { evalQty(i.qty, defaults()); return null; } catch (e) { return e.message; }
+  };
+  const usable = names.length ? 'Use: ' + names.join(', ') : 'No questions yet (Back, then Questions)';
+
+  const offer = (message, restore, tag) => { if (notify) notify(message, restore, tag); };
+  // Item text that can be accepted, or null with the reason shown in the message line.
+  const acceptItem = raw => {
+    const t = tidy(raw);
+    if (!t) return null;
+    if (charLen(t) > LIMITS.item) { setError(tooLong('Items', LIMITS.item, t)); return null; }
+    if (items.length >= LIMITS.points) { setError('A checklist can have up to ' + LIMITS.points + ' points.'); return null; }
+    return t;
+  };
+
+  const add = () => {
+    if (isBlank(draft)) { setDraft(''); return; }
+    const t = acceptItem(draft);
+    if (t === null) { focusDraft(); return; }
+    const it = mk(t);
+    scrollTo.current = it.id;
+    setItems(prev => [...prev, it]);
+    setDraft('');
+    setError('');
+    setNote('');
+    focusDraft();
+  };
+
+  // dir 1 moves a point up the screen (later in the run), -1 down. Works on ids, so equal texts are safe.
+  const moveItem = (id, dir) => {
+    const i = items.findIndex(x => x.id === id), j = i + dir;
+    if (i < 0) return;
+    if (j < 0 || j >= items.length) { setNote('Already at position ' + (i + 1) + ' of ' + items.length); return; }
+    const next = items.slice();
+    next[i] = items[j];
+    next[j] = items[i];
+    scrollTo.current = id;
+    setItems(next);
+    setNote('Moved to position ' + (j + 1) + ' of ' + items.length);
+  };
+  // Only the last delete can be undone (the toast host keeps one slot); earlier deletes are final.
+  const removeItem = (item, byKeyboard) => {
+    const index = items.findIndex(i => i.id === item.id);
+    if (index < 0) return;
+    const near = items[index + 1] || items[index - 1];
+    if (byKeyboard) { if (near) focusAfter.current = near.id; else focusDraft(); } // the focused button is about to go away
+    setItems(items.filter(i => i.id !== item.id));
+    setNote('');
+    offer('Point deleted', () => {
+      setItems(prev => (prev.some(i => i.id === item.id) ? prev : [...prev.slice(0, index), item, ...prev.slice(index)]));
+      scrollTo.current = item.id;
+      focusDraft();
+    }, 'point');
+  };
+
+  const openItem = id => {
+    if (justDragged.current) { justDragged.current = false; return; }
+    setItemId(id);
+    setField('detail');
+    setError('');
+    setNote('');
+    setStep('item');
+  };
+  // Too-long details or formulas keep the item step open; the message is already on screen.
+  const itemLimit = it => {
+    if (!it) return '';
+    if (charLen(tidy(it.detail)) > LIMITS.detail) return tooLong('Details', LIMITS.detail, tidy(it.detail));
+    if (charLen(tidy(it.qty)) > LIMITS.formula) return tooLong('Quantities', LIMITS.formula, tidy(it.qty));
+    return '';
+  };
+  const closeItem = () => {
+    if (itemLimit(cur)) { focusDraft(); return; }
+    setItems(prev => prev.map(i => (i.id === itemId ? { ...i, detail: tidy(i.detail), qty: tidy(i.qty) } : i)));
+    setItemId(null);
+    setStep('points');
+  };
+  const setProp = (key, value) => setItems(prev => prev.map(i => (i.id === itemId ? { ...i, [key]: value } : i)));
+
+  // cond stage: creates the question and moves on to "then add ...".
+  const addQuestion = () => {
+    const text = tidy(qdraft).replace(/\?+$/, '').replace(/^(if|how many)\s+/i, '').trim();
+    if (!text) return;
+    if (charLen(text) > LIMITS.question) { setError(tooLong('Questions', LIMITS.question, text)); return; }
+    if (questions.length >= LIMITS.questions) { setError('A checklist can have up to ' + LIMITS.questions + ' questions.'); return; }
+    const name = questionName(text, names);
+    if (!name) { setError('Use at least one letter (a-z) or number in the question.'); return; }
+    if (unnotify) unnotify('question'); // a new name could clash with the one an Undo would bring back
+    const q = {
+      id: 'q' + nextId++, name, type: qtype, text,
+      label: qtype === 'yesno' ? text.charAt(0).toUpperCase() + text.slice(1) + '?' : 'How many ' + text + '?',
+    };
+    setQuestions(prev => [...prev, q]);
+    setQcur(q.id);
+    setQdraft('');
+    setQstage('then');
+  };
+  // then stage: each entry adds a normal item whose quantity is the answer, so it shows up only when it should.
+  const addLinked = () => {
+    const q = questions.find(x => x.id === qcur);
+    if (isBlank(qdraft) || !q) { setQdraft(''); setQstage('list'); return true; }
+    const t = acceptItem(qdraft);
+    if (t === null) return false;
+    setItems(prev => [...prev, mk(t, '', q.name)]);
+    setQdraft('');
+    setError('');
+    return true;
+  };
+  const linkedTo = q => items.filter(i => i.qty.trim() === q.name);
+  // Removing a question keeps its items; they just lose the quantity that tied them to it.
+  // Undo puts the question back at its place and gives the quantity back to the items that lost it.
+  const removeQuestion = q => {
+    const index = questions.findIndex(x => x.id === q.id);
+    const cleared = items.filter(i => i.qty.trim() === q.name).map(i => ({ id: i.id, qty: i.qty }));
+    setQuestions(prev => prev.filter(x => x.id !== q.id));
+    setItems(prev => prev.map(i => (i.qty.trim() === q.name ? { ...i, qty: '' } : i)));
+    offer('Question deleted', () => {
+      setQuestions(prev => (prev.some(x => x.id === q.id || x.name === q.name) ? prev : [...prev.slice(0, index), q, ...prev.slice(index)]));
+      setItems(prev => prev.map(i => {
+        const was = cleared.find(c => c.id === i.id);
+        return was && !i.qty.trim() ? { ...i, qty: was.qty } : i;
+      }));
+    }, 'question');
+  };
+
+  const submit = () => {
+    const pending = isBlank(draft) ? '' : tidy(draft);
+    if (charLen(pending) > LIMITS.item) { setError(tooLong('Items', LIMITS.item, pending)); focusDraft(); return; }
+    const all = (pending ? [...items, mk(pending)] : items)
+      .map(i => ({ ...i, detail: tidy(i.detail), qty: tidy(i.qty) }));
+    const name = tidy(title);
+    if (!name) return;
+    if (all.length === 0) { setError('Add at least one point.'); return; }
+    // Saved lists and drafts from elsewhere can carry values over a limit; say what to change.
+    if (charLen(name) > LIMITS.title) { setError(tooLong('Names', LIMITS.title, name) + ' Tap the name to shorten it.'); return; }
+    if (all.length > LIMITS.points) { setError('A checklist can have up to ' + LIMITS.points + ' points. Remove ' + (all.length - LIMITS.points) + '.'); return; }
+    if (questions.length > LIMITS.questions) { setError('A checklist can have up to ' + LIMITS.questions + ' questions.'); return; }
+    const long = all.find(i => itemLimit(i));
+    if (long) { setError('"' + long.text + '": ' + itemLimit(long)); return; }
+    const bad = all.find(qtyProblem);
+    if (bad) { setError('"' + bad.text + '": ' + qtyProblem(bad)); return; }
+    onSave({
+      id: list ? list.id : String(Date.now()),
+      title: name,
+      sound,
+      voice,
+      questions,
+      items: all.map(i => ({ text: i.text, detail: i.detail, qty: i.qty, required: i.required })),
+    });
+  };
+
+  const center = id => {
+    const r = rowEls.current[id].getBoundingClientRect();
+    return r.top + r.height / 2;
+  };
+
+  const onDown = (e, id) => {
+    justDragged.current = false;
+    if (e.target.closest('.x') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const el = e.currentTarget, pointerId = e.pointerId;
+    const p = { id, x: e.clientX, y: e.clientY, dragging: false, offset: 0 };
+    p.timer = setTimeout(() => {
+      p.dragging = true;
+      justDragged.current = true;
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      try { el.setPointerCapture(pointerId); } catch (err) {}
+      if (navigator.vibrate) navigator.vibrate(10);
+      setDragId(id);
+      // A finger held near the edge of a scrolling stack keeps scrolling it, so far rows can be reached.
+      p.scroller = setInterval(() => {
+        const box = stackRef.current;
+        if (!box || box.scrollHeight <= box.clientHeight) return;
+        const r = box.getBoundingClientRect(), zone = Math.min(48, r.height / 4);
+        const dy = p.y < r.top + zone ? -Math.ceil((r.top + zone - p.y) / 6) : p.y > r.bottom - zone ? Math.ceil((p.y - (r.bottom - zone)) / 6) : 0;
+        if (!dy) return;
+        const before = box.scrollTop;
+        box.scrollTop += Math.max(-24, Math.min(24, dy));
+        if (box.scrollTop !== before) reorder(id, p.y);
+      }, 16);
+    }, HOLD_MS);
+    press.current = p;
+  };
+
+  // Moves the dragged row past a neighbour once the finger crosses that neighbour's middle.
+  const reorder = (id, clientY) => {
+    const p = press.current, list = itemsRef.current;
+    if (!p || !p.dragging || p.id !== id || !stackRef.current) return;
+    const box = stackRef.current.getBoundingClientRect();
+    const y = Math.min(Math.max(clientY, box.top), box.bottom);
+    const i = list.findIndex(it => it.id === id);
+    if (i < 0) return;
+    // Stack is column-reverse: a higher index sits higher on screen.
+    const above = list[i + 1], below = list[i - 1];
+    if (above && y < center(above.id)) {
+      p.offset = y - center(above.id);
+      setItems(list.map((it, k) => (k === i ? above : k === i + 1 ? list[i] : it)));
+    } else if (below && y > center(below.id)) {
+      p.offset = y - center(below.id);
+      setItems(list.map((it, k) => (k === i ? below : k === i - 1 ? list[i] : it)));
+    } else {
+      p.offset = y - (center(id) - p.offset);
+    }
+    setOffset(p.offset);
+  };
+
+  const onMove = (e, id) => {
+    const p = press.current;
+    if (!p || p.id !== id) return;
+    if (!p.dragging) {
+      if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) { clearTimeout(p.timer); press.current = null; }
+      return;
+    }
+    p.y = e.clientY;
+    reorder(id, e.clientY);
+  };
+
+  const onUp = () => {
+    const p = press.current;
+    if (p) { clearTimeout(p.timer); clearInterval(p.scroller); }
+    press.current = null;
+    setDragId(null);
+    setOffset(0);
+  };
+
+  const goNext = () => {
+    const t = tidy(title);
+    if (t && charLen(t) > LIMITS.title) { setError(tooLong('Names', LIMITS.title, t)); if (titleRef.current) titleRef.current.focus(); return; }
+    if (t) { setTitle(t); setStep('feedback'); }
+    else if (titleRef.current) titleRef.current.focus(); // keep the keyboard open while the name is blank
+  };
+
+  if (step === 'name') {
+    return h('div', { className: 'screen edit' },
+      h('div', { className: 'hint ' + (error ? 'err' : 'muted'), role: 'status' }, error || 'Name'),
+      h('div', { className: 'entry' },
+        h('input', {
+          id: 'title', ref: titleRef, placeholder: 'Checklist name', value: title, enterKeyHint: 'next',
+          autoComplete: 'off', autoCapitalize: 'sentences', 'aria-label': 'Checklist name',
+          onChange: e => { setTitle(e.target.value); if (error) setError(''); },
+          onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); goNext(); } },
+        })),
+      h('div', { className: 'actions' },
+        h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+        h('button', { className: isBlank(title) ? 'muted' : '', onClick: goNext }, 'Next')));
+  }
+
+  if (step === 'feedback') {
+    const rows = [
+      ['sound', 'Attention tone', sound, () => { const on = !sound; setSound(on); if (on) playTick(); }],
+      ['voice', 'Confirmation cue', voice, () => { const on = !voice; setVoice(on); if (on) speak('Confirmation cue on'); }],
+    ];
+    return h('div', { className: 'screen edit intro' },
+      /* @@FEEDBACK-HINT-START */
+      h('div', { className: 'muted hint intro-text' },
+        'When you tick an item: the Confirmation cue repeats the item out loud (MacLeod et al., 2010). ' +
+        'The Attention tone plays a short sound to keep you focused on the task (Posner & Petersen, 1990).'),
+      /* @@FEEDBACK-HINT-END */
+      h('div', { className: 'points' },
+        h('h1', null, title),
+        h('div', { className: 'stack' },
+          rows.map(([key, label, on, toggle]) => h('button', {
+            key, id: 'fb-' + key, className: 'prop' + (on ? ' selected' : ''), onClick: toggle,
+          },
+            h('span', { className: 'label' },
+              h('span', { className: 'detail' }, label),
+              h('span', null, on ? 'on' : 'off')))))),
+      h('div', { className: 'actions' },
+        h('button', { className: 'muted', onClick: () => setStep('name') }, 'Back'),
+        h('button', { id: 'fb-refs', className: 'muted', onClick: () => setStep('references') }, 'References'),
+        h('button', { id: 'fb-next', onClick: () => setStep('points') }, 'Next')));
+  }
+
+  if (step === 'references') return h(ReferencesPage, { onBack: () => setStep('feedback') });
+
+  if (step === 'item' && cur) {
+    let hint = 'Shown under the item while running.', bad = false;
+    const limitMsg = itemLimit(cur), at = items.indexOf(cur);
+    const last = items.length - 1;
+    // aria-disabled (not disabled) so the button keeps focus when the item reaches an end.
+    const moveBtn = (id, label, atEnd, dir) => h('button', {
+      id, className: atEnd ? 'muted' : '', 'aria-disabled': atEnd ? 'true' : 'false', onClick: () => moveItem(cur.id, dir),
+      onMouseDown: e => e.preventDefault(), // keep focus (and the phone keyboard) on the field
+    }, label);
+    if (limitMsg) { hint = limitMsg; bad = true; }
+    else if (field === 'qty') {
+      if (!cur.qty.trim()) hint = 'Optional. ' + usable;
+      else {
+        try { hint = '= ' + fmtQty(evalQty(cur.qty, defaults())) + ' when every answer is 1 (yes). ' + usable; }
+        catch (e) { hint = e.message + '. ' + usable; bad = true; }
+      }
+    }
+    const props = [['detail', 'Details', cur.detail], ['qty', 'Quantity', cur.qty]];
+    return h('div', { className: 'screen edit moves-on' },
+      h('div', { className: 'points' },
+        h('h1', { dir: 'auto', onClick: closeItem, style: { cursor: 'pointer' } }, cur.text),
+        h('div', { className: 'stack' },
+          props.map(([key, label, value]) => h('div', {
+            key, className: 'prop' + (field === key ? ' selected' : ''),
+            role: 'button', tabIndex: 0, 'aria-pressed': field === key ? 'true' : 'false',
+            onClick: () => { setField(key); focusDraft(); },
+            onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setField(key); focusDraft(); } },
+          },
+            h('span', { className: 'label' },
+              h('span', { className: 'detail' }, label),
+              h('span', { dir: 'auto' }, value || '—'))))),
+      ),
+      h('div', { className: 'hint ' + (bad ? 'err' : 'muted') }, hint),
+      h('div', { className: 'entry' },
+        h('input', {
+          id: 'field', ref: draftRef, value: cur[field],
+          placeholder: field === 'detail' ? 'Details' : 'Quantity, e.g. nights + 1',
+          enterKeyHint: field === 'detail' ? 'next' : 'done',
+          autoComplete: 'off', autoCapitalize: field === 'detail' ? 'sentences' : 'none', autoCorrect: field === 'detail' ? 'on' : 'off',
+          spellCheck: field === 'detail', 'aria-label': field === 'detail' ? 'Details' : 'Quantity formula',
+          onChange: e => setProp(field, e.target.value),
+          onKeyDown: e => {
+            if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); moveItem(cur.id, e.key === 'ArrowUp' ? 1 : -1); return; }
+            if (e.key === 'Enter') { e.preventDefault(); if (field === 'detail') setField('qty'); else closeItem(); }
+            if (e.key === 'Escape') closeItem();
+          },
+        })),
+      // Reordering without dragging. Up is up the screen, as in the list: later in the run.
+      h('div', { className: 'moves' },
+        h('div', { className: 'muted hint', id: 'move-status', role: 'status' }, note || 'Position ' + (at + 1) + ' of ' + items.length),
+        h('div', { className: 'actions' }, moveBtn('move-up', 'Move up', at >= last, 1), moveBtn('move-down', 'Move down', at <= 0, -1))),
+      h('div', { className: 'actions' },
+        h('button', {
+          className: cur.required ? '' : 'muted', onClick: () => setProp('required', !cur.required),
+          onMouseDown: e => e.preventDefault(), // keep focus (and the phone keyboard) on the field
+        },
+          'Required: ' + (cur.required ? 'yes' : 'no')),
+        h('button', { onClick: closeItem }, 'Back')));
+  }
+
+  if (step === 'questions') {
+    const q = questions.find(x => x.id === qcur);
+    const toList = () => { setQdraft(''); setQstage('list'); };
+
+    if (qstage === 'type') {
+      return h('div', { className: 'screen edit' },
+        h('div', { className: 'points' }, h('h1', null, 'New question')),
+        h('div', { className: 'muted hint' }, 'Question type'),
+        h('div', { className: 'actions' },
+          h('button', { className: 'muted', onClick: toList }, 'Cancel'),
+          h('button', { id: 'type-number', onClick: () => { setQtype('number'); setQdraft(''); setQstage('cond'); } }, 'Number'),
+          h('button', { id: 'type-yesno', onClick: () => { setQtype('yesno'); setQdraft(''); setQstage('cond'); } }, 'Yes / no')));
+    }
+
+    if (qstage === 'cond') {
+      return h('div', { className: 'screen edit' },
+        h('div', { className: 'hint ' + (error ? 'err' : 'muted'), role: 'status' }, error || (qtype === 'yesno' ? 'Question: if…' : 'Question: how many…')),
+        h('div', { className: 'entry' },
+          h('input', {
+            id: 'qdraft', ref: draftRef, value: qdraft, enterKeyHint: 'next',
+            placeholder: qtype === 'yesno' ? 'I go to the sauna' : 'nights',
+            autoComplete: 'off', autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false, 'aria-label': 'Question',
+            onChange: e => { setQdraft(e.target.value); if (error) setError(''); },
+            onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addQuestion(); } },
+          })),
+        h('div', { className: 'actions' },
+          h('button', { className: 'muted', onClick: toList }, 'Cancel'),
+          h('button', { className: isBlank(qdraft) ? 'muted' : '', onClick: addQuestion }, 'Next')));
+    }
+
+    if (qstage === 'then' && q) {
+      return h('div', { className: 'screen edit' },
+        h('div', { className: 'points' },
+          h('h1', null, qSentence(q)),
+          h('div', { className: 'stack' },
+            linkedTo(q).map(i => h('div', { key: i.id },
+              h('span', { className: 'label' }, h('span', { dir: 'auto' }, i.text)),
+              h('span', { className: 'mark' }, '•'))))),
+        h('div', { className: 'hint ' + (error ? 'err' : 'muted'), role: 'status' },
+          error || (q.type === 'yesno' ? 'then… (add ____)' : 'then… (add ____, quantity = ' + q.name + ')')),
+        h('div', { className: 'entry' },
+          h('input', {
+            id: 'qthen', ref: draftRef, value: qdraft, placeholder: 'Towel', enterKeyHint: 'next',
+            autoComplete: 'off', autoCapitalize: 'sentences', 'aria-label': 'Item to add',
+            onChange: e => { setQdraft(e.target.value); if (error) setError(''); },
+            onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addLinked(); } },
+          })),
+        h('div', { className: 'actions' },
+          h('button', { onClick: () => { if (addLinked()) setQstage('list'); } }, 'Done')));
+    }
+
+    return h('div', { className: 'screen edit' },
+      h('div', { className: 'points' },
+        h('h1', null, 'Questions'),
+        h('div', { className: 'stack' },
+          questions.map(x => {
+            const linked = linkedTo(x);
+            return h('div', { key: x.id },
+              h('button', { className: 'x', 'aria-label': 'Remove ' + x.label, onClick: () => removeQuestion(x) }, '×'),
+              h('span', { className: 'label' },
+                h('span', { dir: 'auto' }, qSentence(x)),
+                h('span', { className: 'detail', dir: 'auto' }, linked.length ? 'then add ' + linked.map(i => i.text).join(', ') : 'no items yet')));
+          }))),
+      h('div', { className: 'hint ' + (error ? 'err' : 'muted'), role: 'status' },
+        error || (questions.length ? 'Asked before each run. Use a name in a quantity, e.g. nights + 1.' : 'Example: if I go to the sauna, then add a towel.')),
+      h('div', { className: 'actions' },
+        h('button', {
+          id: 'add-question',
+          onClick: () => {
+            if (questions.length >= LIMITS.questions) setError('A checklist can have up to ' + LIMITS.questions + ' questions.');
+            else setQstage('type');
+          },
+        }, '+ Question'),
+        h('button', { onClick: () => setStep('points') }, 'Back')));
+  }
+
+  // One row is the tab stop; Up and Down move between rows, Alt+Up and Alt+Down move the focused point.
+  const tabId = items.some(i => i.id === rowFocus) ? rowFocus : (items[0] ? items[0].id : null);
+  const focusRow = id => { const el = rowEls.current[id]; if (el) { setRowFocus(id); el.focus(); } };
+  const onRowKey = (e, item) => {
+    const dir = e.key === 'ArrowUp' ? 1 : e.key === 'ArrowDown' ? -1 : 0;
+    if (dir && e.altKey) { e.preventDefault(); moveItem(item.id, dir); return; }
+    if (e.target !== e.currentTarget) return; // keys on the remove button belong to it
+    const i = items.findIndex(x => x.id === item.id);
+    if (dir && items[i + dir]) { e.preventDefault(); focusRow(items[i + dir].id); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openItem(item.id); }
+  };
+
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' },
+    h('h1', { dir: 'auto', onClick: () => setStep('name'), style: { cursor: 'pointer' } }, title),
+    h('div', { className: 'stack', ref: stackRef },
+      // DOM order stays fixed (by id) so the dragged element is never moved or loses pointer capture;
+      // the visible position comes from CSS `order`.
+      [...items].sort((a, b) => a.id - b.id).map(item => {
+        const extra = [item.required ? 'required' : null, item.qty ? '× ' + item.qty : null, item.detail || null].filter(Boolean).join(' · ');
+        return h('div', {
+          key: item.id,
+          className: 'row' + (dragId === item.id ? ' lifted' : ''),
+          ref: el => { if (el) rowEls.current[item.id] = el; else delete rowEls.current[item.id]; },
+          style: {
+            order: items.indexOf(item),
+            ...(dragId === item.id ? { transform: 'translateY(' + offset + 'px) scale(1.03)' } : null),
+          },
+          role: 'group', tabIndex: item.id === tabId ? 0 : -1, 'aria-keyshortcuts': 'Alt+ArrowUp Alt+ArrowDown',
+          'aria-label': item.text + ', position ' + (items.indexOf(item) + 1) + ' of ' + items.length,
+          onFocus: () => setRowFocus(item.id),
+          onKeyDown: e => onRowKey(e, item),
+          onPointerDown: e => onDown(e, item.id),
+          onPointerMove: e => onMove(e, item.id),
+          onPointerUp: onUp, onPointerCancel: onUp, onPointerLeave: () => { const p = press.current; if (p && !p.dragging && p.id === item.id) onUp(); },
+          onContextMenu: e => e.preventDefault(),
+          onClick: e => { if (!e.target.closest('.x')) openItem(item.id); },
+        },
+          h('button', {
+            className: 'x', 'aria-label': 'Remove ' + item.text, tabIndex: item.id === tabId ? 0 : -1,
+            onClick: e => removeItem(item, e.detail === 0),
+          }, '×'),
+          h('span', { className: 'label' },
+            h('span', { dir: 'auto' }, item.text),
+            extra && h('span', { className: 'detail', dir: 'auto' }, extra)),
+          h('span', { className: 'mark' }, '•'));
+      }))),
+    h('div', { className: 'hint ' + (error ? 'err' : 'muted'), role: 'status' },
+      error || note || (items.length > 0 ? 'Tap an item to edit or move it. Hold and drag to reorder. Tap the name to rename.' : '')),
+    h('div', { className: 'entry' },
+      h('input', {
+        id: 'draft', ref: draftRef, value: draft, placeholder: 'Add item', enterKeyHint: 'next',
+        autoComplete: 'off', autoCapitalize: 'sentences', 'aria-label': 'Add item',
+        onChange: e => { setDraft(e.target.value); if (error) setError(''); },
+        onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); add(); } },
+      })),
+    h('div', { className: 'actions' },
+      list && !isDraft && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
+      h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+      h('button', { className: 'muted', onClick: () => { setError(''); setQstage('list'); setStep('questions'); } },
+        'Questions' + (questions.length ? ' ' + questions.length : '')),
+      h('button', { onClick: submit }, 'Save')));
+}
+
+function App() {
+  const [lists, setLists] = useState(load);
+  const [settings, setSettings] = useState(loadSettings);
+  const [screen, setScreenNow] = useState({ name: 'home' });
+  // The one Undo on offer: { key, message, restore, tag, scope }. A new delete replaces it, so only the LAST
+  // delete can be undone; earlier ones are final. Editor deletes (scope 'editor') end when the editor is left;
+  // a deleted checklist (scope 'app') stays on offer on Home and in the editor, and ends on any other screen.
+  const [undo, setUndo] = useState(null);
+  const [toastSpace, setToastSpace] = useState(0);
+  const undoKey = useRef(0);
+  const setScreen = next => {
+    setUndo(u => (u && u.scope === 'app' && (next.name === 'home' || next.name === 'edit') ? u : null));
+    setScreenNow(next);
+  };
+  const notify = (message, restore, tag, scope) => {
+    undoKey.current += 1;
+    setUndo({ key: undoKey.current, message, restore, tag, scope: scope || 'editor' });
+  };
+  const unnotify = tag => setUndo(u => (u && u.tag === tag ? null : u));
+  const runUndo = () => { const u = undo; setUndo(null); if (u) u.restore(); };
+  useEffect(() => save(lists), [lists]);
+  useEffect(() => { saveSettings(settings); window.applyAppearance(settings); }, [settings]);
+  const home = () => setScreen({ name: 'home' });
+  const update = next => { setLists(next); home(); };
+  const change = patch => setSettings(prev => sanitizeSettings({
+    ...prev, ...patch, tone: { ...prev.tone, ...(patch.tone || {}) }, ai: { ...prev.ai, ...(patch.ai || {}) },
+  }));
+  const toSettings = () => setScreen({ name: 'settings' });
+
+  // Deleting a checklist applies at once and stays undoable for a few seconds: it comes back at the same place.
+  const deleteList = id => {
+    const index = lists.findIndex(l => l.id === id), gone = lists[index];
+    update(lists.filter(l => l.id !== id));
+    if (!gone) return;
+    notify('Checklist deleted', () => setLists(prev => {
+      if (prev.some(l => l.id === gone.id)) return prev;
+      const next = prev.slice();
+      next.splice(Math.min(index, next.length), 0, gone);
+      return next;
+    }), 'list', 'app');
+  };
+
+  const view = () => {
+  if (screen.name === 'run') return h(Run, { list: screen.list, tone: settings.tone, onClose: home });
+  if (screen.name === 'edit') return h(Editor, {
+    list: screen.list, draft: screen.draft, onCancel: home, notify, unnotify,
+    onDelete: deleteList,
+    onSave: c => update(lists.some(l => l.id === c.id) ? lists.map(l => l.id === c.id ? c : l) : [...lists, c]),
+  });
+  if (screen.name === 'settings') return h(SettingsHome, { settings, onChange: change, onNav: name => setScreen({ name }), onBack: home });
+  if (screen.name === 'settings-tone') return h(ToneSettings, { settings, onChange: change, onBack: toSettings });
+  if (screen.name === 'settings-ai') return h(QuickSettings, { settings, onChange: change, onBack: toSettings });
+  if (screen.name === 'references') return h(ReferencesPage, { onBack: toSettings });
+  if (screen.name === 'quick') return h(QuickScreen, {
+    settings, onCancel: home, onOpenSettings: () => setScreen({ name: 'settings-ai' }),
+    onDraft: list => setScreen({ name: 'edit', list: { ...list, id: String(Date.now()) }, draft: true }),
+  });
+  return h(Home, {
+    lists, onSettings: toSettings, onQuick: () => setScreen({ name: 'quick' }),
+    onRun: list => setScreen({ name: 'run', list }), onEdit: list => setScreen({ name: 'edit', list }),
+  });
+  };
+
+  return h('div', { className: 'shell' + (undo ? ' has-toast' : ''), style: undo ? { '--toast-space': toastSpace + 'px' } : undefined },
+    view(),
+    h(UndoToast, { undo, onUndo: runUndo, onDismiss: () => setUndo(null), onSize: setToastSpace }));
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>

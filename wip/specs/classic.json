@@ -1,0 +1,69 @@
+{
+ "name": "Classic",
+ "mood": "Calm, quiet, paper-like utility. Recognisably the current app (system font, white or near-black, hairlines, plain right-aligned text). Refinements are invisible-in-spirit: bigger hit areas, a real focus ring, one-line progress text, and a visible check glyph. This is the baseline all behaviour is judged against: the three designs differ only in colour, type, borders, shadows and texture, never in layout or stack order.",
+ "fonts": [
+  {
+   "role": "All text (UI, headings, references)",
+   "family": "system-ui stack (no web font)",
+   "googleFontsQuery": "none",
+   "fallback": "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+   "why": "Keeps the current look and zero network cost. Plain sans-serif is the best-supported choice for dyslexic and ADHD readers (Rello 2013, Wery 2017). Sizes: body 17px/1.5, detail and quantity 15px/1.45, buttons 17px weight 500, headings 22px weight 600. Never below 15px. Optional upgrade if the owner wants a webfont despite 'keep it the same': family=Inter:wght@400;500;600 (not recommended; breaks 'recognisably the same')."
+  }
+ ],
+ "colors": {
+  "light.bg": "#ffffff",
+  "light.surface": "#ffffff",
+  "light.fg": "#111111",
+  "light.muted": "#5c5c5c",
+  "light.line": "#d6d6d6",
+  "light.lineStrong": "#767676",
+  "light.accent": "#111111",
+  "light.accentFg": "#ffffff",
+  "light.ok": "#17692e",
+  "light.warn": "#8a5200",
+  "light.err": "#b3261e",
+  "light.lift": "#f3f3f3",
+  "light.focus": "#0a4fd6",
+  "dark.bg": "#0d0d0d",
+  "dark.surface": "#161616",
+  "dark.fg": "#f2f2f2",
+  "dark.muted": "#a3a3a3",
+  "dark.line": "#333333",
+  "dark.lineStrong": "#8a8a8a",
+  "dark.accent": "#f2f2f2",
+  "dark.accentFg": "#0d0d0d",
+  "dark.ok": "#58d078",
+  "dark.warn": "#f0b24a",
+  "dark.err": "#ff7b73",
+  "dark.lift": "#1f1f1f",
+  "dark.focus": "#7fb0ff",
+  "dark.placeholder": "#8a8a8a",
+  "light.placeholder": "#767676"
+ },
+ "contrastNotes": "Computed from the hex values with the WCAG relative-luminance formula. LIGHT: fg/bg 18.88, muted/bg 6.69, muted/lift 6.03, accentFg/accent 18.88, ok/bg 6.78 (ok/lift 6.11), warn/bg 6.39 (warn/lift 5.76), err/bg 6.54 (err/lift 5.89), focus/bg 6.77, lineStrong (tick-box and input borders, a 1.4.11 UI boundary) 4.54, placeholder #767676 4.54. line #d6d6d6 is 1.45 and is therefore decorative only (row separators); it must never be the only edge of an input or tick box. DARK: fg/bg 17.36, fg/surface 16.16, muted/bg 7.70, muted/surface 7.17, muted/lift 6.53, accentFg/accent 17.36, ok/bg 9.91, warn/bg 10.34, err/bg 7.71 (err/lift 6.54), focus/bg 8.84, lineStrong/bg 5.63 (/surface 5.24), placeholder #8a8a8a 5.63. line #333 is 1.54, decorative only. All text pairs pass AA 4.5:1; all UI boundaries and focus pass 3:1. No fixes needed.",
+ "motion": "Almost none. Pressed state is instant (0ms) background change to lift. Tick: check glyph appears and text colour changes in 120ms (opacity and colour only, no movement). Screen change: 150ms opacity cross-fade. Progress bar fill steps with no tween. Everything above is wrapped in @media (prefers-reduced-motion: no-preference); under reduce all transitions are none and the state change is instant. In-app 'Reduce effects' forces the same.",
+ "shape": {
+  "radius": "6px for buttons, inputs and tick box; 0 for rows (rows are separated by 1px hairlines, not cards)",
+  "borderWidth": "1px hairline for separators (--line); 1.5px for interactive boundaries (tick box, inputs, secondary button) in --lineStrong; 2px focus",
+  "shadow": "none",
+  "spacing": "16px side gutter (max(16px, env(safe-area-inset-right))), 8px minimum gap between targets, row min-height 56px, section gap 24px",
+  "hitMin": "48px x 48px (--hit-min), the whole row is the tap target",
+  "tickBox": "28px visible, 48px hit area via ::before inset -10px (clipped so neighbours do not overlap)",
+  "type": "body 17px/1.5, detail 15px/1.45, title 22px/1.25 weight 600"
+ },
+ "componentRules": [
+  "Home list rows: full-width, min-height 56px, 1px --line separator, title right-aligned in --fg 17px/500, optional second line (item count, e.g. '8 points') right-aligned in --muted 15px. Whole row is the button. Pressed: background --lift, no transition in. Stack grows upward from the bottom, first checklist at the bottom, as today.",
+  "Primary button (Done, Save, + New): min-height 48px, min-width 96px, padding 0 20px, background --accent, text --accentFg 17px/500, radius 6px, no border, no shadow. Sits at the bottom-right inside the safe-area padding. Pressed: opacity .85 and background --fg at 85 percent (instant).",
+  "Secondary button (Cancel, Questions, Close): stays plain right-aligned text in --fg 17px/500, but with a 48px high hit box and 1.5px --lineStrong bottom edge only when it is the sole action; never colour-only. Placed in the same bottom row as the primary, 8px or more away from it. Destructive actions use --err text plus the word ('Delete'), never colour alone.",
+  "Text inputs: min-height 48px, 16px font minimum (prevents iOS zoom-on-focus), 1.5px --lineStrong border, radius 6px, background --surface, text --fg, placeholder --placeholder (4.54 light, 5.63 dark). Focus: border becomes --fg 2px plus the global focus ring. The entry field in the editor sits at the bottom, above the Cancel/Questions/Save row.",
+  "Item rows with tick box: min-height 56px, 8px gap, label right-aligned in --fg 17px, tick box on the far right: 28px square, 1.5px --lineStrong border, radius 6px, empty when pending. Optional detail/quantity lines under the label in --muted 15px. Whole row toggles; tapping a done row un-ticks it (self-reversible, no confirm). Activate on click, not pointerdown.",
+  "Done state: tick box fills --fg with an --accentFg check glyph (inline SVG stroke 3px, shape cue not just colour); label turns --muted (still 6.69:1 or better) and keeps full size; NO strikethrough (harms legibility), NO reordering, NO movement. Screen-reader text 'done'. Skipped state: dash glyph in the box plus the visible word 'Skipped' in --muted.",
+  "Required marker: the existing word 'required' in --warn 15px/600 on the line under the label (6.39:1 light, 10.34 dark), always a word, never colour alone. If Done is pressed with open required items the word becomes 'required, still open' and the row gets a 2px --warn left edge (right edge in the right-anchored layout).",
+  "Toggle rows (editor feedback settings): label right-aligned 17px, switch to its right: 52x32 track, off = 1.5px --lineStrong border with --surface fill, on = --accent fill; knob 24px circle, --accentFg when on, --lineStrong when off; the word 'On' or 'Off' is printed next to the switch so state is not colour-only. Row min-height 56px, entire row toggles.",
+  "Hints: --muted 15px/1.45, max 60ch, right-aligned, sit directly under the control they explain; never placeholder-only. Errors: --err text prefixed with the word 'Error' and an exclamation glyph.",
+  "Headings: screen title 22px/600 in --fg right-aligned at the top of the stack region (not in the far top-left, out of thumb reach); section label 15px/600 --muted; text-wrap: balance. References page body: 17px/1.6, left-aligned, letter-spacing .04em, word-spacing .08em, max-width 60ch, paragraph gap 1em, no italics for emphasis.",
+  "Progress indicator: plain text '3 of 8 done, 5 left' (or '5 left, 2 required') in --muted 15px right-aligned directly above the Done button, plus an optional 4px hairline bar made of one segment per item (done segments --fg, pending --line) with gap 4px. Updates on tick only. Neutral copy, no praise, no streaks. When complete: 'All 8 done' in --ok, with a check glyph.",
+  "Focus ring: :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px } on every interactive element; never outline:none. Ring is 6.77:1 (light) and 8.84:1 (dark) against bg. Does not change the 48px hit area.",
+  "Pressed state: instant (transition none going in), background --lift, tick box scales 0.96 only under no-preference motion; no shadow. touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none on rows and buttons."
+ ]
+}

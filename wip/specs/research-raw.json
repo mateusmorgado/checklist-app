@@ -1,0 +1,1260 @@
+[
+ {
+  "topic": "Mobile one-handed UX for list/checklist apps: thumb reach, touch target size and spacing, bottom-anchored controls, handedness, accidental-tap prevention, undo, progress and state feedback, micro-interaction timing",
+  "findings": [
+   {
+    "claim": "Hoober 2013 grip study: most people touching a phone use one hand, and the thumb does the work.",
+    "detail": "Hoober and colleagues logged 1,333 observations of people using mobile devices in public places; 780 were touching the screen. Among those, one-handed grip was 49%, cradled (one hand holds, other hand taps) 36%, two-handed 15%. The widely repeated '75% thumb' figure comes from secondary sources and is not confirmed in the column text I could reach. The column's editor note says Hoober later updated his guidelines (see 'Design for Fingers, Touch, and People', 2017), so the 2013 numbers are dated.",
+    "confidence": "high",
+    "sourceUrl": "https://www.uxmatters.com/mt/archives/2013/02/how-do-users-really-hold-mobile-devices.php"
+   },
+   {
+    "claim": "Handedness split: among one-handed users the right thumb was on screen about 67% of the time and the left thumb about 33%.",
+    "detail": "Reported by Addy Osmani's summary and a second blog quoting Hoober's breakdown; the original UXmatters text was not retrievable here. Implication: roughly one in three one-handed users is on the left thumb, so a right-anchored layout (the app's deliberate choice) should be a default with a mirror option, not the only mode.",
+    "confidence": "medium",
+    "sourceUrl": "https://addyosmani.com/blog/touch-friendly-design/"
+   },
+   {
+    "claim": "The 'thumb zone' concept originates with Hoober; the comfortable zone mirrors for left-handed users and does not grow with screen size.",
+    "detail": "Hoober coined the Thumb Zone (Designing Mobile Interfaces). Secondary summaries say the natural zone is the bottom-center/bottom-side area, side-mid screen needs a stretch, and far top corners are hardest. Because thumbs do not scale with phones, the easy area stays about the same on large screens, so top areas get worse as screens grow. The three-color map (green/yellow/red) is a secondary-source depiction, not Hoober's own figure.",
+    "confidence": "medium",
+    "sourceUrl": "https://shop.smashingmagazine.com/2016/09/the-thumb-zone-designing-for-mobile-users"
+   },
+   {
+    "claim": "Peer-reviewed model of the thumb's functional reach area exists (CHI 2014).",
+    "detail": "Bergstrom-Lehtovirta and Oulasvirta derive a quadratic model of the thumb's reachable area from kinematics, with surface size, hand size and index-finger position on the back of the device as inputs, validated on thumb-motion trajectories from 20 participants. Takeaway: reach is a function of hand size and grip, so a fixed pixel 'safe zone' is an approximation; keep the primary controls in the lower portion and avoid requiring the far opposite (left) corner.",
+    "confidence": "medium",
+    "sourceUrl": "https://test01.ku.dk/:obvius/pureproxy/3974268/en/publications/modeling-the-functional-area-of-the-thumb-on-mobile-touchscreen-s"
+   },
+   {
+    "claim": "Parhi, Karlson and Bederson (MobileHCI 2006): 9.2 mm (discrete targets) and 9.6 mm (serial targets) are large enough for one-handed thumb use.",
+    "detail": "Phase 1 tested single targets such as buttons and checkboxes, phase 2 sequential tasks such as text entry. Speed improved as targets grew; error rates showed no significant difference at 9.6 mm or more for discrete tasks and 7.7 mm or more for serial tasks. Target position on screen was varied. NN/g cites this work for a 1 cm x 1 cm minimum, stressed as a physical measurement not a pixel count, and notes MIT Touch Lab data that fingertips are 1.6-2 cm wide.",
+    "confidence": "high",
+    "sourceUrl": "https://www.nngroup.com/articles/touch-target-size/"
+   },
+   {
+    "claim": "Apple: touch targets should be at least 44 x 44 points (60 x 60 pt on visionOS).",
+    "detail": "Apple's Buttons HIG is quoted as 'a button needs a hit region of at least 44x44 pt' and the older Apple UI Design Dos and Don'ts page says 'Create controls that measure at least 44 points x 44 points so they can be accurately tapped with a finger.' Points are density-independent, comparable to CSS px on the web. I saw these through search excerpts and a developer-forum quote, not by reading the Apple page in full.",
+    "confidence": "medium",
+    "sourceUrl": "https://developer.apple.com/design/human-interface-guidelines/buttons"
+   },
+   {
+    "claim": "Google/Material/Android: targets at least 48 x 48 dp (about 9 mm) with at least 8 dp between them; the visible glyph may be smaller than the hit area.",
+    "detail": "Google's Android accessibility help says a 24 dp icon with padding still counts as a 48 dp target. Compose Checkbox/Switch add padding to reach 48 dp. Small closely packed targets cannot always be enlarged without overlap, so spacing becomes the constraint.",
+    "confidence": "high",
+    "sourceUrl": "https://support.google.com/accessibility/android/answer/7101858"
+   },
+   {
+    "claim": "Web tooling uses 48 x 48 CSS px with about 8 px spacing as the practical target.",
+    "detail": "Lighthouse flags a tap target only if it is smaller than 48x48 px AND at least 25% of the area within 48 px of its centre overlaps another target; targets at 48x48 px never fail. Fixes: add padding (so icon look is unchanged) or margin; '8 px between tap targets is a good starting point' but not always enough for very small targets. web.dev states 48 px corresponds to around 9 mm on a site with a proper mobile viewport.",
+    "confidence": "high",
+    "sourceUrl": "https://web.dev/articles/accessible-tap-targets"
+   },
+   {
+    "claim": "WCAG 2.2 sets two target-size levels: 2.5.8 (AA) minimum 24 x 24 CSS px; 2.5.5 (AAA) enhanced 44 x 44 CSS px.",
+    "detail": "2.5.8 has exceptions for spacing (a 24 px circle centred on an undersized target must not intersect another target), equivalent alternatives, inline links and essential cases. The 24 px floor is a legal minimum, not a one-handed usability target. Some secondary pages mislabel 2.5.8 as a WCAG 2.1 criterion; it is new in 2.2.",
+    "confidence": "medium",
+    "sourceUrl": "https://smashingmagazine.com/2024/07/getting-bottom-minimum-wcag-conformant-interactive-element-size/"
+   },
+   {
+    "claim": "Older physical-size guidance: Microsoft 9 mm ideal / 7 mm fallback; Hoober slide deck 6 mm min, 8 mm preferred, 15 mm max, with spacing guidance of 8 mm min / 10 mm preferred measured from centre.",
+    "detail": "Microsoft's archived Windows Phone guide says 9 mm square is ideal across its touch platforms, 7 mm only when space is tight; a 2 mm/8 px minimum gap is quoted second-hand. Hoober's deck lists min 17 pt / 6 mm, preferred 23 pt / 8 mm, max 43 pt / 15 mm. The sources converge on roughly 7-10 mm as the working band, with 9-10 mm best for thumbs.",
+    "confidence": "medium",
+    "sourceUrl": "https://learn.microsoft.com/zh-cn/archive/blogs/wpukcoe/designing-touch-targets"
+   },
+   {
+    "claim": "Hoober's slide-deck target numbers (6/8/15 mm; 8/10 mm spacing) come from a SlideShare deck, not a primary article.",
+    "detail": "The deck lists min 17 pt / 6 mm, preferred 23 pt / 8 mm, max 43 pt / 15 mm, with centre-measured interference spacing min 23 pt / 8 mm, preferred 28 pt / 10 mm. The newer UXmatters series ('Design for Fingers, Touch, and People', Parts 1-3, 2017) was not retrievable and may state different values.",
+    "confidence": "low",
+    "sourceUrl": "https://www.slideshare.net/slideshow/fingers-thumbs-and-people-s/29154735"
+   },
+   {
+    "claim": "Fitts's law: bigger and closer is faster, but the 'magic edge' advantage does not transfer to touch, and big/close destructive actions are easy to hit by accident.",
+    "detail": "Movement time depends on distance and target size. The edge/corner 'infinite target' argument comes from mouse cursors that stop at the screen edge; on touch the user's hand position is unknown and thumb reach dominates. Corollary for this app: make the tick row large, but keep Close/Done visually and spatially separated from ticks.",
+    "confidence": "medium",
+    "sourceUrl": "https://smashingmagazine.com/2022/02/fitts-law-touch-era/"
+   },
+   {
+    "claim": "Bottom-placed controls are standard industrial-design logic (content top, controls bottom), but fixed-position web UI at the bottom is unreliable in mobile browsers.",
+    "detail": "Josh Clark's Designing for Touch argues for controls at the bottom within thumb sweep and cautions that position:fixed pinned navigation on the mobile web has reliability problems. Relevant to a no-scroll fixed-viewport app: use dynamic viewport units and safe-area insets rather than assuming a stable viewport.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.creativebloq.com/design/designing-touch-2123037"
+   },
+   {
+    "claim": "Pointer cancellation (WCAG 2.5.2, Level A): activate on the up-event so a user can slide off to abort.",
+    "detail": "Sufficient ways include: down-event not used to execute the function, or an abort/undo mechanism, or the up-event reverses the down-event. Native controls (button, input) behave correctly by default (technique G212). On touch, up-event activation only fires if the finger lifts within the target boundary.",
+    "confidence": "high",
+    "sourceUrl": "https://w3c.github.io/wcag/understanding/pointer-cancellation.html"
+   },
+   {
+    "claim": "Dragging needs a non-drag alternative (WCAG 2.2 SC 2.5.7, Level AA).",
+    "detail": "Any function operated by dragging must also work with a single pointer without dragging (tap/click), unless dragging is essential. For reorderable lists the standard fix is visible up/down buttons or a 'Move to position' menu; drag may remain as an enhancement. Also helps users with tremor and users in unstable environments (walking, transit).",
+    "confidence": "high",
+    "sourceUrl": "https://www.digitala11y.com/?p=28001"
+   },
+   {
+    "claim": "Prefer undo over 'Are you sure?' confirmation for reversible actions.",
+    "detail": "Aza Raskin (A List Apart, 2007): users form habits and click through warnings, so a warning is the wrong tool when the action is reversible; give undo instead. Secondary UX sources agree: dialog fatigue sets in when confirmations are routine, so reserve confirmations for high-consequence/irreversible actions, displace the confirm button from where the trigger sat, and consider a short delay to defeat accidental double-taps. Shake-to-undo should not be the only path (low discoverability).",
+    "confidence": "medium",
+    "sourceUrl": "https://alistapart.com/article/neveruseawarning"
+   },
+   {
+    "claim": "Undo windows in the wild: Gmail Undo Send defaults to 5 s, configurable to 10, 20 or 30 s; design systems put undo toasts at about 5 s (no action) and 10 s (with action).",
+    "detail": "Gmail's mechanism holds the message for the period rather than recalling it. One design system (customer.io) specifies snackbars persist 5 s without an action and 10 s with an action; Acorn says an action snackbar may be 'slightly longer'. Angular Material warns against timed snackbars with actions because screen-reader users may need longer (a WCAG 2.2.1 timing concern). Older Android snackbar library defaults were 2 s short / 3.5 s long, which are library values, not Material spec.",
+    "confidence": "medium",
+    "sourceUrl": "https://design.customer.io/components/snackbar"
+   },
+   {
+    "claim": "Response-time limits: 0.1 s feels instantaneous, 1 s keeps flow of thought, 10 s is the attention limit.",
+    "detail": "Nielsen (from Miller 1968): at 100 ms the outcome feels caused by the user and no special feedback is needed beyond showing the result; around 1 s users notice the delay but keep their train of thought; at 10 s attention drifts and a progress indicator with expected completion is needed.",
+    "confidence": "high",
+    "sourceUrl": "https://www.nngroup.com/videos/3-response-time-limits-interaction-design/"
+   },
+   {
+    "claim": "Material 2 motion durations: typical mobile transition about 300 ms; entering 225 ms; leaving 195 ms; large/full-screen 375 ms; over 400 ms feels too slow; tablet about +30%, wearable about -30%.",
+    "detail": "Leaving elements can be shorter because they need less attention; short travel distances and minor surface changes get shorter durations. This is the official archived Material 2 spec page.",
+    "confidence": "high",
+    "sourceUrl": "https://m1.material.io/motion/duration-easing.html"
+   },
+   {
+    "claim": "Animation rule of thumb: 100-500 ms total, justify anything over 300 ms; Material 3 tokens start at 50 ms with an emphasized easing of cubic-bezier(0.2, 0, 0, 1).",
+    "detail": "The 100-500 ms range is attributed to NN/g by secondary blogs (NN/g page not retrieved). The MD3 token values (short1 50 ms, medium1 250 ms, long1 450 ms, emphasized cubic-bezier(0.2,0.0,0,1)) come from a third-party summary and a GitHub issue, not m3.material.io directly.",
+    "confidence": "low",
+    "sourceUrl": "https://github.com/google-labs-code/design.md/issues/47"
+   },
+   {
+    "claim": "Responsiveness budget on the web: Interaction to Next Paint of 200 ms or less is 'good' (75th percentile); over 500 ms is poor.",
+    "detail": "This is Google's Core Web Vitals threshold for the delay from input to next frame. For a tick tap the visual change should land far inside this, ideally in the same frame as the 100 ms 'instant' limit.",
+    "confidence": "high",
+    "sourceUrl": "https://web.dev/articles/inp"
+   },
+   {
+    "claim": "Long-press threshold on Android is 400 ms (changed from 500 ms in AOSP to match the system setting).",
+    "detail": "Relevant for choosing a long-press-to-drag or long-press-for-detail delay so it does not feel different from the OS. Older Android source still shows 500 ms. iOS: no verified system default found; Apple does not expose the user's Haptic Touch speed to apps.",
+    "confidence": "medium",
+    "sourceUrl": "https://android.googlesource.com/platform/frameworks/base/+/ab9efea%5E%21/"
+   },
+   {
+    "claim": "Progress psychology: visible progress toward a goal increases completion (endowed-progress and goal-gradient effects).",
+    "detail": "Nunes and Drèze (2006) car-wash loyalty cards: cards pre-stamped with 2 stamps had 34% redemption vs 19% for unendowed cards. Kivetz, Urminsky and Zheng (2006) found a sense of advancement accelerates goal completion; effort rises as psychological distance to the goal shrinks. These are consumer-loyalty field experiments, so effect sizes for a checklist app are unknown. A UX reading is to emphasise what remains rather than only what is done.",
+    "confidence": "medium",
+    "sourceUrl": "https://msbfile03.usc.edu/digitalmeasures/jnunes/intellcont/Endowed%20Progress%20Effect-1.pdf"
+   },
+   {
+    "claim": "Determinate-progress timing guidance from a vendor design system: show an indicator after about 1 s; use determinate bars when duration is known or over 10 s.",
+    "detail": "This is Astro UX (a design system), not NN/g. It mirrors the Nielsen 1 s / 10 s limits. A checklist run is a user-paced process with a known total (n items), which is the ideal case for a determinate 'x of n' indicator rather than a spinner.",
+    "confidence": "low",
+    "sourceUrl": "https://astrouxds.com/components/progress"
+   },
+   {
+    "claim": "State feedback must not rely on color alone (WCAG 1.4.1) and must be exposed programmatically (4.1.2).",
+    "detail": "For done/pending/skipped, give each state a distinct shape or text cue (for example empty box, check mark, dash or slash, plus text such as 'Skipped') in addition to color, and expose state to assistive tech via name/role/value. A legend explaining colors does not satisfy 1.4.1.",
+    "confidence": "medium",
+    "sourceUrl": "https://digitalaccessibility.nyu.edu/testing/sc141.html"
+   },
+   {
+    "claim": "Vibration API is Android-only; iOS Safari and all iOS browsers do not support navigator.vibrate.",
+    "detail": "Chrome requires a user gesture (Chrome 60+). Feature-detect with 'vibrate' in navigator; calls are no-ops where unsupported. Haptic confirmation therefore cannot be relied on; tick sound and spoken confirmation (already in the app) and a strong visual change must carry the feedback on iPhone.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.mintlify.com/lochie/web-haptics/advanced/browser-support"
+   },
+   {
+    "claim": "ADHD-oriented design advice found is practitioner opinion, not rigorous research.",
+    "detail": "Recurring ideas: one primary action per screen, immediate feedback on completion, break work into small steps, show only the current task, visible progress for time blindness. Claims like 'ADHD templates raise completion by up to 50%' cite no study. Gamification effects are contested; test with neurodivergent users.",
+    "confidence": "low",
+    "sourceUrl": "https://www.designmonks.co/blog/ui-ux-and-adhd"
+   }
+  ],
+  "recommendations": [
+   "Define target sizes as design-independent tokens, shared by all three skins: --hit-min: 48px (equals 48dp and about 9 mm per Google/web.dev, above Apple's 44 pt and Parhi 2006's 9.2-9.6 mm), --hit-gap: 8px minimum between adjacent targets. Make the Airplane (dense) skin shrink the visible glyph, never the hit area.",
+   "Run screen: make the entire item row the tap target, not only the tick box. Use row min-height about 56px (comfortably above 48) with a visible tick box of 28-32px on the right; row-to-row gap at least 8px. Rows that are only 48px high with no gap are borderline given Lighthouse's 25 percent overlap rule.",
+   "Keep primary actions (Close/Done, Save, + New) in the bottom-right band, but respect safe areas: padding-bottom/right with env(safe-area-inset-*) so the home-indicator and gesture-nav zones are not part of the hit area. Keep secondary actions (Cancel, Questions) in the same bottom row, within one thumb sweep of Save, rather than at the top-left.",
+   "Ship a Left-handed layout switch in Settings (default Right, as the user wants). Roughly 33 percent of one-handed users use the left thumb (Hoober via Osmani). Implement with a data-hand attribute that flips inline direction so checkmarks, stack anchor and primary buttons mirror together.",
+   "Separate dangerous from frequent: ticks are the highest-frequency action, so keep Close/Done at least one full target (48px plus gap) away from the topmost/bottommost tick row, and never place a destructive action where the last tap landed. Mid-run Close with unchecked items should offer a lightweight state ('3 of 8 done, keep going / close anyway') rather than a generic dialog.",
+   "Make ticking self-reversible instead of confirming it: tapping a done row again unticks it, and the whole toggle is instant. For irreversible or bulk actions (delete checklist, reset run, delete point) use an Undo toast, not 'Are you sure?' (Raskin). Suggested windows: 5 s for simple actions, 8-10 s when the toast has an Undo action (Gmail 5 s default; design systems 5/10 s). Pause the countdown on touch/focus and do not auto-dismiss under assistive tech, to respect WCAG 2.2.1.",
+   "Activate on click/pointerup, not pointerdown, so a finger can slide off to cancel (WCAG 2.5.2). Use native button/input elements or equivalent. Optionally ignore taps whose pointerdown-to-up movement exceeds a small slop (about 8-10 px) so a scroll attempt in the references page does not trigger a toggle.",
+   "Feedback timing budget for micro-interactions: pressed state visible in the same frame (0-50 ms, instant in, no transition); tick/check state change completes visually in 120-200 ms; row reorder/entry 200-250 ms; screen transitions about 225 ms in / 195 ms out, 300 ms ceiling (Material 2: 300 typical, 375 large, over 400 feels slow); nothing decorative over 500 ms. Audio and speech confirmation should be triggered synchronously from the same user gesture (needed to unlock audio on iOS), targeting under 100 ms perceived delay.",
+   "prefers-reduced-motion: keep the instant state change and the color/shape change, drop movement and checkmark drawing; replace animated progress with a stepped fill. Do not rely on motion alone to convey a state change.",
+   "Progress indicator: show a determinate 'x of n' count (text) plus a segmented bar with one segment per item, near the thumb zone (bottom-right) rather than the top. Phrase it around what remains ('5 left') as well as what is done, since the goal-gradient effect is about distance to goal. Count 'required' items separately so Done can show 'all required done'. Do not fake or pre-fill progress (the endowed-progress trick would misrepresent a checklist).",
+   "Three item states with redundant cues, in every skin: pending = empty box; done = check mark; skipped = dash/slash plus the text 'Skipped'. Expose via accessible names or aria-checked/aria-label text. Color may differ per skin, but the shape/text cue must not.",
+   "Drag-to-reorder in the editor: give each point a drag handle of at least 48px and also an accessible non-drag path (up/down buttons or a 'Move to position' action) to satisfy WCAG 2.5.7. If using long-press to start a drag, use about 400 ms to match Android's system long-press, with a visible lift (scale/shadow) at the moment it arms.",
+   "Use haptics only as a progressive enhancement (navigator.vibrate on Android with a short 10-20 ms pulse, feature-detected); iOS Safari ignores it, so sound/speech and visual change must be sufficient on their own.",
+   "Test plan items derived from the findings: (1) every interactive element measured at 320 px wide is at least 48x48 CSS px including expanded hit area and has at least 8 px gap; (2) rapid double/triple-tap on a tick, Done and Save does not double-fire or skip; (3) tap-and-slide-off cancels; (4) Undo toast works with TalkBack/VoiceOver and does not vanish while focused; (5) right and left layouts both reach every control with one thumb on a 6.7-inch-class screen (about 430 px wide); (6) reduced-motion on/off; (7) bottom controls not covered by the browser toolbar or gesture bar."
+  ],
+  "pitfalls": [
+   "Do not treat 24 x 24 CSS px (WCAG 2.5.8 AA) as a design target; it is a legal floor. 44 px (2.5.5 AAA, Apple) and 48 px (Google, Lighthouse) are the practical thumb numbers, and the physical 9-10 mm result (Parhi 2006) is the most solid research basis.",
+   "Visual size is not hit size. Expanding hit areas with pseudo-elements or padding can cause neighbouring rows' hit areas to overlap; Lighthouse penalises overlap. Keep the 8 px gap or clip the expansion.",
+   "Mixed-up units: points (Apple), dp (Android) and CSS px are density-independent, but the 48 px = 9 mm equivalence only holds with a correct viewport meta tag; without width=device-width the browser may scale the layout.",
+   "'75 percent use their thumb' and '49 percent one-handed' are repeated with misattributions (some attribute 75 percent to Josh Clark, others to Hoober); the 49/36/15 grip split is better supported. Cite the grip split, not the 75 percent.",
+   "Hoober's 2013 observational data was gathered on 2013-era phones (smaller screens). Reach on 6.7-inch phones is worse for the top and far side; the app's bottom-right anchoring is consistent with this, but exact green/yellow/red maps are illustrative, not measured for your device sizes.",
+   "Fitts's law 'screen edge = infinitely large target' is a mouse-era argument; on touch, edge and corner targets are not easier. The bottom-right corner can also collide with the OS gesture area and rounded screen corners, so keep a margin and use safe-area insets.",
+   "Auto-dismissing undo toasts can fail assistive-technology users and users who need more time (WCAG 2.2.1); provide a persistent alternative such as a visible 'Undo last' control or extend/pause on focus.",
+   "Confirmation-dialog overuse trains users to tap through (dialog fatigue); a confirm button placed where the trigger button was is hit by a double-tap. Use sparingly and displace the confirm control.",
+   "Position:fixed and 100vh are unreliable in mobile browsers as the toolbar collapses; a never-scrolling fixed-viewport layout needs dvh/svh units and safe-area insets or the bottom-right controls will be hidden or jump.",
+   "Activating on pointerdown makes accidental taps unrecoverable and breaks scroll-to-cancel; make toggles fire on click/pointerup.",
+   "Color-only states (green done, amber skipped, grey pending) fail WCAG 1.4.1 and are a problem for colour-blind users; the Airplane and Modern skins both need the shape/text cue.",
+   "Gamification or celebratory animation after every tick may distract rather than help users with ADHD; evidence is contested. Keep completion feedback brief (under about 300 ms) and optional per checklist, as the app already does with sound/speech.",
+   "Long animations delay the next tap: if a tick animation or screen transition blocks input for over about 300-400 ms, fast users will double-tap and undo their own progress. Never block pointer input during feedback animation.",
+   "navigator.vibrate silently does nothing on iPhone; do not make haptics the only confirmation channel."
+  ],
+  "unverified": [
+   "WebFetch was blocked by the sandbox proxy (HTTP 403 on CONNECT for www.w3.org and DNS failure for www.uxmatters.com), so no primary page was read in full. Every finding is based on WebSearch result summaries; primary-source wording (UXmatters, W3C Understanding, Apple HIG, m3.material.io, nngroup.com) should be re-checked when network access allows.",
+   "The exact Hoober grip/handedness figures (49/36/15 and 67/33 right/left thumb) were seen only through secondary quotes (Smart Insights, Addy Osmani, other blogs), not in the UXmatters column text itself.",
+   "The '75 percent thumb' share attributed to Hoober (or to Clark) could not be confirmed in any primary text.",
+   "Hoober's updated numeric target-size and spacing guidance from 'Design for Fingers, Touch, and People' Parts 1-3 (UXmatters, 2017) and his book Touch Design for Mobile Interfaces was not retrieved; the 6/8/15 mm and 8/10 mm values come from an undated slide deck.",
+   "Scott Hurff's 'natural / stretch / hard' thumb zone map and its exact right-hand corner-by-corner reachability (specifically how reachable the extreme bottom-right corner and bottom-right edge are on 6.5-inch-plus phones) were not confirmed; only a secondary three-color description was found.",
+   "Whether NN/g itself recommends a 2 mm spacing between touch targets is not confirmed (only a third-party UXPin table lists it); the NN/g article is verified only for the 1 cm x 1 cm size and the MIT Touch Lab fingertip width.",
+   "The Windows Phone minimum gap of 2 mm / 8 px comes from a Drupal.org post quoting Microsoft, not from the Microsoft page.",
+   "Material 3 duration tokens (short1 50 ms, medium1 250 ms, medium2 300 ms, long1 450 ms) and the emphasized easing cubic-bezier(0.2, 0, 0, 1) come from third-party summaries; official m3.material.io values were not retrieved. Also unconfirmed: Material guidance of 100 ms for small components and an 18dp checkbox glyph inside a 48dp target.",
+   "NN/g's '100-500 ms ideal animation duration, justify anything over 300 ms' is attributed to NN/g only by secondary blogs; the NN/g animation article was not retrieved. The Doherty threshold (400 ms) was not confirmed at all in the searches.",
+   "Official Material Design snackbar durations (4 s / 10 s) were not found; 5 s / 10 s figures are from the customer.io design system, not Google.",
+   "Android touch slop of 8 dp (ViewConfiguration) was not confirmed by the sources found; the 400 ms Android long-press default is supported only by an AOSP commit message excerpt. iOS default long-press duration (commonly cited as 0.5 s for UILongPressGestureRecognizer) is unconfirmed.",
+   "touch-action: manipulation removing the double-tap-zoom click delay is general knowledge not verified by these searches; modern mobile browsers largely eliminate the 300 ms delay when the viewport is width=device-width, which was also not verified here.",
+   "NN/g guidance on progress indicators for known-length task lists (x of y) and any direct research on checklist/step progress indicators improving completion was not found; the goal-gradient and endowed-progress evidence comes from loyalty-card field studies.",
+   "No peer-reviewed research specific to ADHD users and checklist/task apps was found; the ADHD design advice is practitioner opinion. Optimum tick-feedback timing for ADHD users specifically is unknown.",
+   "Whether Apple HIG text in full still reads '44x44 pt' on the current Buttons page was not confirmed by reading the page; confirmed only via forum quotes and the older UI Design Dos and Don'ts tips page.",
+   "Haptic and audio-latency numbers (target under 100 ms for tap-to-sound, 10-20 ms vibration pulse) are engineering suggestions from the 100 ms perception limit, not sourced findings."
+  ],
+  "cssTechniques": [
+   "Hit-area tokens: :root { --hit-min: 48px; --hit-gap: 8px; --row-h: 56px; } and .row { min-block-size: var(--row-h); } so every skin inherits the same minimum while changing only visuals.",
+   "Expand hit area without changing look: .tick { position: relative; } .tick::before { content: ''; position: absolute; inset: -10px; } (clip so neighbouring expanded areas do not overlap; keep 8px gap).",
+   "Bottom-right anchored upward-growing stack: .stack { display: flex; flex-direction: column-reverse; justify-content: flex-start; align-items: flex-end; } so the first item sits at the bottom and the stack grows up.",
+   "Left-hand mirror: :root[data-hand='left'] .stack { align-items: flex-start; } and flip action rows with flex-direction: row-reverse, ideally using logical properties (inset-inline-end, margin-inline-start) with dir toggled on the app root.",
+   "Fixed viewport and safe areas: <meta name='viewport' content='width=device-width, initial-scale=1, viewport-fit=cover'>; html, body { height: 100dvh; overflow: hidden; overscroll-behavior: none; } .dock { padding: 0 max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) 0; }",
+   "Scrollable exception only for the references page: .refs { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }",
+   "Suppress accidental text selection / callout on rows and buttons: .row, button { user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }",
+   "Pressed feedback with asymmetric timing (instant in, short out): .row:active { transform: scale(.98); transition: none; } .row { transition: transform 120ms ease-out, background-color 160ms ease-out; }",
+   "Check-mark state change in 120-200ms using a CSS-only stroke-dashoffset or clip-path reveal; no JS animation loops.",
+   "Motion tokens: --t-press: 0ms; --t-tick: 160ms; --t-enter: 225ms; --t-exit: 195ms; --ease-out: cubic-bezier(0.2, 0, 0, 1);",
+   "Reduced motion: @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } } and keep color/shape state changes intact.",
+   "Coarse-pointer sizing: @media (pointer: coarse) { :root { --row-h: 56px; } } and @media (hover: none) { .row:hover { background: none; } } so hover styles never stick after a tap.",
+   "Segmented progress bar with one segment per item: .progress { display: grid; grid-auto-flow: column; gap: 4px; } .progress > i { block-size: 8px; } .progress > i[data-done] { background: var(--accent); }, plus a text '3 / 8' for non-visual redundancy.",
+   "State shapes beyond color: pending = bordered empty box; done = check mark glyph (inline SVG or ::after); skipped = dash/slash glyph plus visible text label 'Skipped'; set aria-checked or aria-label text accordingly.",
+   "Focus visibility for switch/keyboard users: :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; } sized so the focus ring does not shrink the 48px hit area.",
+   "Undo toast placement: position: fixed; inset-inline-end: 16px; bottom: calc(var(--dock-h) + env(safe-area-inset-bottom) + 8px); above the primary action so it never covers the thumb's next target; keep the Undo button at least 48px high."
+  ]
+ },
+ {
+  "topic": "Interface design that helps people with ADHD stay on task (cognitive load, one-thing-at-a-time focus, salience of the current step, motion, time-blindness aids, sound/haptics, reward vs gamification, dyslexia-friendly typography). Findings are labelled EVIDENCE (empirical study or meta-analysis), EXPERT GUIDANCE (standards bodies, heuristics, consensus) or FOLKLORE (plausible but untested, vendor or practitioner claims). Caveat: WebFetch could not reach w3.org, nngroup.com, pmc.ncbi.nlm.nih.gov or w3c.github.io (DNS failure), so everything below comes from WebSearch result summaries and not from reading the primary documents.",
+  "findings": [
+   {
+    "claim": "The W3C COGA Note is the main standards-body reference for cognitive accessibility. It is expert guidance, not experimental evidence.",
+    "detail": "[EXPERT GUIDANCE] 'Making Content Usable for People with Cognitive and Learning Disabilities' is a W3C Working Group Note (April 2021). It is supplemental to WCAG, and following it is not required for WCAG conformance. It lists attention as a functional need, linked to ADD/ADHD, and its objectives include 'Help users focus' and 'Ensure processes do not rely on memory'. Each objective has patterns with use/avoid examples, user stories and test methods. A UK government summary lists eight objectives: understand what things are and how to use them; find what they need; clear content; avoid mistakes and correct them; help users focus; processes that do not rely on memory; help and support; adaptation and personalisation. I could not open the live document, so exact pattern names and wording are unconfirmed.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.w3.org/TR/coga-usable/"
+   },
+   {
+    "claim": "NN/g's usability heuristics support keeping state visible, using recognition over recall and keeping the UI minimal. These are expert heuristics, not ADHD-specific findings.",
+    "detail": "[EXPERT GUIDANCE] Visibility of system status: users should always know the current state and the outcome of their last action. Recognition rather than recall: interfaces should reduce memory load because short-term memory is limited. Aesthetic and minimalist design: every extra unit of information competes with the relevant ones and reduces their visibility. These map directly onto a run screen that shows the whole stack with ticks (state is visible, nothing has to be remembered).",
+    "confidence": "high",
+    "sourceUrl": "https://www.nngroup.com/articles/ten-usability-heuristics/"
+   },
+   {
+    "claim": "Progressive disclosure ('show less at once') is widely recommended, but its empirical support is thin and over-application backfires.",
+    "detail": "[EXPERT GUIDANCE, weak empirical base] Secondary sources say the original authors (Carroll and Rosson) noted limited empirical evidence for its effectiveness, and that NN/g's recommendation is expert opinion. Known failure modes: hiding essential information, too many taps, and poor discoverability. I only saw this secondhand, not NN/g's own article.",
+    "confidence": "low",
+    "sourceUrl": "https://concepts.dsebastien.net/concept/progressive-disclosure/"
+   },
+   {
+    "claim": "No rigorous HCI study was found showing that one-thing-at-a-time screens reduce cognitive load in people with ADHD. The idea is plausible design folklore.",
+    "detail": "[FOLKLORE] Search found a student capstone project (UW 'Bearable') built around showing one task at a time, vendor blogs recommending 'one clear action', and an anecdote from an indie developer that a well-structured step list did not reduce load because the cost was anticipation, not information overload. A paper using NASA-TLX with children with ADHD on educational apps exists, but its results were not visible to me. For this app, whether to hide or dim not-yet-reached items is an open question that needs user testing.",
+    "confidence": "medium",
+    "sourceUrl": "https://ischool.uw.edu/capstone/projects/2024/bearable-make-your-tasks-little-more-bearable"
+   },
+   {
+    "claim": "Working-memory deficits in ADHD are well established in meta-analyses, which supports putting task state in the interface and not in the user's head.",
+    "detail": "[EVIDENCE for the deficit; design implication is inference] Martinussen et al. (2005) meta-analysis of working-memory impairments in children with ADHD reported large effects for spatial storage (ES 0.85) and spatial central executive (ES 1.06). Kasper, Alderson and Hudec (2012, Clin Psychol Rev 32:605-617) found moderate overall effects across phonological and visuospatial modalities, with moderators explaining between-group differences. Almost all of this is child data and lab tasks. The step from 'working memory deficit' to 'show the checklist state on screen' is a reasonable design inference, not a tested UI result.",
+    "confidence": "medium",
+    "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/15782085/"
+   },
+   {
+    "claim": "Smartphone notifications increase self-reported inattention and hyperactivity, even in people without ADHD.",
+    "detail": "[EVIDENCE, general population] Kushlev, Proulx and Dunn, CHI 2016: 221 UBC students spent one week with notification alerts on and phones within reach, and another week with alerts off and phones away, in a within-subject design. Inattention and hyperactivity scores were higher in the alerts-on week, and higher inattention predicted lower productivity and wellbeing. The sample was non-clinical and the outcome was self-report. This is an argument against push notifications and badges in an on-demand checklist app.",
+    "confidence": "high",
+    "sourceUrl": "https://www.interruptions.net/literature/Kushlev-CHI16.pdf"
+   },
+   {
+    "claim": "Enhanced distractibility is increasingly framed as a core feature of adult ADHD, but lab evidence on motion as a distractor is preliminary and inconsistent.",
+    "detail": "[EVIDENCE, weak] Panagiotidi, Overton and Stafford (Perception, 2017): non-clinical adults with more ADHD-like traits were less slowed by peripheral distractors shown 80 ms before targets, which is read as greater sensitivity to peripheral cues. A small preliminary fMRI poster (17 adults) found stronger superior-colliculus responses to moving than static distractors in higher-inattention participants, only for right-hemifield distractors. One thesis notes that classic lab measures have not consistently shown excess distractibility in ADHD. No study I found tests animated UI elements directly. Minimizing peripheral movement is sensible but is extrapolation.",
+    "confidence": "low",
+    "sourceUrl": "https://salford-repository.worktribe.com/output/1376976/attention-deficit-hyperactivity-disorder-like-traits-and-distractibility-in-the-visual-periphery"
+   },
+   {
+    "claim": "Time-perception deficits in ADHD are real and replicated in meta-analyses.",
+    "detail": "[EVIDENCE for the deficit] A meta-analysis of altered perceptual timing in ADHD found broad deficits in time estimation and production. Noreika, Falter and Rubia (2013, Neuropsychologia 51:235-266) reviewed neurocognitive and neuroimaging evidence and treat timing as a key deficit linked to impulsiveness and inattention. A 2020 J Attention Disorders meta-analysis (27 studies, children and adolescents) reported less accurate time perception (Hedges' g above 0.40), less precise perception (g = 0.66) and a tendency to overestimate time. A separate 55-study meta-analysis found worse discrimination of very brief durations, especially sub-second.",
+    "confidence": "high",
+    "sourceUrl": "https://eprints.soton.ac.uk/456003"
+   },
+   {
+    "claim": "No controlled trial was found showing that visual timers or countdowns improve on-task behavior in ADHD. Support is practitioner and vendor material.",
+    "detail": "[FOLKLORE] Searches for visual-timer or time-elapsed interventions returned retail pages, app listings and blogs; one retailer page attributed benefits to Child Mind Institute studies that I could not verify. The mechanism ('make time visible, reduce mental effort of estimating time left') is plausible given the timing-deficit meta-analyses, but it is untested. A Stanford student need-finding report found adults with ADHD often struggle to estimate task duration, which is design research, not an efficacy trial.",
+    "confidence": "medium",
+    "sourceUrl": "https://super-productivity.com/blog/adhd-time-blindness-strategies/"
+   },
+   {
+    "claim": "Periodic alerting cues give a short-lived improvement in sustained attention in children with ADHD, not a block-wide one.",
+    "detail": "[EVIDENCE, small sample] A 2006 study of 15 children with ADHD and 15 matched controls used a modified SART with 8 random non-contingent alerts in two blocks. Alerts produced a significant short-term drop in commission errors right after each cue but did not reduce total commission errors over the block. Implication: sound or haptic cues help briefly, so they work best as discrete confirmations tied to an action and not as constant nagging.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.deepdyve.com/lp/taylor-francis/cognitive-remediation-in-adhd-effects-of-periodic-non-contingent-YHWj57SLlL"
+   },
+   {
+    "claim": "No ADHD-specific efficacy evidence was found for haptic (vibration) reminders. Habituation is a documented concern.",
+    "detail": "[FOLKLORE / evidence gap] An NYU group notes that fixed or intermittent vibration cues for self-monitoring exist and reduce stigma but are vulnerable to habituation; their personalised-timing device had no outcome data in what I saw. Patents describe tactile reminders without efficacy data. A 45-adult study found no difference between low- and high-ADHD-symptom groups in distraction by vibration, but the high-symptom group missed more trials.",
+    "confidence": "low",
+    "sourceUrl": "https://ifp.nyu.edu/?p=1688246"
+   },
+   {
+    "claim": "Background noise can help some children with ADHD (Moderate Brain Arousal model), but this concerns ambient noise, not discrete UI tick sounds.",
+    "detail": "[EVIDENCE, partly contested] Soderlund et al. (2007) found white noise improved memory performance in children with ADHD and worsened it in controls. A review cites a meta-analysis of 13 white-noise studies with small to medium effects, though I could not confirm which paper that is. One summary notes a 100 Hz tone gave the same benefit as pink noise, which challenges the stochastic-resonance explanation. Relevance to a short tick sound is weak, so do not use this to justify background audio.",
+    "confidence": "low",
+    "sourceUrl": "https://lup.lub.lu.se/record/951355"
+   },
+   {
+    "claim": "ADHD research shows a strong preference for immediate over delayed rewards (delay aversion), which supports immediate, small feedback on each tick.",
+    "detail": "[EVIDENCE in lab tasks; UI application is inference] Marco et al. (2009, 360 ADHD probands) found children with ADHD chose smaller-sooner rewards more often than controls, and more so when the sooner option also shortened the wait. Yu and Sonuga-Barke (2020) found steeper discounting in ADHD only when children actually had to wait, not when they imagined waiting. Children with ADHD also prefer reward immediacy over high reward rate or task ease. Design implication: confirm each tick instantly (under about 100 ms) and avoid making feedback wait on animations or a final summary.",
+    "confidence": "medium",
+    "sourceUrl": "https://duepublico2.uni-due.de/receive/duepublico_mods_00025943"
+   },
+   {
+    "claim": "Evidence that gamification helps people with ADHD is small and mixed. Reviews flag lack of controls and a risk that game elements distract.",
+    "detail": "[EVIDENCE, weak] A scoping review of 19 mobile-game studies found performance improved while playing, but evidence of effectiveness is scarce and mixed, with small samples, no control groups and narrow outcomes. A PRISMA review of 13 neurofeedback-gamification studies noted a systematic lack of well-powered controlled studies and the risk that game elements add distraction. A meta-analysis of 27 RCTs of gamified digital mental-health interventions reported a small effect for ADHD (Hedges' g = 0.28). A newer 24-RCT meta-analysis on gamification for children and adolescents with ADHD exists, but I saw only its announcement. I could not map each statistic to a specific URL with certainty.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.frontiersin.org/articles/10.3389/fpsyt.2022.792402/full"
+   },
+   {
+    "claim": "Extrinsic rewards can undermine intrinsic motivation (overjustification), but the effect is context-dependent and its applicability to points, badges and streaks is contested.",
+    "detail": "[EVIDENCE, contested] Deci, Koestner and Ryan (1999, Psychological Bulletin 125:627-668) meta-analysed 128 experiments and found expected tangible rewards contingent on performance reduce intrinsic motivation, while verbal praise did not. The effect needs pre-existing intrinsic motivation, and later commentary doubts whether points and badges count as the rewards studied. Self-determination theory reviews conclude gamification can both support and undermine motivation depending on whether it supports autonomy and competence. The specific effect sizes (about d = -0.40 and +0.31) came from a consultant's blog and are not verified.",
+    "confidence": "medium",
+    "sourceUrl": "https://tmb.apaopen.org/pub/jbkavq2a"
+   },
+   {
+    "claim": "The claim that streaks harm users after a break (anxiety, abandonment) rests on vendor blogs. No peer-reviewed evidence was found, although the loss-aversion mechanism is plausible.",
+    "detail": "[FOLKLORE] Vendor and blog sources assert that broken streaks suppress later engagement and cite a 2023 Journal of Consumer Research paper (Silverman and Barasch) that I could not verify. Retention claims (for example a 20-40% DAU lift) are unsourced marketing. A checklist-prompt app is not a habit tracker, so it has no natural need for streaks.",
+    "confidence": "low",
+    "sourceUrl": "https://habitdoom.com/blog/streak-anxiety-habit-trackers"
+   },
+   {
+    "claim": "Most ADHD technology research frames ADHD as a deficit to correct, with little co-design, and participants push back on that framing.",
+    "detail": "[EVIDENCE, critical literature review] Spiel, Hornecker, Williams and Good (CHI 2022, DOI 10.1145/3491102.3517592) reviewed ADHD technologies in Computing/HCI: most aim to reduce traits that conflict with neurotypical norms, few involve people with ADHD in setting goals or designing, and participants resisted deficit framing. Implication: give users control (opt-in aids, adjustable settings) and use neutral, non-shaming copy.",
+    "confidence": "high",
+    "sourceUrl": "https://dare.uva.nl/id/b5158a6b-ee52-48a7-b4be-772d430bad4a"
+   },
+   {
+    "claim": "If-then planning (implementation intentions) improved response inhibition in children with ADHD in lab tasks.",
+    "detail": "[EVIDENCE, small lab studies in children] Gawrilow and Gollwitzer (2008, Cognitive Therapy and Research 32:261-280): in Study 1, children with ADHD who paired a goal with an if-then plan reached the Go/No-Go inhibition level of children without ADHD. In Study 2, combining if-then plans with stimulant medication gave the best result. A related 2011 paper reported better delay of gratification after if-then plans. Possible design link: an optional 'when' trigger line on a checklist. This is a feature idea, not a validated UI pattern.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.socmot.uni-konstanz.de/publications/implementation-intentions-facilitate-response-inhibition-adhd-children"
+   },
+   {
+    "claim": "Checklists have strong but contested evidence in medicine. Implementation quality matters.",
+    "detail": "[EVIDENCE, not ADHD-specific] Haynes et al. (WHO, NEJM 2009): 7,688 surgical patients in 8 countries, 19-item checklist, complications fell by more than a third. A later NEJM crisis-checklist study reported a 74% lower chance of missing a critical process of care. Critics note that Pronovost's ICU programme bundled many interventions, and that the Ontario mandate gave disappointing results. A BMJ head-to-head (Urbach and Dimick vs Haynes and Gawande) shows the debate is unresolved. Lesson: a checklist works when it is actually used at the point of action, so friction in the run screen matters more than features.",
+    "confidence": "medium",
+    "sourceUrl": "https://hms.harvard.edu/news/simple-surgical-checklist-cuts-deaths-40-percent"
+   },
+   {
+    "claim": "Salient visual cues improve resumption after interruption and can prevent skipped final steps. This is general human-factors evidence, not ADHD-specific.",
+    "detail": "[EVIDENCE, general population, partly secondhand] Altmann and Trafton's goal-activation model says suspended goals decay and cues in the environment can re-activate them. Trafton, Altmann and Brock (2005) reportedly found a highly salient cue speeded resumption. Chung and Byrne (2008) reportedly found a prominent hint just before the post-completion step eliminated post-completion errors (the habit of skipping the last step). Ratwani and colleagues found that keeping a spatial representation of the primary task helps resumption, which argues for stable item positions. Highlighting the current step specifically is less directly tested.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.interruptions.net/literature/Trafton-HFES05.pdf"
+   },
+   {
+    "claim": "WCAG 2.2.2 (Level A) requires a pause/stop/hide mechanism for auto-starting motion longer than 5 seconds. 2.3.3 (AAA) requires interaction-triggered motion to be disableable. prefers-reduced-motion is the main mechanism.",
+    "detail": "[EXPERT GUIDANCE / standard] 2.2.2 covers moving, blinking, scrolling and auto-updating content; the understanding page widens 'starts automatically' to include content started by focus, hover or scrolling into view. Pausing only while focused does not count. 2.3.3 covers animation triggered by user action unless essential; honouring prefers-reduced-motion is the primary implementation. Reduced motion must not hide content. Flashing is handled separately under Guideline 2.3.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Understanding/pause-stop-hide"
+   },
+   {
+    "claim": "web.dev recommends a no-motion-first default and replacing spatial motion (slide, zoom, parallax) with opacity fades.",
+    "detail": "[EXPERT GUIDANCE] web.dev's motion lesson says you cannot predict what movement triggers seizure, vestibular or other issues, so its example defaults to no animation and opts users in with prefers-reduced-motion: no-preference. Secondary guides add that opacity fades are generally safe for motion-sensitive users, and that parallax, zoom and spinning elements are the most common violations.",
+    "confidence": "medium",
+    "sourceUrl": "https://web.dev/learn/accessibility/motion"
+   },
+   {
+    "claim": "WCAG 2.5.8 sets a minimum pointer target of 24x24 CSS px (AA). This is a floor, not a comfort target for one-handed thumb use.",
+    "detail": "[EXPERT GUIDANCE] New in WCAG 2.2: targets at least 24x24 CSS px, or undersized targets with enough spacing, measured on the hit area and not the visible graphic. Exceptions include inline text links, user-agent controlled targets and equivalent controls. Sources I saw were third-party summaries of the W3C text.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/"
+   },
+   {
+    "claim": "Extra-large letter spacing improved reading accuracy and speed in children with dyslexia (Zorzi et al. 2012). This is the best-supported typographic lever found.",
+    "detail": "[EVIDENCE, with limits] PNAS 109(28):11455-11459. About 74 Italian and French children with dyslexia read short sentences in 14 pt Times New Roman with default spacing vs +2.5 pt letter spacing (word and line spacing widened proportionally). Accuracy roughly doubled and speed rose by more than 20%. Children without dyslexia showed no benefit, and letter spacing was the critical factor. The authors link it to crowding and call it a supplement to training. Skottun and Skoyles questioned specificity to dyslexia; Zorzi et al. replied. Limits: short sentences, children, print or screen of one font, so transfer to long phone text is inference.",
+    "confidence": "high",
+    "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/22665803/"
+   },
+   {
+    "claim": "Specialised 'dyslexia fonts' (OpenDyslexic) showed no reading benefit. Plain sans-serif or monospaced fonts did as well or better.",
+    "detail": "[EVIDENCE] Wery and Diliberto (Annals of Dyslexia 2017): single-subject alternating-treatment design with elementary students with dyslexia, comparing OpenDyslexic with Arial and Times New Roman on letter naming, word reading and nonword reading. No gain in rate or accuracy, and no student preferred OpenDyslexic. Rello and Baeza-Yates (ASSETS 2013, DOI 10.1145/2513383.2513447): eye-tracking, 48 participants with dyslexia, 12 fonts. Sans-serif and monospaced fonts (Helvetica, Courier, Arial, Verdana, CMU; lists differ slightly between sources) did best, italic did worst, OpenDyslexic was not easier to read. Small samples.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5629233/"
+   },
+   {
+    "claim": "British Dyslexia Association style guidance recommends sans-serif type at roughly 12-14 pt, line spacing around 1.5, left-aligned text, and avoiding all-caps, italics and underline. It is expert consensus and partly ahead of the evidence.",
+    "detail": "[EXPERT GUIDANCE] Figures vary by summary (12-14 pt, or 12-15 pt; some suggest letter and word spacing up by 30-35% of font size). One review notes recent evidence shows no consistent sans-serif advantage over serif and no consistent advantage for specialised dyslexia fonts. I read secondary summaries, not the BDA guide itself.",
+    "confidence": "medium",
+    "sourceUrl": "https://dyslexiascotland.org.uk/dyslexia-friendly-typed-formats"
+   },
+   {
+    "claim": "Bionic Reading (bolded word starts) has no demonstrated benefit. The only large test is from a vendor with a competing product.",
+    "detail": "[FOLKLORE] Readwise timed about 2,000 readers and found no speed benefit (average 2.6 wpm slower). A small 2025 study of 60 Iranian EFL learners reported gains in adults without ADHD or dyslexia. I found no ADHD or dyslexia trials, and a Utrecht EEG thesis on ADHD was only visible as a description.",
+    "confidence": "low",
+    "sourceUrl": "https://blog.readwise.io/bionic-reading-results/"
+   },
+   {
+    "claim": "ADHD and reading disorders co-occur at high rates, so the reading-heavy references page should be designed for both.",
+    "detail": "[EVIDENCE] Estimates of learning disorder among children with ADHD range from 20% to 60%. In the German GINIplus/LISAplus cohorts (Czamara et al. 2013, PLoS ONE), children with ADHD symptoms had about 2.8 times the odds of reading or spelling difficulties. Reviews point to shared genetic and neuropsychological mechanisms, and to inattention more than hyperactivity as the link. Prevalence figures vary a lot by sample and diagnostic criteria; I found no true pooled meta-analysis.",
+    "confidence": "medium",
+    "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/21757683/"
+   },
+   {
+    "claim": "Existing ADHD apps are mostly self-tests, information tools, task aids and brain-training games, with little rigorous evaluation of task-support UI.",
+    "detail": "[EVIDENCE, landscape] A JMIR mHealth 2016 review of Google Play and iTunes found most apps were self-testing and information tools, task and scheduling aids, and brain-training games, mostly targeting patients directly. A 2018 feasibility study of an ADHD app prototype with 6 adults rated it moderately to very helpful, but the sample is tiny. This confirms the evidence base for UI patterns in this space is thin.",
+    "confidence": "medium",
+    "sourceUrl": "https://mhealth.jmir.org/2016/1/e31/PDF"
+   }
+  ],
+  "recommendations": [
+   "Treat the Classic design as the calm baseline and make all three designs share identical behaviour, layout and stack order. Designs may change only colour, type, borders, shadows and texture. The best evidence (WCAG, COGA, delay aversion, resumption cues) concerns behaviour and feedback, not skin. [Basis: expert guidance + inference]",
+   "Keep the whole stack visible and make the next unticked item the single most salient element through size, border weight, contrast or a position marker, not through animation. Dim or soften ticked items but keep them legible, and never reorder or move items when ticked, because stable spatial positions aid resumption. Whether to hide future items is untested; if offered at all, make it a user setting, not a default. [Basis: resumption-cue evidence + NN/g recognition-over-recall; one-at-a-time benefit is folklore]",
+   "Give instant, single, quiet confirmation on each tick: state change in under about 100 ms, plus the existing optional short tick sound and spoken confirmation. Always pair audio or haptic with a visual change so no single modality is required, and do not queue feedback behind animation. [Basis: delay-aversion lab evidence + small alerting study; application is inference]",
+   "Do not use points, levels, streaks, leaderboards, confetti or looping celebration. If any reward exists, make it one brief, factual completion state ('Done, 7 of 7') that is optional to dismiss. Gamification evidence in ADHD is small and mixed, streak harm is unverified, and overjustification is plausible for extrinsic rewards. This is a checklist prompt app, not a habit tracker. [Basis: mixed evidence + restraint]",
+   "Show progress as text plus a static bar ('3 of 7'), updated on tick only. Offer time-blindness aids as opt-in, per checklist: an optional expected-duration line per item or checklist, and an optional count-up elapsed time updated at coarse intervals (for example every minute) in plain text. Avoid ticking second-by-second countdowns, red urgency states and auto-advance. Efficacy of visual timers is untested, so ship them as optional and observe. [Basis: timing-deficit meta-analyses (evidence) + untested timer folklore]",
+   "Make the Done/Close step hard to skip but easy to undo: show a clear 'N items left' state near the Done button, and flag required items without blocking silently. Provide undo for accidental ticks (misses happen one-handed). The post-completion-error literature suggests the final step is the most likely to be dropped. [Basis: post-completion-error evidence, partly secondhand]",
+   "Send no push notifications, badges or reminders. Runs are user-initiated, so keep it that way. [Basis: Kushlev et al., CHI 2016]",
+   "Motion policy: no-motion-first. Put every transition inside @media (prefers-reduced-motion: no-preference), keep them at or under about 150 ms, use opacity or colour changes instead of slides, zooms or parallax, and never loop or autoplay. Neobrutalist press effects (shadow shift) and airplane-style needle sweeps must degrade to instant state changes. Add an in-app 'Reduce effects' setting that applies to all three designs (flat shadows, no grain, no transitions), because the OS preference is not always set. [Basis: WCAG 2.2.2/2.3.3, web.dev]",
+   "Typography: use a plain sans-serif (or a monospaced face for the airplane look) at 16 px or larger for body text; no 'dyslexia font'. For the long references page use line-height about 1.5, left-aligned text (no justify), short paragraphs with real headings, and slightly increased letter-spacing and word-spacing (letter-spacing about 0.05 to 0.12em). Avoid italics, all-caps for running text, and underline for emphasis. Consider a Settings control for text spacing. [Basis: Zorzi 2012, Rello 2013, BDA guidance; exact values are inference]",
+   "Keep text on solid, high-contrast surfaces in all designs. In the Modern design, use gradients and grain only on backgrounds and large decorative areas, not under body text or tick boxes. In the Airplane design, never encode state by colour alone (amber/green must be paired with a glyph or word). Keep strong, flat tick-box borders. [Basis: WCAG contrast principles, COGA 'help users focus'; grain/gradient effects on ADHD or dyslexia readers are untested]",
+   "Use big, whole-row tap targets well above the WCAG 24 px floor (roughly 56 px row height), with spacing between rows, anchored to the bottom-right for the right thumb. Add touch-action: manipulation to avoid double-tap delay and accidental zoom. [Basis: WCAG 2.5.8 floor; ergonomic figures are from prior knowledge, not retrieved]",
+   "Use neutral, non-judgemental copy ('2 items left', not 'You missed 2'). Give users control over every aid (sound, spoken confirmation, timers, spacing, reduce effects) and avoid deficit framing. [Basis: Spiel et al., CHI 2022]",
+   "Consider an optional single-line 'when' trigger per checklist (for example 'When I leave the house'), displayed on the Ask or Run header, as a lightweight implementation intention. Label it as an experiment. [Basis: Gawrilow and Gollwitzer 2008, children, lab; feature idea only]",
+   "Because evidence for task-support UI in adults with ADHD is thin, validate with real neurodivergent users. Measure skipped items, time to first tick, abandoned runs and subjective load (NASA-TLX was used in the one child-ADHD app study found). Test the three designs against each other on these measures. [Basis: Spiel et al. critique + evidence gaps]"
+  ],
+  "pitfalls": [
+   "Presenting design folklore as science. Claims that visual timers, one-task-at-a-time screens, streaks or 'dopamine-friendly' gamification help ADHD users are mostly from vendor blogs, practitioner posts and student projects. Only timing deficits, working-memory deficits, delay aversion and letter-spacing effects have actual studies behind them, and most are child or lab data.",
+   "Gamification overreach: points, badges, streaks and confetti compete for attention, can feel controlling (overjustification), and reviews warn of distraction. Streak-break harm is unverified but plausible, and a checklist app has no need for streaks.",
+   "Urgency timers: ticking countdowns, red flashing or auto-advancing steps raise time pressure and break WCAG 2.2.1-style time-limit expectations (COGA also asks for adjustable timing). No evidence says countdowns help; the timing literature supports making time visible, not making it stressful.",
+   "Decorative motion and celebration animation: motion can pull attention in peripheral vision, vestibular users can be harmed, and WCAG 2.2.2/2.3.3 apply. Do not rely on prefers-reduced-motion alone; also provide an in-app switch.",
+   "Dyslexia-font and Bionic-Reading marketing: OpenDyslexic showed no benefit, and Bionic Reading has no credible evidence. Do not ship or advertise them as accessibility features. Spacing, plain sans-serif type and left alignment are better supported.",
+   "Over-applied progressive disclosure: hiding items or details can remove the overview, increase anticipation anxiety (anecdotal) and hurt discoverability. The stack is the point of this product; test before hiding anything.",
+   "Single-modality feedback: sound-only or haptic-only confirmation fails when the phone is muted or the device does not support it (Vibration API support on iOS Safari is from prior knowledge, not retrieved). Haptics also habituate. Always show a visual state change too.",
+   "Colour-only state in the Airplane design (amber/green/cyan) and low-contrast text over gradients or grain in the Modern design. These can hurt both dyslexic and ADHD readers. Coloured-overlay and 'visual stress' claims are contested and were not verified here.",
+   "Extrapolating from children, lab tasks and small samples to adults using a phone one-handed. Most ADHD effect sizes here come from children (Martinussen, Marco, Gawrilow), and several UI claims come from general-population studies (Kushlev, Trafton).",
+   "Deficit-framed language and surprise behaviour: copy that scolds, auto-completing or auto-skipping items, and hidden settings. Spiel et al. found participants resist deficit framing, and COGA stresses predictability and user control.",
+   "Mis-taps from one-handed use: items too small or too close together, accidental double-taps firing sound twice, or no undo. These are interaction bugs that matter more than visual style, and worth explicit test scenarios (rapid taps, tap-then-undo, tapping while audio is playing, interrupted runs, rotated or resized viewport)."
+  ],
+  "cssTechniques": [
+   "Current-step salience without motion: mark the next item with a thicker border or outline (outline: 3px solid var(--accent); outline-offset: 2px), larger size or weight, and a leading marker glyph. Ticked items use a muted colour token that still meets 4.5:1 text contrast; do not rely on opacity below about 0.6 for text.",
+   "No-motion-first transitions: write base styles with no transitions, then add transition: background-color .12s, border-color .12s, transform .12s only inside @media (prefers-reduced-motion: no-preference). Provide a [data-reduce-effects] root attribute that sets *, *::before, *::after { transition: none !important; animation: none !important } for the in-app Reduce effects setting.",
+   "Stable layout: reserve fixed row heights (min-height: 56px or more) and use contain: layout on rows so ticking never shifts neighbours. Use flex-direction: column-reverse (or order) on the stack so the first item sits at the bottom and the list grows upward.",
+   "Instant tick feedback: change checked state on pointerdown or click using :active and [aria-checked=true] styles, so feedback lands within one frame. Use touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none on rows.",
+   "Progress without animation: a <progress> element or a div with transform: scaleX(var(--done)) set once per tick (no transition when reduced motion is requested), paired with a text label such as '3 of 7'.",
+   "Elapsed time as text: update a plain-text 'elapsed' element at coarse intervals (for example per minute) instead of a continuously animated ring. Use font-variant-numeric: tabular-nums so digits do not jitter.",
+   "Reading typography for the references page: font-size: clamp(1rem, 0.95rem + 0.4vw, 1.125rem); line-height: 1.5; letter-spacing: 0.05em to 0.12em; word-spacing: 0.1em to 0.16em; text-align: left; hyphens: manual; max-width about 60ch; margin-block between paragraphs about 1em or more; font-style normal for emphasis (use font-weight instead of italics); no text-decoration underline for emphasis.",
+   "Headings and wrap: text-wrap: balance for short titles and text-wrap: pretty for body text, so lines end cleanly. Avoid text-transform: uppercase on running text (labels only, with letter-spacing).",
+   "Neobrutalism and grain safely: hard offset shadows (box-shadow: 4px 4px 0 var(--ink)) and thick borders are static and fine. Press feedback via transform: translate(2px,2px) only under no-preference motion. Put feTurbulence grain on a body::before layer with pointer-events: none and low opacity, and drop it from text containers (the references page) and when [data-reduce-effects] is set.",
+   "Gradients behind content: apply gradients to the page background and decorative blocks only; put body text and tick boxes on solid surface colour tokens. Redefine tokens for dark/light per design rather than inverting automatically.",
+   "Targets and ergonomics: whole row as the hit area, padding-inline and padding-block for at least 56 px height, gap of at least 8 px between rows, and a larger tick box (around 40 px) on the right edge. Keep primary actions in the bottom-right quadrant with padding: env(safe-area-inset-bottom).",
+   "Fixed viewport without scroll: height: 100dvh; overflow: hidden on the app shell, with overflow: auto; overscroll-behavior: contain only on the references page's inner list.",
+   "Font choice from Google Fonts: a plain sans-serif for Classic and Modern, a monospaced or plain grotesque for Airplane. Do not add a 'dyslexia font'. Atkinson Hyperlegible and Lexend are available on Google Fonts, but I did not verify any ADHD or dyslexia benefit for either (see unverified)."
+  ],
+  "unverified": [
+   "I could not open any primary page: WebFetch failed with DNS errors for www.w3.org, w3c.github.io, www.nngroup.com and pmc.ncbi.nlm.nih.gov. All findings come from WebSearch result summaries, so the exact wording and numbering of COGA objectives and patterns, and NN/g's own text on progressive disclosure, are unconfirmed.",
+   "The 'Help users focus' and 'Ensure processes do not rely on memory' objective names come from a UK government summary and search snippets of the W3C Note. I did not see the specific patterns (for example on distraction, time limits or progress), so their names and wording could not be quoted.",
+   "Deci, Koestner and Ryan (1999) effect sizes (d = -0.40 for expected tangible rewards, +0.31 for verbal praise, 128 experiments) came from a gamification consultant's blog and were not checked against the paper.",
+   "The Silverman and Barasch (2023, Journal of Consumer Research) paper on broken streaks, cited by a gamification blog, was not found. The loss-aversion ratio of about 2 to 2.5 times also had no primary source.",
+   "Which specific URL carries the Hedges' g = 0.28 gamified-intervention meta-analysis (27 RCTs) versus the 19-study mobile-game scoping review versus the 13-study neurofeedback-gamification review; I cited one Frontiers link for the group and the mapping may be off. The newer 24-RCT ADHD gamification meta-analysis was seen only as an event announcement.",
+   "The 'Pickens 2023' white-noise meta-analysis could not be found. A review cites a 13-study meta-analysis with small-to-medium effects, but I could not confirm its authors.",
+   "Kofler 2013 and any Rohde/Schwartz timing paper (named in one of my queries) were not found or confirmed, and I make no claim from them.",
+   "The results of the UNISON study of children with ADHD using NASA-TLX across input devices were not visible, so I cannot say whether touchscreens raised or lowered cognitive load.",
+   "The Zorzi 2012 sample of 74 children comes from news coverage of the paper; one search summary only showed F(1,70). Whether the benefit holds for adult readers, phone screens or other fonts was not established. Skottun and Skoyles' criticism and Zorzi's reply were seen only as titles.",
+   "The results of the 2016 PubMed study on letter spacing and coloured overlays in adult dyslexia, and of Galliussi et al. 2020 (inter-letter spacing and inter-word spacing), were not visible. The Meares-Irlen 'visual stress' and coloured-overlay claims were not researched.",
+   "Whether Lexend or Atkinson Hyperlegible have any peer-reviewed evidence for ADHD or dyslexia readers was not searched.",
+   "CSS and ergonomic figures not retrieved this session (from prior knowledge): WCAG 1.4.12 text-spacing values (letter-spacing 0.12em, word-spacing 0.16em, line-height 1.5, paragraph spacing 2em); the 1.4.3 contrast ratio of 4.5:1 and 1.4.11 non-text contrast of 3:1; platform tap-target guidance of about 44-48 px; and Vibration API support gaps on iOS Safari. Verify before relying on them.",
+   "WCAG 2.2.1 Timing Adjustable was not found in search results, so the statement that countdowns and auto-advance conflict with it rests on prior knowledge and COGA's general emphasis on adjustable timing.",
+   "No peer-reviewed study was found on: visual timers or elapsed-time displays improving on-task behaviour in ADHD; haptic reminders in ADHD; animated UI elements as distractors in ADHD; one-thing-at-a-time interfaces reducing cognitive load in ADHD; streak mechanics in ADHD. These remain design hypotheses.",
+   "Interruption-resumption claims (Trafton, Altmann and Brock 2005; Chung and Byrne 2008) were seen only as secondary summaries of the papers and are not ADHD-specific.",
+   "The 2006 periodic-alerts SART study (15 children with ADHD, 15 controls) was seen only as a DeepDyve abstract; I did not confirm its authors or journal, and it is a small sample."
+  ]
+ },
+ {
+  "topic": "Airliner cockpit display conventions (Boeing EICAS/PFD/ND/ECL and Airbus ECAM/PFD): color semantics, typography (B612 and Google Fonts alternatives), dark backgrounds, boxes/bezels, and how checklist lines and completed items are drawn. Method note: WebFetch was blocked in this sandbox (DNS failure and a proxy 403 on fonts.google.com, lii.enac.fr, patents.google.com and easa.europa.eu), so every finding comes from WebSearch result summaries. No primary page was read in full. No source found states exact hex values for any cockpit color.",
+  "findings": [
+   {
+    "claim": "Regulatory baseline: warning is red, caution is amber or yellow, and advisory alerts must not be red or green. Red, amber and yellow elsewhere on the flight deck must be limited.",
+    "detail": "14 CFR 25.1322 (effective 2011, Amdt 25-131) is summarized as: red for warning, amber or yellow for caution, any color except red or green for advisory alerts. Red/amber/yellow for non-alerting functions must be limited so they do not harm crew alerting. The 2010 FAA NPRM wording excluded red, amber, yellow and green for advisories, so the final-rule wording is medium confidence. EASA CS-25.1322 carries the same limited-use rule. EASA's comment response says it would not distinguish yellow from amber, and records Airbus wanting existing yellow and green usage kept for commonality.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.faa.gov/sites/faa.gov/files/2022-11/25.1322.pdf"
+   },
+   {
+    "claim": "Airbus ECAM color meanings: red = warning (most urgent), amber = caution, green = normal, white = titles/labels/remarks, blue (cyan) = actions to be carried out or limitations, magenta = special/particular messages.",
+    "detail": "Airbus's own EASA comment states it complies with red for warnings and amber for cautions, and that green indicates normal while an alert generally represents something non-normal. The fuller legend comes from secondary sources and is consistent across them. Red means stop other tasks, amber means finish the current task then handle it. Blue/cyan is an action or selection still to be done (for example the procedure steps). Magenta marks special messages such as T.O. INHIBIT and LDG INHIBIT on the E/WD. White also marks a controlled function set to a non-normal position (for example a switch moved to OFF). The FlyByWire A32NX docs match this on the STS page: blue for limitations and procedures, white for approach procedures and cancelled cautions, amber for inoperative systems, green for information.",
+    "confidence": "medium",
+    "sourceUrl": "https://v1prep.com/a320-ecam-practical-guide.html"
+   },
+   {
+    "claim": "On the Airbus E/WD, normal system values are green and amber X marks mean information is unavailable. Amber pulsing on a parameter is an early warning of an approaching limit.",
+    "detail": "FlyByWire's ECAM pages (a simulation of the real system) show green for normal-range indications such as hydraulic pressure and amber 'X' for data not available. A secondary guide describes pulsing amber on SD-page parameters as a pre-warning.",
+    "confidence": "medium",
+    "sourceUrl": "https://docs.flybywiresim.com/pilots-corner/a32nx/a32nx-briefing/ecam/sd/sts/"
+   },
+   {
+    "claim": "Boeing EICAS uses three alert levels (A warning, B caution, C advisory) and a six-color palette: red, yellow/amber, cyan, magenta, white, green.",
+    "detail": "A 757 EICAS training slide lists the multicolor presentation as red, yellow, cyan (light blue), magenta (pink), white and green. A general EICAS reference associates red with warnings, yellow with caution/advisory messages, cyan with parameter names and status marks, and magenta with in-flight engine starting. These sources are generic or from the 757, not 777 or 787, so the mapping for newer types is not confirmed. They also state that colors and message categories vary by type.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.slideshare.net/slideshow/757-eicas/17010457"
+   },
+   {
+    "claim": "Boeing electronic checklist (ECL) convention: incomplete items are white and completed items turn green. Operational notes are shown in blue so they stand apart from both.",
+    "detail": "Boeing's electronic checklist patent US 5454074 describes completed items (open-loop and closed-loop) changing text color from white to green, with notes displayed in blue. A related patent, US 5522026, describes the same white-pending / green-complete scheme. An MIT 16.422 lecture summary (secondary) also says incomplete items are white and complete items green. These are 1990s patent descriptions, so they may not match current 787 pixels.",
+    "confidence": "medium",
+    "sourceUrl": "https://patents.google.com/patent/US5454074"
+   },
+   {
+    "claim": "Boeing ECL sensed vs non-sensed items: sensed (closed-loop) items turn green only when the aircraft confirms the state. Open-loop items need a manual cursor selection. A box marks the current item and jumps to the next incomplete one.",
+    "detail": "A Boeing paper (Boorman, 2001) says sensed line items will not turn green when the wrong switch is selected, and 'CHECKLIST COMPLETE' does not display until all items are complete. It also notes the current line-item box jumps to the next incomplete item when items are skipped. The 787 article in AIN says the ECL senses control positions and shows the item green if they agree, and unsensed items must be selected with the cursor. Patent text separates closed-loop (no crew response needed) from open-loop (crew response required) items.",
+    "confidence": "medium",
+    "sourceUrl": "https://flighttestsafety.org/images/Boorman_OSU2001_Paper.pdf"
+   },
+   {
+    "claim": "Boeing ECL status model: a checklist can be completed, selected but not complete, not yet selected, overridden, or inhibited. On the 777 a checklist icon sits beside the EICAS message until the checklist is done.",
+    "detail": "MIT 16.422 lecture notes describe the 777 'checklist icon' beside an EICAS message whenever an ECL checklist still needs completing, removed once complete. A Boeing-assigned patent (surfaced in the same search; the exact patent number was not shown in the snippet) lists the same status states, including 'overridden'. MIT's summary also says the crew can deliberately override an item (example: inoperative autobrake) so the checklist can still be completed. How an overridden item is drawn (color or box style) was not found.",
+    "confidence": "medium",
+    "sourceUrl": "https://ocw.mit.edu/courses/16-422-human-supervisory-control-of-automated-systems-spring-2004/8d934ba66f80b2ca1f6f82cb0ee3e4bf_040804alertsys_1.pdf"
+   },
+   {
+    "claim": "Airbus ECAM checklist/procedure interaction uses a blue selection box, not a filled highlight. The C/L key validates or devalidates the boxed item.",
+    "detail": "FlyByWire A380X docs (modelling the real A380 control panel): the up/down arrows move a blue box on the EWD. The box cannot surround a grey line except on the checklist menu. Pressing C/L validates or devalidates the boxed item, which is how items the ECAM cannot sense are ticked manually. Treat this as indicative for the A320 family rather than exact.",
+    "confidence": "medium",
+    "sourceUrl": "https://docs.flybywiresim.com/pilots-corner/a380x/a380x-briefing/flight-deck/pedestal/ecam-cp/"
+   },
+   {
+    "claim": "Airbus ECAM action lines: blue = still to do. Whether completed lines recolor, tick or are simply cleared was not confirmed.",
+    "detail": "Multiple secondary sources agree blue marks actions still to be carried out. One search summary reported completed actions being cleared (CLR key) rather than recolored, and found no per-line green tick on the A320. This conflicts with a common belief that Airbus shows a tick or green line for done items, which could not be verified. A green down-arrow on the ECAM indicates more steps below the visible screen (low confidence, source unnamed in the summary).",
+    "confidence": "low",
+    "sourceUrl": "https://skybrary.aero/sites/default/files/bookshelf/4642.pdf"
+   },
+   {
+    "claim": "Airbus PFD flight mode annunciator (FMA) colors: green = engaged, blue/cyan = armed, magenta = altitude constraints, white = approach capabilities/status, amber = caution, red = significant degradation.",
+    "detail": "Taken from two Brainscape flashcard sets, so low reliability. SKYbrary gives the generic rule that active is usually green and armed white or blue, and that abbreviations vary by manufacturer. A claimed 'magenta = managed' rule was not supported by these sources. A mode-change highlight box with a 10 second timeout also could not be verified.",
+    "confidence": "low",
+    "sourceUrl": "https://blog.brainscape.com/flashcards/7063970/packs/11348796"
+   },
+   {
+    "claim": "Boeing PFD/ND colors per a third-party explainer: magenta = selected targets, flight director and active FMC route. Green = active modes and engaged systems. White = scales, labels and armed modes. Cyan = background map info and selectable symbols. Amber = caution, red = warning.",
+    "detail": "This is a 737-focused simulator explainer, not Boeing documentation. It notes the presentation differs between 737 Classic, NG and MAX and that no universal standard exists. No 777 or 787 specifics were found. It also warns that magenta guidance alone does not prove a mode is engaged.",
+    "confidence": "low",
+    "sourceUrl": "https://flyawaysimulation.com/ask/answers/boeing-737-pfd-navigation-display-symbols/"
+   },
+   {
+    "claim": "B612 and B612 Mono: an open-source typeface family designed for aircraft cockpit screens. Airbus started the research in 2010 with ENAC and Universite de Toulouse. It was designed by Intactile DESIGN with ENAC, and is on Google Fonts.",
+    "detail": "ENAC page and PolarSys repository: collaboration began in 2010 (project members Laurent Spaggiari of Airbus, Jean-Luc Vinot of ENAC, Sylvie Athenes of Universite de Toulouse III, Yves Rinato of Intactile DESIGN). Design credited to Nicolas Chauveau, Thomas Paillot and Jonathan Favre-Lamarine (Intactile) with Jean-Luc Vinot, around 2012. Airbus agreed to release it under the Eclipse Public License via PolarSys in 2017. It won an Observeur du Design award (Industry Star) in 2018. The family is roman and italic in two weights (regular, bold) plus B612 Mono, and the name refers to the Little Prince's asteroid. Google Fonts describes it as 'designed and tested to be used on aircraft cockpit screens'. The ENAC page describes it as for future Airbus programs, so use in current production cockpits is not confirmed.",
+    "confidence": "high",
+    "sourceUrl": "https://lii.enac.fr/projects/definition-and-validation-of-an-aeronautical-font/"
+   },
+   {
+    "claim": "B612 design rules: maximize distance between letterforms to avoid confusion, keep open counterforms, keep each letter's distinguishing features, and use light traps at stroke junctions. It avoids monoline strokes with no thickness contrast.",
+    "detail": "PolarSys lists its main characteristics as maximizing the distance between character forms, respecting letter primitives, and harmonizing forms and spacing. ENAC says the designers excluded linear marks with no thickness contrast, as used in the CDS font of actual cockpits, and kept bowls open. Light traps are explained as helping in poor viewing conditions (lighting, viewing angle, high cognitive load). Secondary sources add that 0/O and 1/I/l are deliberately differentiated. Some commenters find the light traps distracting at large sizes and the narrow letter gap less readable (Hacker News).",
+    "confidence": "medium",
+    "sourceUrl": "https://github.com/polarsys/b612"
+   },
+   {
+    "claim": "Overpass Mono is the monospaced sibling of Overpass, itself an interpretation of Highway Gothic (US FHWA traffic-sign alphabets). It was designed by Delve Withrington (Delve Fonts) and sponsored by Red Hat and Google Fonts.",
+    "detail": "Google Fonts says Overpass interprets the Highway Gothic letterforms from the FHWA Standard Alphabets for Traffic Control Devices, with adjustments for on-screen legibility. Sources conflict on how many weights Overpass Mono has (four per Typewolf, five from Light to Bold per RightFont), so check the current Google Fonts page. It is licensed under the OFL. It is a sign-lettering grotesque, not a cockpit font, but its signage heritage gives a related instrument-panel feel.",
+    "confidence": "medium",
+    "sourceUrl": "https://fonts.google.com/specimen/Overpass/about"
+   },
+   {
+    "claim": "Barlow, by Jeremy Tribby, is a slightly rounded, low-contrast grotesk inspired by California public signage (plates, highway signs, buses, trains). It comes in Normal, Semi Condensed and Condensed widths, each with 9 weights and italics.",
+    "detail": "The Google Fonts description matches. The three widths make Semi Condensed and Condensed useful for fitting long labels at 320px. Licensed under the OFL. The California-signage inspiration is stylistic, with no documented tie to an official sign standard. Barlow is not an aviation font. It suits a cockpit-like label look (similar to ARINC-era caps labels) only by resemblance.",
+    "confidence": "medium",
+    "sourceUrl": "https://fonts.google.com/specimen/Barlow/about"
+   },
+   {
+    "claim": "Share Tech Mono (Carrois Apostrophe) ships in a single weight (400), OFL licensed, with a proportional companion Share Tech. IBM Plex Mono (Mike Abbink with Bold Monday) is OFL-licensed, with true italics and multiple weights.",
+    "detail": "Fontsource and Google Fonts listings show Share Tech Mono at weight 400 only, so there is no bold; bold would be synthesized. IBM Plex Mono: Wikipedia says the Plex family has eight weights with true italics, released under SIL OFL 1.1. The exact weight set served by Google Fonts for Plex Mono was not confirmed. Neither font was designed for cockpits. Share Tech Mono has a technical, squared, instrument-like look and Plex Mono is more neutral and humanist.",
+    "confidence": "medium",
+    "sourceUrl": "https://fontsource.org/fonts/share-tech-mono/about"
+   },
+   {
+    "claim": "Airbus 'dark cockpit' / 'lights out' philosophy: pushbutton lights stay off when a system is normal. A lit light means a fault or a non-normal switch state ('white means you did it' is a common rule of thumb).",
+    "detail": "Airbus presentation material and Flightradar24's Boeing/Airbus explainer describe this. The term 'dark, quiet cockpit' is tied to Airbus-era design (A300, 1982 per FlightGlobal, details paywalled). A 'Boeing quiet and dark' doctrine could not be confirmed from an authoritative source. The takeaway for display design is minimal chrome in the normal state, with color reserved for state changes.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.flightradar24.com/blog/boeing-airbus-difference-inside/"
+   },
+   {
+    "claim": "Cockpit display backgrounds are black, and dimmability is required for dark adaptation. The FAA recommends six or fewer colors across the flight deck.",
+    "detail": "FAA guidance says electronic displays should be dimmable to levels that allow dark adaptation while keeping outside vision and an acceptable presentation. The FAA reportedly recommends using six or fewer colors in a typical flight deck (low confidence; from FAA committee minutes summarized via search). A DTIC report says NVG-compatible cockpit lighting is typically green with no red. No source in this run explained why backgrounds are black beyond light-on-dark being the norm for dim environments.",
+    "confidence": "low",
+    "sourceUrl": "https://apps.dtic.mil/sti/pdfs/ADA517298.pdf"
+   },
+   {
+    "claim": "The formal color standards are paywalled: SAE ARP4032B (color on electronic aircraft displays) and ARP4102/7 (display symbology). No chromaticity or RGB values are publicly stated in anything found.",
+    "detail": "NASA Ames's Color Usage site (colorusage.arc.nasa.gov) has pages on color usage hierarchy, background colors and aerospace graphics, but their contents were not retrieved. ARINC 661 explicitly does not specify look and feel. SAE ARP5289A also says it gives no specific recommendations on color or fonts. Hence any hex value for 'cockpit green' or 'cockpit amber' is an approximation.",
+    "confidence": "high",
+    "sourceUrl": "https://saemobilus.sae.org/content/ARP4032B"
+   }
+  ],
+  "cssTechniques": [
+   "Color tokens as custom properties with semantic names, not hue names: --ok (green), --pending (white), --action (cyan), --caution (amber), --warn (red), --special (magenta), --bg (near-black). Redefine per theme; a cockpit look is dark-only, so supply a dimmed 'night' variant by lowering saturation or lightness rather than inventing a light theme.",
+   "Approximate palette on black (design suggestions, NOT from any source): green about #00FF66 to #3DF07A, white about #F2F2F2, cyan about #00E5FF to #00FFFF, amber about #FFB000 to #FFC000, red about #FF3030, magenta about #FF40FF, background about #000000 to #06080B. Use these as starting points only. Avoid pure blue (#0000FF), whose contrast on black is only about 2.4:1 (my calculation, not from a source), which is the practical reason cockpits use cyan for 'blue'.",
+   "Checklist line anatomy copied from Boeing ECL: pending line = white text with an empty square box on the right; done line = green text with a green check in the box; note/detail line = cyan or blue text, indented, smaller; required-and-unchecked at Done = amber text and amber box outline.",
+   "Current-item indicator as a thin cyan outline box around the line (border: 2px solid var(--action); no fill), matching the Airbus blue selection box and the Boeing current-line-item box. Keep it a box rather than a filled highlight so text contrast is unchanged.",
+   "Label typography: uppercase, letter-spacing about 0.04em to 0.08em, tabular numbers via font-variant-numeric: tabular-nums, B612 Mono for values/quantities and B612 (or Barlow Semi Condensed) for labels. Test whether B612 Mono has a slashed or dotted zero before relying on it (unverified).",
+   "Dotted leaders between the item label and its state (ECAM and QRH style) via a flex row with a flex:1 middle element using border-bottom: 1px dotted currentColor or a repeating radial-gradient. Treat as a style choice, since the search results did not confirm leaders on the real displays.",
+   "Bezel and box outlines: 1 to 2px solid white or cyan borders with square corners (border-radius 0 to 2px), an inset box-shadow for a screen-recess look, and a subtle CSS-only scanline or vignette via repeating-linear-gradient. Never rely on glow alone for state.",
+   "Pair every color with a non-color cue (check mark glyph, box fill vs outline, text such as REQUIRED) because green and red advisories are barred by the alerting rule and red/green confusion is common. Under prefers-reduced-motion: reduce, replace any pulse/flash (Airbus amber pulse analogue) with a static thicker outline.",
+   "Use text-shadow: 0 0 4px color-mix(in srgb, currentColor 40%, transparent) at most, for a phosphor feel. Keep the shadow off when prefers-contrast: more or when the item is small, because glow smears thin B612 light-trap details."
+  ],
+  "pitfalls": [
+   "No source gave exact hex or RGB values for any cockpit color, so do not present #00FF00 or similar as 'the official color'. Label approximations as such.",
+   "Airbus and Boeing differ, and some conventions are not one standard. Boeing ECL: pending white, done green, notes blue. Airbus ECAM: action blue, normal green, labels white. A hybrid in the app should state one chosen semantic map and keep it consistent across screens.",
+   "Do not claim Airbus ECAM draws a green tick or recolors completed lines. That could not be verified (see unverified). Boeing white-to-green is better supported (patent and MIT notes).",
+   "B612 is a research and open-source family 'for future Airbus programs'. Do not claim it is on any current airliner screen. The ENAC page itself contrasts it with the CDS font used in actual cockpits.",
+   "B612's light traps and tall, narrow-gap forms can look noisy and less readable at large sizes (Hacker News feedback relayed by a search summary). Use it mainly at body and label sizes, and consider Barlow Condensed for large headings.",
+   "Share Tech Mono has only weight 400. Declaring font-weight: 700 would trigger synthetic bold. Also, Overpass Mono's weight set differs between sources, so check Google Fonts before specifying the weights in the Google Fonts URL.",
+   "Monospaced fonts at 320px: a typical monospace advance is about 0.6em (unverified for B612 Mono), so at 16px only about 30 characters fit in a 288px column. Plan for wrapping or a 13 to 14px size for detail lines, and avoid column-aligned ASCII tables.",
+   "Pure saturated #00FF00 text on pure black gives strong glare and halation, which is a risk for long reading sessions and users sensitive to flicker or contrast. Soften saturation or luminance slightly, and offer a dimmer variant.",
+   "Red and amber are meant to be rare (the rule says limit non-alerting use). If every required item is amber and every error red, the 'caution' meaning loses its signal. Reserve amber for required-but-unchecked at Done, and red for a blocking condition only.",
+   "Flashing or pulsing alerts (Airbus amber pulse analogue, master caution flash) conflict with prefers-reduced-motion and could be distracting for ADHD users. Use static emphasis and an optional single short pulse only when motion is allowed.",
+   "Secondary sources dominate this research: flashcards, simulator docs (FlyByWire models the real system but is a simulation), explainers and forum posts. Cross-check against an actual FCOM or QRH or the ARP4032B standard before claiming authenticity."
+  ],
+  "recommendations": [
+   "Adopt a semantic mapping as the 'Airplane' theme contract: green = done or normal, white = pending item text and labels, cyan = action, hint, detail and the current-item box, amber = required and not yet done (caution), red = blocking error only, magenta = special info (for example the Ask answers or quantity chips used as context). This is backed by Airbus (green normal, white labels, blue action, amber caution, red warning, magenta special) and Boeing ECL (white pending, green complete, blue note).",
+   "Use B612 for labels and B612 Mono for numbers, quantities and counters, with Barlow Semi Condensed as the fallback and a possible heading face. Keep the Google Fonts request to the weights actually used (B612 400 and 700, B612 Mono 400 and 700, Barlow 500 and 600), subsetted via the css2 URL with display=swap.",
+   "Draw each checklist row as a bordered square-corner box with the tick box on the right edge. Pending = empty white outline box, done = green outline with a green check glyph plus green text, required = a small amber 'REQ' tag. Mark the next incomplete item with a cyan outline box, mirroring the Boeing current-line-item box that jumps to the next incomplete item.",
+   "Show a 'CHECKLIST COMPLETE' line in green only when all items are done (Boeing ECL behavior), and add an amber 'ITEMS OPEN' line, listing the count, if the user presses Done with required items open. This matches Boeing's rule that completion is withheld until all items are done, with an explicit override path.",
+   "Support an explicit 'override' or skip state, since Boeing models overridden items as a distinct status (completed, selected, not selected, overridden, inhibited). Since no source showed how overridden is drawn, choose your own style (for example a white dashed box with a struck-through or dimmed label) and keep it distinct from green done.",
+   "Use a near-black background with minimal chrome in the normal state, in the spirit of the Airbus 'lights out' idea: only state changes (done, caution) add color. Add a dimmed mode for dark rooms since the FAA says displays must be dimmable for dark adaptation.",
+   "Keep the palette to six colors or fewer (the FAA's reported recommendation) and always pair a color with a glyph or text label.",
+   "Since hex values are unsourced, define the tokens once in :root and tune by eye on the target phone at low brightness. Verify contrast of each token on the background (aim for at least 4.5:1 for text, 3:1 for outlines) with a checker rather than trusting these approximate values.",
+   "Before shipping, obtain at least one primary source for the claims that matter most visually. These are the actual Boeing 787 ECL item states and the Airbus completed-line look: the Boeing FCOM or 787 training manual, a real flight-deck video or screenshot, or SAE ARP4032B and the NASA colorusage.arc.nasa.gov pages."
+  ],
+  "unverified": [
+   "How Airbus ECAM draws completed actions on A320/A330/A350/A380 (blue turns white, green tick, green line, or cleared) is unverified. One search summary found no per-line green tick on A320.",
+   "Exact EICAS/ECL colors on the 777 and 787 (including cyan or magenta for overridden items, selection boxes and 'checklist complete') were not found. The PMDG forum mention of a magenta selection box refers to a simulator add-on, not the real aircraft.",
+   "The claim that Boeing selected-altitude/speed values are magenta on the PFD while Airbus uses cyan/blue is common pilot knowledge, but no authoritative source was retrieved. The Boeing explainer found only gives magenta as selected targets, FD and FMC route.",
+   "The Airbus FMA mode-change highlight (a box around a new mode for roughly 10 seconds) could not be confirmed. Also unconfirmed: 'magenta = managed' on Airbus PFD.",
+   "That B612 is deployed in any in-service airliner. The sources say 'future Airbus programs', and the ENAC page contrasts it with the CDS font in actual cockpits.",
+   "Current licence of B612 on Google Fonts (Eclipse Public License in 2017 release versus SIL OFL on Google Fonts) and exact weight and style set served by Google Fonts for B612, B612 Mono, Overpass Mono and IBM Plex Mono.",
+   "Whether B612 Mono has a slashed or dotted zero and what its character advance width is.",
+   "The final-rule wording of 25.1322(e) for advisories ('any color except red or green' versus excluding amber and yellow as well) is only partly confirmed (the NPRM text differed).",
+   "FAA recommendation of six or fewer colors, and the contents of AC 25-11B and the FAA color-pair report. Only second-hand summaries were seen.",
+   "Dot leaders and memo-line formatting on real ECAM/EICAS displays (for example '-ENG MODE SEL....IGN'). They are well known from QRH and ECAM text, but the searches did not confirm them.",
+   "That Airbus EICAS-style yellow versus amber appearance differs between manufacturers (EASA says it will not distinguish them). Exact luminance and chromaticity are in paywalled SAE ARP4032B."
+  ]
+ },
+ {
+  "topic": "Neobrutalism in web/app UI, 2024-2026: traits, pressed states, palettes, Google Fonts, real examples, accessibility, concrete CSS",
+  "findings": [
+   {
+    "claim": "The commonly cited neobrutalist core is borders of about 2-5px, hard offset shadows with 0 blur, and flat single-colour fills. Gradients are usually avoided.",
+    "detail": "Design blogs agree on these traits, and also on a gap from raw 1990s brutalism: navigation and hierarchy stay usable. Black plus off-white with 1-3 saturated accents is the usual palette. The sources are trend blogs and vendor guides, not authoritative definitions. Treat '2-4px' as a convention, not a rule.",
+    "confidence": "medium",
+    "sourceUrl": "https://theplusaddons.com/blog/neo-brutalism-web-design/"
+   },
+   {
+    "claim": "neobrutalism.dev (ekmas/neobrutalism-components) token set from its own source: 2px black borders, 4px 4px 0 0 hard shadow, 5px radius, weights 500/700, DM Sans.",
+    "detail": "globals.css on main: --border-radius:5px; --box-shadow-x/y:4px; --reverse-box-shadow-x/y:-4px; --heading-font-weight:700; --base-font-weight:500; --base-font-family is DM Sans, and a comment says 'Any Google font works here'. Colours: --background:hsl(214,95%,93%); --secondary-background:oklch(100% 0 0); --foreground, --main-foreground, --border, --ring all oklch(0% 0 0); --main:hsl(217,100%,66%); --overlay:oklch(0% 0 0 / 0.8); --shadow: var(--box-shadow-x) var(--box-shadow-y) 0px 0px var(--border). Light theme only: no dark tokens in this file. It also ships a black 16-20px scrollbar with a 4px black left border.",
+    "confidence": "high",
+    "sourceUrl": "https://raw.githubusercontent.com/ekmas/neobrutalism-components/main/src/styling/globals.css"
+   },
+   {
+    "claim": "In neobrutalism.dev the default Button rests with a shadow and moves INTO it on hover (translate +4/+4, shadow-none). A 'reverse' variant does the opposite.",
+    "detail": "button.tsx default variant: 'bg-main border-2 border-border shadow-shadow hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none'. 'reverse' variant: 'hover:translate-x-reverseBoxShadowX hover:translate-y-reverseBoxShadowY hover:shadow-shadow'. Focus: 'focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2'. The white ring-offset gap is what keeps the black ring visible next to the black border. Sizes: h-10 default, h-11 lg, icon size-10. The press is hover-driven, so on touch it needs :active.",
+    "confidence": "high",
+    "sourceUrl": "https://raw.githubusercontent.com/ekmas/neobrutalism-components/main/src/components/ui/button.tsx"
+   },
+   {
+    "claim": "neobrutalism.dev is actively maintained again as of Sep 2026. Older and competitor sources calling it unmaintained are stale.",
+    "detail": "Commit page shows Sep 11-14 2026 commits: a Base UI migration PR merged, and the README 'unmaintained notice' dropped. The repo has about 5.6k stars, MIT licence, Next.js/Tailwind v4/shadcn base. A search-result summary and a RetroUI post (a competing, promotional library) said it was no longer maintained. Use it as a token reference, not a dependency: this app has no build step.",
+    "confidence": "medium",
+    "sourceUrl": "https://github.com/ekmas/neobrutalism-components/commits/main"
+   },
+   {
+    "claim": "neobrutalism.dev palette system: about 17 'monochromatic' palettes, each a saturated main plus a pastel page background. A duotone mode pairs main with a different bg.",
+    "detail": "From colors.ts. Examples (main on bg): blue hsl(217,100%,66%) on hsl(214,95%,93%); red hsl(359,100%,69%) on hsl(0,100%,94%); amber hsl(45,100%,50%) on hsl(48,96%,89%); yellow hsl(49,100%,49%) on hsl(54,92%,88%); lime hsl(84,100%,45%) on hsl(84,71%,89%); green hsl(152,96%,45%) on hsl(142,84%,93%); cyan hsl(190,100%,47%); sky hsl(204,100%,50%); violet hsl(258,100%,76%) on hsl(259,94%,95%); pink hsl(332,96%,69%) on hsl(327,73%,95%). Others: orange, emerald, teal, indigo, purple, fuchsia, rose. Chart accents recur: #FF4D50, #FACC00, #05E17A, #0099FF, #7A83FF, #FF7A05, #00D696. Text on every main is black.",
+    "confidence": "high",
+    "sourceUrl": "https://raw.githubusercontent.com/ekmas/neobrutalism-components/main/src/data/colors.ts"
+   },
+   {
+    "claim": "Gumroad's open-source frontend (MIT, antiwork/gumroad) documents its real palette and shadow tokens.",
+    "detail": "tailwind.css @theme: pink #ff90e8, purple #90a8ed, green #23a094, orange #ffc900 (the yellow-gold accent), red #dc341e, yellow #f1f333, violet #b23386, gray #f4f4f0 (cream), dark-gray #242423, black/white. --shadow: 0.25rem 0.25rem 0 currentColor; --shadow-lg: 0.5rem 0.5rem 0 currentColor; --radius: 0.25rem; --button-hover-offset: 0.25rem. Its borders go through a --color-border token with an alpha variable, and Button.tsx uses Tailwind's 1px 'border'. So Gumroad's current app UI is lighter than the '3-4px black border' stereotype.",
+    "confidence": "high",
+    "sourceUrl": "https://raw.githubusercontent.com/antiwork/gumroad/main/app/javascript/stylesheets/tailwind.css"
+   },
+   {
+    "claim": "Gumroad's pressed-state pattern is the opposite of neobrutalism.dev's. At rest there is no shadow. Hover lifts (translate -offset, black hard shadow +offset). :active returns to translate 0 with no shadow.",
+    "detail": "Button.tsx class string: 'transition-transform hover:-translate-(--button-hover-offset) hover:shadow-[var(--button-hover-offset)_var(--button-hover-offset)_0_var(--color-black)] active:translate-0 active:shadow-none'. A code comment says the hover shadow is pinned to black in BOTH themes because currentColor flips to near-white in dark mode and 'renders a strange white button shadow'. This is a real-world dark-mode decision. Button sizes: px-4 py-3, icon size-12 (48px).",
+    "confidence": "high",
+    "sourceUrl": "https://raw.githubusercontent.com/antiwork/gumroad/main/app/javascript/components/Button.tsx"
+   },
+   {
+    "claim": "Three press conventions exist: (a) shadow at rest, :active translates by the offset and drops the shadow; (b) Gumroad lift-on-hover then flatten-on-active; (c) neobrutalism.dev move-into-shadow on hover.",
+    "detail": "Pattern (a) is in the hardbrut CSS: rest 5px 5px 0, hover translate(-2px,-2px) with 7px shadow, active translate(3px,3px) with box-shadow:none, 0.1s transition. It also matches a widely mirrored neo-brutalism skill file and freefrontend examples: rest 4px 4px 0 #000, :active translate(4px,4px) with no shadow, ~0.1s. The press feels authentic because the element moves into its own shadow instead of fading or glowing. For a touch-only phone app, (a) driven by :active is the only one that gives feedback, since hover never fires.",
+    "confidence": "high",
+    "sourceUrl": "https://raw.githubusercontent.com/supernihil/hardbrut/main/hardbrut.css"
+   },
+   {
+    "claim": "Google Fonts availability and variable-axis ranges were verified from the google/fonts repo metadata. All are OFL.",
+    "detail": "Bricolage Grotesque: opsz 12-96, wdth 75-100, wght 200-800 (a condensed width axis is useful for long item names at 320px). Space Grotesk: wght 300-700. Familjen Grotesk: wght 400-700. Syne: wght 400-800 (display category). Unbounded: wght 200-900. Archivo: wdth 62-125, wght 100-900. Archivo Black: single weight. Lexend: wght 100-900. DM Sans: opsz 9-40, wght 100-1000. Epilogue and Space Mono also exist. daisyUI's neubrutalism trend page suggests Syne, Archivo Black, Space Grotesk, DM Sans, Space Mono: an unusual heavy grotesque or stretched display face or uppercase headlines at large scale, with body copy and functional labels in a calm sans or mono.",
+    "confidence": "high",
+    "sourceUrl": "https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/METADATA.pb"
+   },
+   {
+    "claim": "The daisyUI trends page is the source I found for pairing a loud display face with a calm text face in neobrutalism. No authoritative 'neobrutalism font list' exists.",
+    "detail": "The page itself could not be fetched, so this comes from a search-result summary. A tutsplus roundup mentions commercial faces (Brutalisme, Neuething Sans, Brutal Milk). The ekmas library defaults to DM Sans and hardbrut uses Inter 900 for display. Do not claim Space Grotesk or Bricolage are 'the' neobrutalism fonts. They are popular, free, and fit.",
+    "confidence": "medium",
+    "sourceUrl": "https://trends.daisyui.com/trend/neubrutalism/"
+   },
+   {
+    "claim": "Heavy black borders make default focus rings disappear, so neobrutalism needs an explicit :focus-visible style.",
+    "detail": "Multiple guides say a browser outline drawn on a 3-4px black border is invisible. The fix is a separate, contrasting, solid outline of at least 2px, with outline-offset to clear the border (offset 3px for a 4px border). The ekmas library uses a ring plus a white ring-offset. hardbrut uses outline:3px solid ink with outline-offset:3px on buttons. But hardbrut's inputs do 'outline:0; box-shadow: hard shadow' on focus, i.e. a shadow-only indicator. Treat that as a weaker pattern to avoid.",
+    "confidence": "high",
+    "sourceUrl": "https://theplusaddons.com/blog/neo-brutalism-web-design/"
+   },
+   {
+    "claim": "WCAG 2.2 levels that matter here: 1.4.11 Non-text Contrast (AA, 3:1 for UI component boundaries/states and focus indicators); 2.5.8 Target Size Minimum (AA, 24x24 CSS px or spacing exception); 2.4.13 Focus Appearance (AAA, at least a 2px perimeter and a 3:1 change between states). 2.4.7 Focus Visible and 2.4.11 Focus Not Obscured (Minimum) are AA.",
+    "detail": "2.4.13 is only AAA. Many blogs misstate it as AA, and the W3C implementation report table even mislabels it. For a thumb-driven app, aim well above 24px (44-48px) for ticks and buttons. Page sizes are CSS pixels, and zoom does not change them.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html"
+   },
+   {
+    "claim": "W3C technique C40 (two-colour focus indicator) pairs an outline with a box-shadow ring, in contrasting colours at least 9:1 apart. One ring will clear 3:1 on a solid background.",
+    "detail": "Caveats from the technique: the guarantee holds only when the whole indicator sits over one solid background colour. On images, gradients, or overlapping components the pixels must be checked individually. Forced-colors mode commonly suppresses box-shadow, so pair it with a 2px transparent solid outline. This matters if the Modern theme puts grain or gradients behind controls.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG20/Techniques/css/C40"
+   },
+   {
+    "claim": "Contrast arithmetic (my own WCAG luminance calculation): black text passes AA on essentially every neobrutalist fill. White text fails on most of them.",
+    "detail": "Black on: Gumroad pink #ff90e8 10.41; gold #ffc900 13.61; purple #90a8ed 9.01; green #23a094 6.53; yellow #f1f333 17.61; red #dc341e 4.55 (borderline); violet #b23386 3.71 (FAILS for text). White on: pink 2.02; gold 1.54; purple 2.33; green 3.22; red 4.61; violet 5.66. ekmas mains with black: blue 7.04, red 7.14, yellow 13.71, lime 13.34, green 12.05, pink 7.55, violet 7.47, orange 8.02, sky 7.00, teal 11.38. White on those: 1.5-3.0. Black on the pastel bg hsl(214,95%,93%) is 17.35. #666 on #fdfaf2 is 5.50, and #a0a090 on #1a1a18 is 6.58.",
+    "confidence": "high",
+    "sourceUrl": "https://raw.githubusercontent.com/antiwork/gumroad/main/app/javascript/stylesheets/tailwind.css"
+   },
+   {
+    "claim": "Library-level accessibility gaps spotted in the ekmas source: 16px checkboxes, and placeholder text at 50% opacity.",
+    "detail": "checkbox.tsx is 'size-4' (16px) with outline-2 (fails the 24px target minimum unless spacing exceptions apply, and is far too small for thumbs). input.tsx uses 'placeholder:text-foreground/50'. Black at 50% over white is about #808080, which is roughly 3.95:1, under the 4.5:1 text minimum (my calculation). The input is h-10 (40px) with text-sm. Copy the look, not these sizes.",
+    "confidence": "medium",
+    "sourceUrl": "https://raw.githubusercontent.com/ekmas/neobrutalism-components/main/src/components/ui/checkbox.tsx"
+   },
+   {
+    "claim": "Dark mode is the weak spot of neobrutalism. Black borders on a dark surface vanish (black on #121210 is 1.12:1), so each project picks a workaround.",
+    "detail": "Three real approaches: (1) hardbrut swaps the ink token so borders AND shadows become off-white: --ink:#f0f0e8; --paper:#1a1a18; --bg:#121210, giving 16.37:1 ink vs bg. (2) Gumroad pins hover shadows to black in dark mode. (3) A blog audit claims Feastables serves both 6px 6px 0 #000 and 6px 6px 0 #fff for dark surfaces (unverified by me). The ekmas library has no dark tokens at all. I found no authoritative neobrutalism dark-mode guidance. General dark-mode advice (avoid pure white on pure black; use lighter surface tones for elevation) argues against pure #000/#fff there.",
+    "confidence": "medium",
+    "sourceUrl": "https://raw.githubusercontent.com/supernihil/hardbrut/main/hardbrut.css"
+   },
+   {
+    "claim": "Feastables is cited as a live mainstream neobrutalist site. Gumroad, the most-cited example, may no longer show the hard-shadow technique on its marketing homepage.",
+    "detail": "One 2026 audit post says it grepped served CSS: feastables.com has hard black and white 6px shadows, while gumroad.com's current homepage has no box-shadow declarations. Gumroad's open-source app code still has the offset-shadow hover system, but with 1px borders. Other lists name Figma (dark outlines instead of shadows, clashing orange/yellow), neobrutalism.dev, and RetroUI. Verify any reference site's CSS before citing it.",
+    "confidence": "low",
+    "sourceUrl": "https://theplusaddons.com/blog/neo-brutalism-web-design/"
+   },
+   {
+    "claim": "Usability research is thin and mostly about classic brutalism, but it shows the risk: a peer-reviewed study of one brutalist site found retrieval, navigation and orientation problems.",
+    "detail": "Palacios (HCII 2022), 31 participants, SUS/think-aloud: visual features were striking but did not make for a user-centred design. Trend commentary in 2026 (setproduct, June 2026) says the main risk is accessibility and conversion, and that the style suits portfolios and editorial better than banking or healthcare. Another source says neobrutalism is cooling as a full-page style and survives as bold CTA accents. Consensus: the look is fine if hierarchy, navigation and readability stay intact.",
+    "confidence": "medium",
+    "sourceUrl": "https://cris.pucp.edu.pe/en/publications/web-brutalism-assessing-usability-of-an-ugly-web/"
+   },
+   {
+    "claim": "No source describes 'neobrutalism + grainy gradients' as an established named hybrid. The grain technique itself is well documented.",
+    "detail": "Grain: SVG feTurbulence with type=fractalNoise, used as a CSS background (inline or data URI). A higher baseFrequency gives finer grain, integer values give blank output, and numOctaves above about 3-4 costs performance. Set color-interpolation-filters to sRGB for cross-browser consistency. Noise also masks gradient banding. Pure neobrutalism usually avoids gradients, so the hybrid is a deliberate design choice. Keep text and controls on flat surfaces and verify contrast over the textured pixels (see C40 caveat).",
+    "confidence": "medium",
+    "sourceUrl": "https://frontendmasters.com/blog/grainy-gradients/"
+   },
+   {
+    "claim": "Guidance on motion and touch: wrap hover styles in @media (hover:hover) and remove transitions under prefers-reduced-motion.",
+    "detail": "MDN shows hover-dependent styles inside @media (hover: hover). web.dev's pattern sets transition:none in the reduce block and puts transform transitions in no-preference. MDN adds that reduced-motion does not mean removing every animation, only non-essential interaction motion. hardbrut has a global reduce rule: *,*::before,*::after{animation:none!important;transition:none!important}. The instant press state (translate plus shadow drop) still communicates without animation.",
+    "confidence": "high",
+    "sourceUrl": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion"
+   }
+  ],
+  "cssTechniques": [
+   "Tokens (Modern theme): :root{--ink:#000;--paper:#fff;--bg:#fdfaf2;--accent:#ffd23f;--bw:3px;--off:4px;--radius:4px;--shadow:var(--off) var(--off) 0 0 var(--ink)}  /* mirrors ekmas: 2px/4px/5px radius, and hardbrut: 3px/5px */",
+   "Press into shadow, touch-safe (hover only on hover-capable devices, :active declared LAST so it wins at equal specificity): .btn{min-height:48px;border:var(--bw) solid var(--ink);background:var(--accent);color:var(--ink);box-shadow:var(--shadow);transition:transform .08s,box-shadow .08s}@media(hover:hover){.btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}}.btn:active{transform:translate(var(--off),var(--off));box-shadow:0 0 0 0 var(--ink)}",
+   "Gumroad-style lift/flatten: .btn{border:1px solid var(--ink);transition:transform .1s}@media(hover:hover){.btn:hover{transform:translate(-4px,-4px);box-shadow:4px 4px 0 #000}}.btn:active{transform:none;box-shadow:none}  /* hover shadow pinned to #000 in dark mode, per Gumroad's comment */",
+   "Inverted shadow direction for a bottom-right/right-thumb layout (my design inference, not sourced): --shadow:-4px -4px 0 0 var(--ink)  with  .btn:active{transform:translate(-4px,-4px);box-shadow:none}  /* shadow falls toward screen interior, is never clipped at the right/bottom edge, and is not hidden under the thumb */",
+   "Focus ring that survives a thick border: :focus-visible{outline:3px solid var(--focus,#1d4ed8);outline-offset:3px}  /* offset exposes bg between border and ring; #1d4ed8 on #ff90e8 is only 3.32:1, so use --ink on light accents */",
+   "Two-colour focus (W3C C40) for textured/gradient surfaces: .btn:focus-visible{outline:3px solid #fff;outline-offset:0;box-shadow:0 0 0 6px #000,var(--shadow)}  /* in forced-colors mode box-shadow is dropped; keep the outline, and give a transparent-outline fallback */",
+   "Chunky 48px tick with a non-colour-only checked state: .tick{inline-size:48px;block-size:48px;border:3px solid var(--ink);background:var(--paper);box-shadow:var(--shadow);display:grid;place-items:center}.tick[aria-checked=true]{background:var(--accent);transform:translate(var(--off),var(--off));box-shadow:none}.tick[aria-checked=true]::after{content:'';inline-size:55%;block-size:28%;border:solid var(--ink);border-width:0 0 5px 5px;transform:rotate(-45deg) translate(1px,-2px)}",
+   "CSS-only grain (inline SVG data URI, no JS, no image file): body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.10;background:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")}  /* # must be %23, % must be %25; numOctaves<=3 for perf; skip mix-blend-mode on a fixed full-screen layer on low-end phones */",
+   "Gradient + grain hybrid (large background surfaces only): body{background:linear-gradient(160deg,#ffd23f,#ff90e8 55%,#90a8ed) var(--bg)}  /* put rows, ticks, text on flat var(--paper) cards with 3px ink borders so contrast never depends on the gradient pixels */",
+   "Dark scheme by swapping the ink token so borders AND shadows stay visible (hardbrut pattern): [data-theme=dark]{--ink:#f0f0e8;--paper:#1a1a18;--bg:#121210;color-scheme:dark}  /* black-on-#121210 borders would be 1.12:1; ink-on-bg is 16.37:1 */",
+   "Reduced motion (hardbrut's global form): @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}  /* the press state still changes instantly */",
+   "Fonts, one display and one text face (verified axes): <link href=\"https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Space+Grotesk:wght@400..700&display=swap\" rel=\"stylesheet\">  then  h1,.item{font-family:'Bricolage Grotesque';font-weight:800;font-stretch:80%;letter-spacing:-.01em;line-height:1}  body{font-family:'Space Grotesk',system-ui}",
+   "ekmas default font weights: body{font-weight:500}h1,h2,h3,h4,h5,h6{font-weight:700}  /* the body is medium weight, not regular: chunkiness comes from weight 500 + 2px borders */",
+   "Forced-colors safety net (box-shadows are removed, so borders must carry the affordance): @media(forced-colors:active){.btn,.tick{border:3px solid ButtonText;forced-color-adjust:auto}}"
+  ],
+  "pitfalls": [
+   "Focus rings that vanish: the default outline sits on top of a 3-4px black border. Never ship 'outline:0' with a shadow-only focus indicator (hardbrut's input:focus does this). Use a separate offset outline, or the two-colour technique.",
+   "White or light text on a saturated mid-tone fill fails contrast (white on pink 2.02, gold 1.54, ekmas blue 2.98). Use black text on fills. Even black fails on deep fills such as Gumroad violet #b23386 (3.71) and is borderline on red #dc341e (4.55). Re-run contrast whenever the accent is changed.",
+   "Dark mode: black borders and black shadows disappear on dark surfaces (1.12:1). A naive currentColor shadow flips to near-white and looks wrong (Gumroad documented this). Define borders and shadow as tokens per scheme and test them.",
+   "Tiny controls: the ekmas checkbox is 16px and its inputs are 40px. WCAG 2.5.8 only requires 24px, but this app is thumb-driven, so use 44-48px ticks and buttons, and do not rely on the 24px spacing exception.",
+   "Hover-only press states never fire on a phone (the ekmas default presses on hover). Drive the pressed state from :active, and wrap hover polish in @media (hover:hover) so it does not stick after a tap.",
+   "Edge clipping: a 4-6px hard shadow flush against the right or bottom viewport edge is cut off. In a bottom-right anchored layout, either pad by at least the offset plus the border, or point the shadow toward the screen interior.",
+   "Shadow overlap noise: stacked rows with 4px shadows and a gap under 4px make the shadow of one row collide with the border of the next, which reads as clutter. Keep the row gap at least offset + 4px, one shadow size everywhere, and at most one saturated accent per row.",
+   "Colour-only state: a yellow vs white tick box is not enough (WCAG 1.4.1). Use a drawn check glyph, a collapsed shadow, and text for 'required'.",
+   "Grain and gradients behind text or controls: 1.4.11/focus contrast is then measured pixel by pixel (C40 caveat), noise lowers the legibility of small text, and a fixed full-screen blend layer can cost GPU on low-end phones. Keep long reading text (the references page) on a flat paper surface.",
+   "Placeholder and muted text: ekmas uses 50% black placeholders (about 3.95:1, below 4.5). Keep muted text at #666 on cream or darker (5.5:1).",
+   "Over-styling a utility app: sources warn that chaotic neobrutalism hurts findability and orientation (Palacios 2022 on classic brutalism). Keep one hierarchy, one shadow scale, and no marquee/orbit animations (the ekmas library ships them; they would fight prefers-reduced-motion and focus on-task use).",
+   "Trend sources are mostly vendor blogs and recycle the same brand list (Gumroad, Figma, Notion). Do not copy a site's look without checking its served CSS. Gumroad's app UI uses 1px borders, which is lighter than the stereotype.",
+   "Font weight: Syne at 800 and Unbounded are very wide and will overflow a 320px item line. Use them for short headings only. Variable-font ranges must be requested exactly as shown or Google Fonts returns a 400 error."
+  ],
+  "recommendations": [
+   "Use the ekmas/hardbrut structure for the Modern theme's tokens: --ink, --paper, --bg, --accent, --bw (3px primary, 2px secondary), --off (4px), --radius (4px or 0). Everything (rows, ticks, buttons, inputs, modals) reads these, so the dark scheme is a token swap (ink becomes #f0f0e8, paper #1a1a18, bg #121210).",
+   "Pressed state: rest with a 4px hard shadow, then on :active translate by the offset and drop the shadow (pattern a). Optionally wrap a hover lift in @media(hover:hover). For the checklist, reuse the metaphor semantically: a ticked row sits 'pressed in' (shadow collapsed, translated) and an unticked row stands proud. State is then visible in shape, not just colour.",
+   "For the bottom-right, right-thumb layout, consider pointing shadows up-left (-4px -4px). They are never clipped by the screen edge, they stay visible beside the thumb, and the press moves the element toward the interior. This is my inference. A/B it against the conventional down-right shadow on a real phone.",
+   "Palette: a warm cream page (#fdfaf2 or #f4f4f0), black ink, and 3-4 flat accents from the verified sets: gold #ffc900/#ffd23f, pink #ff90e8, blue/purple #90a8ed, green #23a094 or #05e17a. All take black text at 6.5:1 or better. Reserve the most saturated accent for the single primary action and the checked state. Keep 'required' as a black-on-yellow label, not just red.",
+   "Typography: one display face for the title and item names (Bricolage Grotesque 700-800 with wdth about 80 so long names fit at 320px), one calm text face for detail/quantity lines (Space Grotesk 500). Add Space Mono only if numeric quantities need alignment. Load at most two families, with display=swap. Do not claim they are 'the' neobrutalism fonts; they are free, verified variable fonts that fit.",
+   "Hybrid with grainy gradients: apply the gradient only to the page background (and perhaps one hero block on Home), layer the inline-SVG grain at about 8-12% opacity, and put every control, row and text block on flat paper cards with solid borders. This keeps contrast independent of the gradient. Disable grain on the references reading page.",
+   "Focus and keyboard: define one global :focus-visible (3px outline in --ink or a contrasting blue, offset 3px) and add the two-colour variant for controls that sit directly on grain/gradient. Test with a keyboard and forced-colors on.",
+   "Touch targets: ticks 48px, buttons at least 48px tall, row gap at least 12px. Respect prefers-reduced-motion (instant press, no transition). Do not use hover as the only trigger. Keep inputs at 16px or larger to avoid mobile browser zoom-on-focus (general knowledge, not verified in this research).",
+   "Verify contrast in code, not by eye: run a WCAG ratio check on every ink/accent/paper pair for both schemes. Test at 320px with 200% text zoom, and also check 4px shadows against 3px borders at the real device pixel ratio.",
+   "Use neobrutalism.dev, hardbrut and Gumroad's Button/tailwind.css only as reference implementations. They are MIT, but the app has no build step and needs plain CSS custom properties, so port the tokens rather than adding dependencies."
+  ],
+  "unverified": [
+   "Gumroad's redesign date and the claim that it improved brand recall in Gumroad surveys (a Medium post asserts it, with no primary source).",
+   "Whether gumroad.com's current marketing homepage lacks box-shadows (one 2026 audit post says so). I only verified the open-source app code.",
+   "Feastables' 6px black and white hard shadows (one blog's CSS audit; I could not fetch the site).",
+   "Figma's own marketing site as a current neobrutalist example (outlines in place of shadows, clashing orange/yellow): secondary blog claim only. Notion and Spotify Wrapped appeared in no source.",
+   "Nielsen Norman Group statements about brutalism, which appear only second-hand. The '8-10% task success on chaotic neobrutalist pages' figure from a Medium post cites a study I could not locate.",
+   "The exact contents of the daisyUI trends page, neobrutalism.dev docs, theplusaddons, bejamas, retroui blog posts and the W3C Understanding pages: direct fetch was blocked by the egress proxy. Their points come from search-result summaries, except the repo files and Google Fonts metadata that I read directly.",
+   "Any evidence about neobrutalism and ADHD or cognitive load specifically. I found none, so the 'visual noise' pitfalls are design reasoning, not research findings.",
+   "Whether Lexend's reading-fluency benefits are well evidenced (not researched here), and whether iOS Safari fires :active on non-link elements without a touch listener (not verified).",
+   "Gumroad's brand typeface (I believe it is a commercial face, but I did not verify it), and which Google Fonts the named real-world neobrutalist sites actually use.",
+   "A named 'neobrutalism + grainy gradient' hybrid as an established 2024-2026 trend: no source supports it."
+  ]
+ },
+ {
+  "topic": "Grainy gradient / noise-texture trend 2024-2026: CSS-only grain (SVG feTurbulence data URI), mesh/aurora gradients, mobile performance, neobrutalism pairing, text readability",
+  "findings": [
+   {
+    "claim": "The canonical CSS-only grain is an feTurbulence SVG filter. Use type=fractalNoise, a fractional baseFrequency (bigger = finer grain), few octaves, and color-interpolation-filters=sRGB.",
+    "detail": "Ana Tudor's Frontend Masters article and the CSS-Tricks 'Grainy Gradients' article both build on feTurbulence. Frontend Masters says baseFrequency must be positive, integer values give blank output, and larger values give finer grain. She rarely uses numOctaves above 3 or 4 because the extra detail is not worth the cost. She recommends color-interpolation-filters='sRGB' because it is the only mode that works properly cross-browser. fractalNoise is the type suited to a noise layer. Caveat: I read these via search-result summaries only, because WebFetch could not resolve any host.",
+    "confidence": "high",
+    "sourceUrl": "https://frontendmasters.com/blog/grainy-gradients/"
+   },
+   {
+    "claim": "The classic CSS-Tricks recipe layers a gradient on top of the noise SVG, then pushes the noise with CSS filter: contrast(170%) brightness(1000%). That filter hits the whole element, so it shifts the gradient colours and is the costly way to do it.",
+    "detail": "The CSS-Tricks article stacks the gradient above the SVG noise in 'background'. Raising brightness and contrast brings out the grey tones, but the filter applies to the entire element, so gradient colours change too. Frontend Masters adds that every overlay-style technique leaves the gradient darker, brighter or more saturated than the original, and lowering the noise opacity to avoid that weakens the anti-banding effect.",
+    "confidence": "high",
+    "sourceUrl": "https://css-tricks.com/?p=351302"
+   },
+   {
+    "claim": "Embedding as a data:image/svg+xml background-image works with no extra request. Opacity is typically set on the rect inside the SVG (a background layer has no per-layer opacity) or on an overlay element, and stitchTiles='stitch' makes the tile seamless.",
+    "detail": "Several tutorials (freeCodeCamp, Bart Stefanski, emile.sh) follow the same pattern: SVG with fractalNoise filter, a saturate colour matrix set to 0, a rect at reduced opacity, URL-encoded into a data URI. stitchTiles defaults to noStitch. One guide notes the opacity set in the SVG is the key control and that low values suit dark backgrounds while higher values suit light ones. Another source says the opposite for overlay/multiply blends (dark areas show more grain), so tune per theme.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.freecodecamp.org/news/grainy-css-backgrounds-using-svg-filters/"
+   },
+   {
+    "claim": "baseFrequency values seen in practice: about 0.65 is the common 'film grain' default, 0.3-0.5 is coarser, 0.7-1.0 is fine, and 0.02-0.2 gives cloudy textures rather than grain.",
+    "detail": "Aggregated from search summaries of multiple tutorials. MDN confirms the attribute is non-negative, a single value applies to both axes, and lower values give larger features. WebKit bug 287982 involves a grain filter using fractalNoise with baseFrequency 7.13 (essentially per-pixel white noise), so very high values are also used in the wild.",
+    "confidence": "medium",
+    "sourceUrl": "https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/baseFrequency"
+   },
+   {
+    "claim": "Recommended grain opacity is low: about 0.03-0.12 for most uses, and above 0.15 reads as dirt or a rendering bug. Another guide says 0.05-0.15, and a generator warns that above about 0.5 it becomes static.",
+    "detail": "These are rules of thumb from tool/skill-style pages, not measurements. The grain-overlay skill file lists 0.05-0.15 and the blend options multiply, overlay and soft-light. cssmatic's generator says opacity above about 0.5 turns texture into static. A Framer 'grainy mesh gradient' component recommends noise opacity of 0.3-0.5, but that is the opacity of its own noise layer inside a component, so it is not comparable to a page overlay.",
+    "confidence": "low",
+    "sourceUrl": "https://www.skills.sh/avnehsbhatia/ultraui/noise-grain-texture"
+   },
+   {
+    "claim": "Why grain is used: faint noise dithers colour banding in long gradients, and extra colour stops do not fix banding.",
+    "detail": "Banding is a quantisation problem. A tiled noise layer at low opacity is the usual fix. A W3C CSS WG comment by Chris Lilley says dithering is established practice and helps prevent Mach banding. A 2016 WebKit bug reported Safari showing banding that Chrome avoided through its own dithering (closed as invalid, so current state is unconfirmed).",
+    "confidence": "medium",
+    "sourceUrl": "https://lists.w3.org/Archives/Public/public-css-archive/2020Feb/0667.html"
+   },
+   {
+    "claim": "SVG feTurbulence is CPU-rendered and expensive at large sizes. Cost scales with filtered area and octaves, so use a small tiled tile instead of a viewport-sized filter.",
+    "detail": "MDN says more octaves look more natural but cost more computation. A GreenSock forum thread reports an feTurbulence/feDisplacementMap effect smooth on desktop but sluggish on iOS and sometimes crashing Safari, with advice to use small areas or short bursts. One source says the SVG grain is expensive to rasterise at full-screen size. Another says it rasterises once when painted and then behaves like a normal background image, so it should not be animated or forced to repaint. I found no benchmark comparing a PNG tile with an feTurbulence tile.",
+    "confidence": "medium",
+    "sourceUrl": "https://greensock.com/forums/topic/33075-gsap-and-feturbulence-mobile-performance/"
+   },
+   {
+    "claim": "WebKit bug 287982 (filed 2025-02-19, status NEW in the result I saw): a grain SVG filter on a pseudo-element made scrolling slow in Safari, and removing the filter property fixed it.",
+    "detail": "The filter chain was feTurbulence (fractalNoise, baseFrequency 7.13), a saturate colour matrix, a component transfer on alpha, and a blend with SourceGraphic. Implication: do not put grain as a CSS/SVG filter on a scrolling element. The app's only scroller is the references list, so keep grain off that scroller.",
+    "confidence": "medium",
+    "sourceUrl": "https://bugs.webkit.org/show_bug.cgi?id=287982"
+   },
+   {
+    "claim": "Direct hit for the usual grain pattern: in WebKit, a position:fixed; inset:0 overlay that uses a background-image with mix-blend-mode can lose its blend effect (the overlay layer becomes tiled).",
+    "detail": "Bug 278813 says the failure only happens with a background-image (not a solid colour) and position fixed with inset 0. It was closed as a duplicate of another bug. A second WebKit report says blend modes on fixed or sticky elements stop working when the window gets very wide (about 1800px), which is less relevant on phones. A blogger found most blend-mode problems come from unexpected stacking contexts, and moved the gradient to the wrapper instead. Avoid the combination 'fixed + image + mix-blend-mode'.",
+    "confidence": "medium",
+    "sourceUrl": "https://bugs.webkit.org/show_bug.cgi?id=278813"
+   },
+   {
+    "claim": "background-attachment: fixed is still unreliable on iOS Safari. A fixed-viewport app does not need it.",
+    "detail": "A June 2024 WebKit bug (275247) is marked fixed but still reproduces on iOS 17.4. An Apple Developer Forums thread reports the issue on iOS 18.1.1. Elementor's help page (updated March 2026) says iOS Safari does not fully support it. The usual workaround is a position:fixed pseudo-element. Since the app never scrolls, simply paint the gradient and grain on the root element.",
+    "confidence": "medium",
+    "sourceUrl": "https://bugs.webkit.org/show_bug.cgi?id=275247"
+   },
+   {
+    "claim": "Blend modes cost paint/composite work, but I found no measured numbers. Large blended overlays can force repaint of the whole overlapped area, and web.dev points to gradients and shadows as costly paint properties.",
+    "detail": "web.dev's CSS paint-times article recommends Chrome DevTools Continuous Paint mode to find costly properties. A tutorial site (leyaa.ai) quotes a '30-50ms on mid-range devices' blend-mode penalty, but gives no basis for it, so do not rely on it. Real-device profiling is the only reliable check.",
+    "confidence": "low",
+    "sourceUrl": "https://web.dev/articles/css-paint-times"
+   },
+   {
+    "claim": "Cheaper way to blend: put the grain layer inside the element's own multi-layer background and use background-blend-mode. This keeps the blend scoped to that element, avoids an extra full-screen overlay, and avoids the stacking-context pitfalls of mix-blend-mode.",
+    "detail": "MDN shows background-blend-mode combining layered backgrounds. A DEV Community post uses 'background-blend-mode: overlay, normal, normal...' so the first layer blends differently from the rest. The 'isolation: isolate' property confines mix-blend-mode of descendants to a group. Without isolation, the background colour behind is taken into account (MDN).",
+    "confidence": "medium",
+    "sourceUrl": "https://developer.mozilla.org/en-US/docs/web/css/isolation"
+   },
+   {
+    "claim": "Mesh/aurora gradients in pure CSS are several stacked radial-gradient() layers over a base colour. Each layer has a unique position and colour and fades to transparent. Aurora needs a dark base.",
+    "detail": "Tutorials use about 4 to 7 radial gradients with unique positions and colours. MDN says backgrounds stack top to bottom with the first on top. An aurora style page says a dark base is required (aurora over white dies) and uses four soft blooms in indigo, teal, pink and violet. Heavier variants add a blurred conic-gradient layer with screen blending. That blur layer is the part to skip on mobile.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.superdesign.dev/styles/aurora"
+   },
+   {
+    "claim": "Trend context: grain and tactile texture are described as a 2025-2026 reaction to flat, polished and AI-generated visuals. Aurora gradients are now combined with grainy layers.",
+    "detail": "Bubble's 2026 trends post says designers add grain and imperfect physical details (CSS noise overlays, paper-like finishes). Fireart (April 2026) describes 'tactile brutalism': sharp geometry, hard 1px borders, blunt type, simulated physical textures. Kittl's report says aurora gradients forecast for 2025 are now combined with grainy layers and blur. All are agency or vendor blogs, so they are directional, not data.",
+    "confidence": "low",
+    "sourceUrl": "https://fireart.studio/blog/the-best-web-design-trends/"
+   },
+   {
+    "claim": "Classic neobrutalism is flat fills, thick near-black borders (about 2-5px) and zero-blur offset shadows. Many guides explicitly forbid gradients, so combining it with grainy gradients is a deliberate hybrid and not the genre default.",
+    "detail": "A UX Collective piece (July 2025) frames neobrutalism as a reaction against soft gradients and rounded templates. A community style file gives box-shadow: 4px 4px 0 #000 as the base, with an active state that translates the element to mimic a press, and states 'NO gradients (use flat colors only)'. Practical hybrid: keep gradient plus grain strictly on the page background and keep every interactive surface flat, opaque, thick-bordered with a hard shadow.",
+    "confidence": "medium",
+    "sourceUrl": "https://uxdesign.cc/neo-brutalism-breaking-rules-loudly-28a8d815fb5d"
+   },
+   {
+    "claim": "Neobrutalism palette starting points: Figma Neubrutalism kit uses blue #38dbff, yellow #fff503, green #00ff75 and black #000. Other palettes give lime #e6ff02 on ink #1c1b18, hot pink #ee6abf and warm cream (Papaya Whip #fff0dc).",
+    "detail": "These come from palette aggregator sites, not official style guides, so treat them as inspiration and check contrast. Bold primaries or pastels on cream or off-white are the usual surfaces.",
+    "confidence": "low",
+    "sourceUrl": "https://colorswall.com/palette/190731"
+   },
+   {
+    "claim": "WCAG 1.4.3 applies to text over gradients: 4.5:1 for normal text and 3:1 for large text (18pt, or 14pt bold). Test the worst-case spot under the text, not the average.",
+    "detail": "Acquia's governance guide covers text over images, gradients and backdrop filters. InstantGradient's guide says to sample the lowest-contrast area under the text. Contrast is (L1+0.05)/(L2+0.05). Quick checks use WebAIM or devtools.",
+    "confidence": "high",
+    "sourceUrl": "https://docs.acquia.com/web-governance/text-top-image-gradient-or-backdrop-filter-should-have-minimum-contrast"
+   },
+   {
+    "claim": "Scrim or solid-panel fixes: a semi-transparent layer between gradient and text is the most reliable fix. Rules of thumb are about 30-40% black for white text and 20-30% white for dark text, and 30-70% opacity (40% ideal) for gradient scrims.",
+    "detail": "These numbers come from vendor and UX blogs, not from WCAG, and must be verified with a ratio check. Smashing Magazine's 2023 series also lists full-image overlays, solid colour shapes and framing as alternatives. Dark semi-opaque text-shadow beats a light one. For this app a solid opaque card is the neobrutalist answer and removes the problem.",
+    "confidence": "medium",
+    "sourceUrl": "https://smashingmagazine.com/2023/08/designing-accessible-text-over-images-part1"
+   },
+   {
+    "claim": "Cross-engine quirk: for the same filter, Chrome/Edge gave a fully transparent layer for type=turbulence but a half-transparent grey layer for fractalNoise, while Firefox gave a fully transparent layer for both (W3C filter-effects discussion, early 2017). WebKit also had a Retina feTurbulence rendering bug fixed in 2018 (r231485).",
+    "detail": "Both are old, so current behaviour is unconfirmed. Practical consequence: use fractalNoise, put your own alpha control (rect opacity or feComponentTransfer) in the SVG, and test Chrome Android, iOS Safari and Firefox Android.",
+    "confidence": "low",
+    "sourceUrl": "https://lists.w3.org/Archives/Public/public-fxtf-archive/2017Feb/0009.html"
+   },
+   {
+    "claim": "prefers-reduced-transparency exists but has narrow support: Chrome and Edge 118+, Firefox behind a flag, no Safari. It is not Baseline.",
+    "detail": "Chrome's developer blog and MDN. Users set it via Reduce Transparency (iOS/macOS) or Transparency effects (Windows). So the app's own settings toggle must remain the primary way to turn grain off. I could not confirm prefers-contrast support from the searches.",
+    "confidence": "medium",
+    "sourceUrl": "https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-transparency"
+   }
+  ],
+  "cssTechniques": [
+   "GRAIN TILE TOKEN (my synthesis from the sources, untested in a browser): --grain: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E\"). Notes: # must be %23, % must be %25, < and > must be %3C and %3E, xmlns is required, and width/height give a small fixed tile.",
+   "PAGE BACKGROUND = MESH + GRAIN IN ONE ELEMENT, NO mix-blend-mode (synthesis): html,body{background-color:#f3ecdf;background-image:var(--grain),radial-gradient(60% 45% at 12% 8%,#ffb4c8 0,transparent 70%),radial-gradient(55% 45% at 92% 22%,#b9a7ff 0,transparent 70%),radial-gradient(70% 50% at 75% 100%,#9fe8d2 0,transparent 70%);background-size:180px 180px,auto,auto,auto;background-blend-mode:soft-light,normal,normal,normal}. The first layer is on top. background-blend-mode blends each layer with those below it plus the background-color, scoped to this element (MDN). Soft-light with mid-grey noise is roughly neutral on average, which is my inference from blend maths.",
+   "PER-THEME GRAIN TOKENS (synthesis): :root[data-design=modern][data-theme=light]{--grain:url(...rect opacity .45...)} and :root[data-design=modern][data-theme=dark]{--grain:url(...rect opacity .7...)}. Background layers have no per-layer opacity, so bake the opacity into the SVG rect or use a separate overlay element with opacity. Sources disagree on whether dark or light surfaces need more grain, so tune visually.",
+   "FIXED OVERLAY ALTERNATIVE if a separate layer is needed (synthesis): body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--grain);opacity:.12} with #app{position:relative;z-index:1;isolation:isolate}. No mix-blend-mode, so it avoids WebKit bug 278813. Grain sits behind the content so text is never grained.",
+   "AURORA (dark base) from the superdesign aurora description: background:#0b0d1a; background-image:radial-gradient(50% 40% at 20% 10%,#4f46e5 0,transparent 70%),radial-gradient(45% 40% at 85% 25%,#14b8a6 0,transparent 70%),radial-gradient(50% 45% at 70% 90%,#ec4899 0,transparent 70%),radial-gradient(40% 40% at 10% 85%,#8b5cf6 0,transparent 70%). Four blooms: indigo, teal, pink, violet. Skip the blurred conic layer and any animation on mobile.",
+   "CLASSIC CSS-TRICKS RECIPE (avoid for a phone app): .grainy{background:linear-gradient(...),url(noise.svg);filter:contrast(170%) brightness(1000%)}. The filter applies to the whole element, shifts the gradient colours, and costs more on mobile.",
+   "ANA TUDOR VARIANT: an SVG filter with feTurbulence driving feDisplacementMap on the gradient itself (red channel for x, alpha for y, scale about 150, sRGB, filter region restricted to the input box) dithers the gradient without an overlay and keeps its colours. It is a heavier SVG filter on the element, so use it at most on small static areas and not as a full-screen page background.",
+   "NEOBRUTALIST SURFACE: .card{background:#fffdf5;color:#111;border:3px solid #111;border-radius:14px;box-shadow:4px 4px 0 #111} .card:active{transform:translate(3px,3px);box-shadow:1px 1px 0 #111}. Base shadow and press behaviour are from a community style file. Opaque fill means text never sits on the gradient or grain, which is the main readability fix.",
+   "SCRIM when text must sit on gradient (synthesis from the rules of thumb): .on-gradient{background-image:linear-gradient(rgb(0 0 0/.35),rgb(0 0 0/.35));color:#fff;text-shadow:0 1px 2px rgb(0 0 0/.6)}. Then verify at least 4.5:1 against the lightest stop under the text.",
+   "GRAIN OFF SWITCHES: @media (prefers-reduced-transparency:reduce){:root{--grain:none}} (Chrome/Edge 118+ only) plus an in-app attribute such as :root[data-grain=off]{--grain:none}. Both keep the mesh gradient and drop the noise.",
+   "MOTION RULE: keep grain and aurora static. If any drift is ever added, gate it with @media (prefers-reduced-motion:no-preference). Animating grain by jittering background-position forces constant repaints (one source's advice is not to animate things that force repaint)."
+  ],
+  "pitfalls": [
+   "Integer baseFrequency (for example 1) produces a blank/empty layer, so always use fractions such as .65 or .8.",
+   "Unescaped characters in the data URI: # must be %23 (so filter='url(%23n)'), % must be %25, and < > must be %3C %3E. Missing xmlns means the image does not render. Percentage widths in the data URI need %25.",
+   "Do not put the filter on a viewport-sized SVG with no width/height. Give the tile a fixed small size (about 160-256px) and let CSS repeat it, because filter cost scales with area and octaves.",
+   "position:fixed + background-image + mix-blend-mode is the most common grain-overlay pattern and exactly the combination in WebKit bug 278813, where the blend can stop working. Prefer background-blend-mode inside the element's own background, or no blend mode.",
+   "mix-blend-mode depends on stacking contexts. Without isolation:isolate on the app root the grain can blend with the wrong backdrop, and a fixed element always creates its own stacking context.",
+   "A grain overlay placed above the content lowers text contrast slightly and can interfere with fine glyphs. Keep grain behind content, and keep text on opaque cards.",
+   "CSS filter (contrast/brightness) on the gradient element changes the gradient's colours and costs mobile GPU/CPU. Lowering noise opacity to stay faithful to colour weakens the anti-banding benefit (Frontend Masters).",
+   "Grain as a CSS/SVG filter on a scrolling element is slow in Safari (WebKit 287982). Keep it off the references-page scroller. Give that scroller an opaque panel.",
+   "Animating feTurbulence (baseFrequency or seed) is choppy and CPU-bound, with reports of crashes on iOS. Never animate it, which also suits ADHD users and prefers-reduced-motion.",
+   "Opacity above about 0.15 (as a whole-page overlay) reads as dirt or static. Dark and light themes may need different values and the sources conflict on direction.",
+   "Do not rely on background-attachment:fixed on iOS. It is flaky and unnecessary here.",
+   "Many 'performance numbers' online (for example '30-50ms' for blend modes) are unsourced, so do not cite them. Real-device profiling is the only reliable check.",
+   "Pairing with neobrutalism: guides describe it as flat colours and no gradients. If gradients leak onto buttons, borders or cards the style turns muddy. Limit gradient plus grain to the page background and keep UI surfaces flat.",
+   "Thin 1px lines or small low-contrast labels over grain are hard to read. With neobrutalism's 3px borders and 16px+ text this is less of a risk, but check small 'required'/detail lines on the grained background."
+  ],
+  "recommendations": [
+   "Build the Modern grain as ONE tiled SVG data URI of about 160-256px, type=fractalNoise, baseFrequency .7-.9 (start at .8, drop toward .6 if it looks too fine on 3x phones), numOctaves 2 (max 3), stitchTiles=stitch, color-interpolation-filters=sRGB, desaturated with feColorMatrix saturate 0. These values are a synthesis of the sourced ranges, so verify them on a real phone.",
+   "Starting opacity: put it on the grain tile or overlay so the effective grain is about 0.06-0.12 on light and about 0.08-0.14 on dark, staying under the sources' 0.15 'looks like dirt' limit. Expose the strength as a CSS variable per theme. I could not find measured values, so tune by eye on-device.",
+   "Apply grain and mesh to html/body (or #app) as multi-layer 'background' with background-blend-mode (soft-light for the grain layer), not as a mix-blend-mode full-screen overlay. This sidesteps WebKit 278813 and cuts the full-screen blend cost.",
+   "Mesh gradient: 3-5 stacked radial-gradient layers (one per accent hue) over a base colour, each fading to transparent at about 70%. Light theme: cream base (about #f3ecdf-#fff0dc) with pastel pink, lilac and mint blooms. Dark theme: near-black navy base (about #0b0d1a) with indigo, teal, pink and violet blooms.",
+   "Use neobrutalism for the interactive layer: opaque cream or white cards, 3px near-black borders, 4px 4px 0 hard shadows, a press state that translates the element by the shadow offset, and saturated flat accents such as yellow, lime, hot pink and electric blue for the primary tick or Done. Gradient and grain stay on the background only.",
+   "Readability rule: no text sits directly on gradient or grain. Titles, items, questions and buttons sit on opaque panels. For any text that must be on the gradient, add a 30-40% scrim and verify 4.5:1 (3:1 for large text) at the worst-case point.",
+   "The checkmarks on the right and the required/detail lines are the most important content, so keep contrast high there. The tick box should be a solid fill with a thick border, not translucent.",
+   "Respect motion and transparency preferences: keep everything static (no animated grain, no drifting aurora), add a Settings option to turn grain off or lower it (the settings toggle is the primary control), and also honour prefers-reduced-transparency where supported.",
+   "Keep references-page grain off the scroller: render the long reading text on a solid panel, and never apply filter or mix-blend-mode inside the scrolling element.",
+   "Test matrix (real devices): iOS Safari (current and one version back), Chrome Android mid-range, Firefox Android. Check that the grain renders (not blank or transparent), that there are no tile seams, that the text ratio is OK, and that tapping/ticking and dark/light switching cause no visible repaint hitch (Chrome DevTools Paint Flashing, Safari Web Inspector).",
+   "Fallback: if the SVG grain misbehaves on a target browser or is slow, swap the token for a small pre-rendered PNG/WebP noise tile (a GPU-composited background) or turn grain off. Because the token is a CSS variable, the swap is one line."
+  ],
+  "unverified": [
+   "WebFetch was unavailable (every host failed DNS resolution), so I read no source page in full. Every finding comes from WebSearch result summaries. I could not check the exact code in the Frontend Masters, CSS-Tricks, freeCodeCamp, Bart Stefanski or emile.sh articles.",
+   "The CSS snippets in cssTechniques are my synthesis and were not rendered in any browser. The specific numbers (180px tile, baseFrequency .8, numOctaves 2, rect opacity .6 / .45 / .7, effective grain 0.06-0.14) are starting points, not measured results.",
+   "I found no measured benchmark (ms, fps, memory) for SVG feTurbulence tile vs PNG tile, for mix-blend-mode vs background-blend-mode, or for a fixed overlay on mobile. The '30-50ms' blend-mode figure comes from a low-quality site and is unsupported.",
+   "Whether a data-URI SVG with a filter is rasterised once per tile and then composited by the GPU on iOS Safari and Chrome Android is only claimed by one FAQ-style source, so it is not independently verified. I also could not verify how it behaves at 3x device pixel ratio (grain may look finer than expected).",
+   "Whether WebKit bugs 278813 and 287982 are still open or fixed in current iOS: the snippets I saw show 287982 as NEW (2025-02-19) and 278813 as closed as a duplicate. I did not see the duplicate target or any iOS 18/19/26 retest.",
+   "The 2017 Chrome/Firefox fractalNoise vs turbulence alpha difference is old, and I did not verify current behaviour.",
+   "prefers-contrast support was not confirmed by any search. Do not rely on it without checking caniuse.",
+   "Neobrutalism plus grain: no authoritative source documents the combination. Support comes only from the Fireart 'tactile brutalism' framing and general reasoning, while several guides say neobrutalism should avoid gradients.",
+   "The palette hex codes come from aggregator sites and were not contrast-checked against any text colour.",
+   "The rule-of-thumb scrim percentages (30-40%, 30-70%) come from vendor/UX blogs and are not WCAG requirements.",
+   "Whether dark surfaces need lower or higher grain opacity: sources conflict (one says low for dark and high for light, another says overlay/multiply shows more grain on dark areas)."
+  ]
+ },
+ {
+  "topic": "Accessibility requirements for a themeable (Classic / Airplane-cockpit / Modern neobrutalist-grain) mobile checklist app: WCAG 2.2 contrast, target size, focus, motion, color-not-only, dark-cockpit legibility, grain under text, and theme switching/persistence, with an automatable test checklist",
+  "findings": [
+   {
+    "claim": "Text contrast: 4.5:1 for normal text, 3:1 for large text; thresholds are hard cutoffs with no rounding (4.499:1 fails).",
+    "detail": "Large text is 18 pt or 14 pt bold and up (derived: about 24 CSS px, or about 18.67 CSS px bold). Size is measured as delivered, not as the user resizes it. This applies equally to dark themes. There is no exemption for secondary lines such as the optional detail, quantity or 'required' lines, so these need 4.5:1 too. Every theme and mode (Classic, Airplane, Modern, light and dark) should pass on its own. The px equivalents are my conversion (1 pt = 1.333 px), not quoted text.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html"
+   },
+   {
+    "claim": "Non-text contrast (1.4.11): UI component boundaries or indicators, state indicators (focused, checked, selected) and meaningful graphics need at least 3:1 against adjacent colors.",
+    "detail": "For the tick box, the unchecked border (or fill) and the check mark each need 3:1 against what they sit on. A boundary is only required when nothing else (such as visible text or a clear icon) identifies the control. Disabled (inactive) controls are exempt. 2.999:1 fails. A focus indicator must also meet 1.4.11.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html"
+   },
+   {
+    "claim": "Relative luminance and contrast ratio can be computed directly from CSS custom properties.",
+    "detail": "Linearize each sRGB channel (c/255: if c <= 0.04045 use c/12.92, else ((c+0.055)/1.055)^2.4). L = 0.2126R + 0.7152G + 0.0722B. Ratio = (Lhigh + 0.05)/(Llow + 0.05). The W3C moved the threshold from 0.03928 to 0.04045 in 2021 and the practical effect on 8-bit colors is nil. Semi-transparent tokens must be alpha-composited over the real backdrop first. Worked examples (my arithmetic): pure #FF0000 on #000 = 5.25:1 (passes); pure #0000FF on #000 = 2.44:1 (fails); #00FFFF on #000 = 16.7:1.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/TR/WCAG2/relative-luminance.html"
+   },
+   {
+    "claim": "Target size minimum (2.5.8, Level AA): pointer targets must be at least 24x24 CSS px, or have enough spacing.",
+    "detail": "Spacing exception: an undersized target passes if a 24 px diameter circle centered on its bounding box does not intersect another target or another undersized target's circle (20x20 targets with a 4 px gap pass; with no gap they fail). Other exceptions are Equivalent, Inline (in a sentence or block of text), User agent control, and Essential. The requirement is independent of page zoom, so zooming does not satisfy it.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html"
+   },
+   {
+    "claim": "Target size enhanced (2.5.5, Level AAA): 44x44 CSS px, with the same four exceptions (equivalent, inline, user agent control, essential).",
+    "detail": "W3C says larger than the minimum is recommended to reduce accidental activation. Technique C44 uses CSS min-width/min-height; C42 achieves it via spacing. Platform guidance is reported (secondary sources) as Apple 44x44 pt and Material 48x48 dp. Policy suggestion: 48 px for tick boxes and rows, 44 px minimum for every other control, and WCAG 24 px as the hard automated floor.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html"
+   },
+   {
+    "claim": "Platform touch-target sizes of 44 pt (Apple) and 48 dp (Material) are reported by secondary summaries, not read from the primary pages.",
+    "detail": "A W3C GitHub issue and specification.website summaries quote Apple 44x44 pt and Material 48x48 dp. Spacing of about 8 dp between targets is recommended by secondary sources only.",
+    "confidence": "medium",
+    "sourceUrl": "https://github.com/w3c/wcag/issues/1831"
+   },
+   {
+    "claim": "Focus Visible (2.4.7, AA) requires a visible keyboard focus indicator, and the indicator must also pass 1.4.11 (3:1 against adjacent colors).",
+    "detail": "Removing outlines or restyling them so they are invisible is a failure (F78). Focus Appearance (2.4.13, AAA) adds: indicator area at least that of a 2 CSS px perimeter around the unfocused component, and 3:1 change of contrast between focused and unfocused pixels. A solid 2 px or thicker outline is the simplest way to meet it. This is a good target for a themeable app.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html"
+   },
+   {
+    "claim": "Focus Not Obscured (2.4.11, AA): a focused component must not be entirely hidden by author-created content; sticky footers are the named culprit.",
+    "detail": "Typical offenders are sticky footers, sticky headers and non-modal dialogs. Failure F110 is a sticky footer tall enough to completely cover a focused element. Passing approaches include scroll padding so the sticky element does not overlap content, or making the overlay modal. Partial overlap technically passes but should be minimized. This app anchors Close/Done to the bottom, over a bottom-growing stack, which is exactly the F110 setup. The enhanced 2.4.12 (AAA) requires no part to be hidden.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Techniques/failures/F110.html"
+   },
+   {
+    "claim": "Dragging Movements (2.5.7, AA): drag-to-reorder needs a single-pointer alternative that does not require dragging.",
+    "detail": "F108 treats a drag-only list reorder as a failure. G219 describes the pass pattern: tap an item to reveal up/down arrows, or a 'move to position' control. Swipes do not count (they fall under 2.5.1), and keyboard support alone does not satisfy it. Add a keyboard path separately (2.1.1). Directly applicable to the editor's points list.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Techniques/general/G219"
+   },
+   {
+    "claim": "Use of Color (1.4.1): color must not be the only way to convey information, an action, a response, or to distinguish a visual element.",
+    "detail": "Hue differences that also differ in lightness by 3:1 or more can count as an extra distinction, but a hue-only distinction needs another cue. F81 (required/error fields marked by color only) is the closest analogue. For this app: checked vs unchecked needs a glyph or shape, 'required' needs the text (already present), and any red/amber/green status in the Airplane theme needs a letter, icon or position cue.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG21/Understanding/use-of-color.html"
+   },
+   {
+    "claim": "Animation from Interactions (2.3.3, AAA): interaction-triggered motion should be disableable unless essential; technique C39 uses the prefers-reduced-motion query.",
+    "detail": "C39 wraps disabling styles in (prefers-reduced-motion: reduce) and puts motion under no-preference. SCR40 covers the JavaScript matchMedia equivalent. Test by turning on the OS reduced-motion setting and confirming non-essential motion stops.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Techniques/css/C39"
+   },
+   {
+    "claim": "prefers-reduced-motion has two values (reduce, no-preference). Reduced motion does not have to mean no animation.",
+    "detail": "MDN: the query reflects an OS setting and exists because motion can trigger discomfort for vestibular disorders. web.dev: opacity cross-fades are fine, color transitions usually need no gating, and the recommended structure puts movement behind (prefers-reduced-motion: no-preference) with a calm default. Write the keyword explicitly rather than using the bare query. Keep non-motion feedback (color, fade, tick glyph) so ADHD users still get confirmation.",
+    "confidence": "high",
+    "sourceUrl": "https://web.dev/articles/prefers-reduced-motion"
+   },
+   {
+    "claim": "Reflow (1.4.10, AA): content must work without two-dimensional scrolling at 320 CSS px width, equivalent to 400% zoom on a 1280 px viewport.",
+    "detail": "Exceptions cover content needing 2D layout (maps, data tables, games) and some toolbars that must stay in view. A fixed no-scroll viewport is risky at large zoom or text size because content can clip and become unreachable. My inference: make the item stack an inner scroll region that only scrolls when content overflows, so nothing is lost. Resize Text (1.4.4, 200%) details were not retrieved.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG21/Understanding/reflow.html"
+   },
+   {
+    "claim": "Text Spacing (1.4.12, AA): user overrides of line-height 1.5, paragraph spacing 2x, letter-spacing 0.12em and word-spacing 0.16em must not lose content or function.",
+    "detail": "F104 is clipped or overlapped content from fixed-height or overflow:hidden containers. Remedy is min-height or auto height and em-based sizing. Ellipsis truncation is acceptable only if the full text is reachable. Relevant to fixed-height item rows and the airplane-style fixed panel layouts.",
+    "confidence": "high",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Understanding/text-spacing.html"
+   },
+   {
+    "claim": "Text over images or textures: contrast is judged against the part of the background most similar to the text (worst case), not the average (F83).",
+    "detail": "For grain or noise, that means the lightest and darkest local pixels behind a glyph. Fixes: a solid or semi-opaque plate behind text, or keep noise amplitude low enough that worst-case contrast still meets 4.5:1. The sources I found do not address noise textures specifically; the grain-specific method here is my extrapolation.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG20/Techniques/F83.html"
+   },
+   {
+    "claim": "axe-core color-contrast cannot decide for text over background images, gradients or pseudo-element backgrounds; it returns 'incomplete' (manual review).",
+    "detail": "So grainy or gradient Modern-theme surfaces will not be verified by axe alone. Token-level contrast computation is needed. For gradients, a suggested method is to test each color stop (add midpoint samples, since luminance along a gradient is not guaranteed monotonic).",
+    "confidence": "medium",
+    "sourceUrl": "https://dequeuniversity.com/rules/axe/4.9/color-contrast"
+   },
+   {
+    "claim": "axe-core has a target-size rule mapped to WCAG 2.2 SC 2.5.8 (24 px, with the spacing circle exception).",
+    "detail": "It is documented from axe 4.6 onward and measures the largest unobscured area. Whether it is on by default and the exact tag (likely wcag22aa) were not confirmed.",
+    "confidence": "medium",
+    "sourceUrl": "https://dequeuniversity.com/rules/axe/4.8/target-size"
+   },
+   {
+    "claim": "Positive polarity (dark text on light) is generally better for normal vision; dark mode can help some low-vision users; evidence is mixed.",
+    "detail": "NN/g's literature review: light mode tends to win on acuity and proofreading for normal vision, while people with cataract or cloudy media may do better in dark mode. Piepenbrock et al. found fewer proofreading errors with positive polarity, with the advantage growing as characters get smaller. A 2024 young-adult study found faster reading with negative polarity and no difference in errors. Takeaway: do not force dark, keep text large and not thin in dark themes, and let the user choose.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.nngroup.com/articles/dark-mode/"
+   },
+   {
+    "claim": "Halation (white-on-black glowing or bleeding for people with astigmatism) is described consistently, but peer-reviewed support in what I found is thin.",
+    "detail": "Design-guidance sources recommend dark gray instead of pure black and off-white instead of pure white. They suggest #121212 or #1A1A1A backgrounds and roughly #E0E0E0 text. Prevalence figures conflict (30 percent vs 50 percent) and the 50 percent figure traces to a secondhand 2014 article.",
+    "confidence": "low",
+    "sourceUrl": "https://modus.trimble.com/foundations/dark-mode"
+   },
+   {
+    "claim": "Material Design dark theme guidance: surface #121212 rather than black, 100 percent white body text at least 15.8:1 on dark surfaces, desaturated accents that still reach 4.5:1, avoid large bright surfaces, lighter surface for higher elevation.",
+    "detail": "Pure white on #121212 is about 18.7:1 (the reviewer's own calculation, not a quoted figure). Useful as a documented, reputable baseline for Classic dark and Modern dark.",
+    "confidence": "medium",
+    "sourceUrl": "https://m2.material.io/design/color/dark-theme.html"
+   },
+   {
+    "claim": "Cockpit and night-vision lighting: long-wavelength (red) light preserves rod dark adaptation, but intensity matters more than hue.",
+    "detail": "Dark adaptation takes about 20 to 30 minutes and can be lost in a second or two by bright light (aviation and boating sources). Display-science work (Rempel, Mantiuk, Heidrich) tested red text on dark backgrounds. FAA AC 25-11A guidance (via a summary) requires luminance control so critical symbols stay visible at minimum brightness, plus uniform luminance. Red cockpit lighting had near-vision drawbacks for presbyopic pilots. Implication: an Airplane 'night' variant should be dim and low-glare, but not red-only, since red-only hurts legibility for some users.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.flyingmag.com/cockpit-lighting-choices/"
+   },
+   {
+    "claim": "Airbus and Boeing displays encode meaning in color (green normal, amber caution, red warning, white labels, cyan/blue units and status, magenta info), and Airbus cites FAR/CS 25.1322 color requirements.",
+    "detail": "If the Airplane theme copies this palette, it creates a 1.4.1 risk, so pair each color with a glyph, letter or position. Real avionics also relies on cues beyond hue (flashing, position, aural alerts). Color tables were from flashcard and study-guide sources, not the airframer documents.",
+    "confidence": "low",
+    "sourceUrl": "https://www.easa.europa.eu/fr/downloads/966/en"
+   },
+   {
+    "claim": "Forced colors: the forced-colors media feature (Baseline since Sept 2022) is active when the user's limited palette is enforced. The browser supplies system colors and may switch prefers-color-scheme.",
+    "detail": "forced-color-adjust: none opts an element out, but MDN says to use it only for small legibility fixes, not a separate design. Firefox docs recommend defining color variables on :root and overriding them in a forced-colors block. Under forced colors, custom themes are overridden, so the three designs should degrade to system colors cleanly.",
+    "confidence": "high",
+    "sourceUrl": "https://developer.mozilla.org/en-US/docs/Web/CSS/@media/forced-colors"
+   },
+   {
+    "claim": "In forced-colors mode, box-shadow is dropped, so a shadow-only focus ring or hard neobrutalist offset shadow disappears. A transparent outline is forced to a visible system color.",
+    "detail": "Pattern: keep a real outline, e.g. outline: 2px solid transparent, plus any decorative shadow. Custom checkboxes drawn with background-color or background-image can lose their checked indicator; use inline SVG or a border with currentColor/system colors (Canvas, CanvasText, Highlight). One source says forced colors removes background images, but I could not confirm the exact per-property behavior across browsers.",
+    "confidence": "medium",
+    "sourceUrl": "https://matuzo.at/blog/2026/box-shadow-no-alternative-to-outline"
+   },
+   {
+    "claim": "prefers-contrast (more, less, custom, no-preference) is available across browsers since May 2022. When forced colors is on, prefers-contrast also reports more, less or custom.",
+    "detail": "Use (prefers-contrast: more) to thicken borders, raise text/bg ratios, remove translucency, and turn off grain and gradients. It is a separate query from forced-colors.",
+    "confidence": "high",
+    "sourceUrl": "https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-contrast"
+   },
+   {
+    "claim": "color-scheme property and meta tag: set color-scheme so the browser renders canvas, scrollbars and form controls in the matching scheme. light-dark() requires color-scheme: light dark on the element or root.",
+    "detail": "light-dark() is Baseline since May 2024 (Chrome/Edge 123, Firefox 120, Safari 17.5). The meta tag lets the browser apply the preferred scheme before CSS loads. A single-scheme design (e.g. dark-only Airplane) should declare color-scheme: dark on its root so native controls and scrollbars match.",
+    "confidence": "high",
+    "sourceUrl": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/color-scheme"
+   },
+   {
+    "claim": "Theme switching: model it as three states (system, light, dark), not a binary toggle. Read the stored choice in a blocking inline script in head before CSS/body to avoid a flash of the wrong theme.",
+    "detail": "The script sets a data-theme attribute on the root before first paint, falls back to matchMedia('(prefers-color-scheme: dark)') when nothing is stored, and a change listener on that query keeps 'system' live without reload. Smashing Magazine notes a stored override can briefly differ from the system theme if scripts run late. For this app: orthogonal attributes for design (classic/airplane/modern) and mode (system/light/dark) fit better than a flat theme list.",
+    "confidence": "high",
+    "sourceUrl": "https://web.dev/building-a-theme-switch-component/"
+   },
+   {
+    "claim": "WCAG 4.1.3 Status Messages: results of an action (e.g. 'Item ticked', 'Checklist complete') that do not take focus should be programmatically exposed, e.g. role=status (implicit aria-live polite).",
+    "detail": "This matters for screen-reader users of the tick/complete flow. 1.4.2 Audio Control applies to audio that plays automatically (more than 3 seconds in the WCAG 2.0 wording); tick sounds and spoken confirmation triggered by a user tap are user-initiated, and the existing per-checklist toggle is good practice. My inference: avoid doubling speechSynthesis with a live region when a screen reader is active.",
+    "confidence": "medium",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html"
+   },
+   {
+    "claim": "Playwright can emulate every relevant user preference: emulateMedia({colorScheme, reducedMotion, forcedColors, contrast}).",
+    "detail": "colorScheme: light/dark; reducedMotion: reduce/no-preference; forcedColors: active/none; contrast: no-preference/more (contrast added in Playwright 1.51). Passing null resets. Chrome DevTools Rendering tab offers the same emulation for manual checks (forced-colors, prefers-contrast, reduced motion).",
+    "confidence": "high",
+    "sourceUrl": "https://playwright.dev/docs/api/class-page"
+   },
+   {
+    "claim": "APCA is not a WCAG requirement. WCAG 2.2 AA remains the citable standard, and the WCAG 3 contrast algorithm was reported as undecided as of April 2026.",
+    "detail": "Adrian Roselli reports APCA was removed from the July 2023 WCAG 3 working draft. Use WCAG 2.x ratios for pass/fail; APCA values can be logged informationally at most.",
+    "confidence": "medium",
+    "sourceUrl": "https://adrianroselli.com/2026/04/wcag3-contrast-as-of-april-2026.html"
+   },
+   {
+    "claim": "WCAG has no explicit rule I could find that every user-selectable theme must conform, but the alternate-version technique G174 treats a conformance-level control plus a conforming alternate as the route.",
+    "detail": "G174 describes a user-selectable high-contrast option reaching 7:1. In practice the default theme is what gets audited. The safest policy for this app is that Classic, Airplane and Modern, each in light and dark where offered, all pass AA, and the theme control itself passes AA on every screen.",
+    "confidence": "low",
+    "sourceUrl": "https://www.w3.org/WAI/WCAG22/Techniques/general/G174"
+   }
+  ],
+  "cssTechniques": [
+   "Tokens per design and mode: define --text, --bg, --plate, --ui-border, --check, --focus, --muted-text on :root[data-design=classic|airplane|modern][data-mode=light|dark]. A test can parse these and compute ratios without rendering.",
+   "Set color-scheme: light dark on :root, then color-scheme: dark or light on [data-mode] overrides (and always dark for a dark-only Airplane design) so scrollbars, inputs and the UA canvas match. Add <meta name=\"color-scheme\" content=\"light dark\">.",
+   "Focus: :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; } Never outline:none. For neobrutalist hard shadows, keep a real outline too (outline: 2px solid transparent is forced to a visible color under forced-colors).",
+   "Sticky bottom action bar: give the scroller padding-bottom plus scroll-padding-bottom equal to the bar height (and env(safe-area-inset-bottom)) so a focused or ticked item is never entirely covered (2.4.11 / F110).",
+   "Targets: .row, .tick, .btn { min-block-size: 48px; min-inline-size: 48px }. Make the whole item row the tap target. If the visual box is smaller, extend the hit area with ::before { content:''; position:absolute; inset:-8px } and check that adjacent hit areas do not overlap.",
+   "Motion: write base styles with no movement, then @media (prefers-reduced-motion: no-preference) { ... transform transitions ... }. Under reduce keep opacity or color feedback only, and no infinite animations.",
+   "Grain: put the noise on a pointer-events:none pseudo-element with low opacity, using an inline SVG feTurbulence data URI. Put text on a solid or semi-opaque --plate, or keep the amplitude so worst-case contrast is at least 4.5:1. Disable it with @media (prefers-contrast: more), (forced-colors: active) { .grain::before { display: none } }.",
+   "Tick box: real <input type=checkbox> or role=checkbox with aria-checked. Draw the check as inline SVG or ::after using currentColor, with a border (not only background-color) so it survives forced-colors. Add @media (forced-colors: active) rules using Canvas, CanvasText, Highlight.",
+   "Text spacing proofing: no fixed heights on rows, unitless line-height, min-height in em or px, overflow visible. Dev check by injecting the 1.4.12 override stylesheet (line-height 1.5, letter-spacing .12em, word-spacing .16em).",
+   "Grayscale dev check for 1.4.1: temporarily apply html { filter: grayscale(1) } and confirm checked/unchecked, required and status states are still distinguishable.",
+   "Theme bootstrap (inline, in head, before CSS): try { read localStorage } catch {} then set data-design and data-mode on documentElement; if mode is 'system', follow matchMedia('(prefers-color-scheme: dark)') and add a change listener. Wrap every storage read and write in try/catch and render correctly without storage."
+  ],
+  "pitfalls": [
+   "Fixed no-scroll viewport vs Reflow, text-spacing and large-text users: at 320 px width, 400 percent zoom or large OS text, the bottom-up stack can clip or push Close/Done off screen. Use an inner scrollable list that scrolls only on overflow, with the action bar kept reachable (my inference from 1.4.10/1.4.12).",
+   "Bottom-anchored Close/Done bar overlaying the growing item stack is the textbook sticky-footer focus-obscuring failure (F110, 2.4.11). Add scroll-padding and bottom padding.",
+   "Drag-to-reorder as the only way to reorder fails 2.5.7 (AA). Add up/down buttons or a 'move to' control that works with single taps, plus keyboard support.",
+   "Pure #FFF on pure #000 (Airplane/Modern dark) risks halation for astigmatic users. Use off-black and off-white and avoid hairline-weight text on dark.",
+   "Pure blue (#0000FF) on black is only 2.44:1, and saturated colored fills on black often fail 4.5:1, so cockpit-style cyan, amber, green and magenta must be checked token by token, and dim/muted variants of them usually fail.",
+   "Color-coded Airplane palette (red/amber/green/cyan/magenta) used as the only signal violates 1.4.1. Add glyphs, letters or position.",
+   "Grain or noise behind text: axe cannot evaluate it (reports incomplete), and an average-luminance check passes while peaks fail. Measure worst-case or use a plate behind text.",
+   "Gradients in the Modern theme: contrast must hold across the whole gradient behind text, not only at the start stop.",
+   "Neobrutalist hard offset box-shadows and shadow-only focus rings disappear in forced-colors. Use real borders and outlines for anything that conveys state or focus.",
+   "Muted gray for 'required'/detail/quantity lines and placeholders is the most common contrast failure. There is no exemption for secondary text, only for disabled controls.",
+   "Target size is measured in CSS px and does not scale with zoom. Small tick boxes with only a 24 px circle and no spacing between stacked rows can fail the 2.5.8 spacing exception. Rows with 20 px visuals touching each other fail.",
+   "Flash of wrong theme when the theme script runs after CSS or at the end of body. Also localStorage can be unavailable or throw (private mode, blocked site data), so it must be guarded and the page must default sensibly.",
+   "Ignoring native UI: without color-scheme the scrollbar, number input and date/select controls in the Ask screen stay light in a dark design.",
+   "Treating prefers-reduced-motion as 'remove all feedback'. Removing every cue hurts ADHD users. Replace movement with fade or color or glyph change instead.",
+   "Not re-testing each theme: contrast, focus and target checks must run for every design x mode combination (and with prefers-contrast: more and forced-colors: active), since one theme passing says nothing about the others.",
+   "Spoken confirmation and tick sound must stay opt-in per checklist (they are). With a screen reader running, duplicate speech from speechSynthesis plus a live region is noisy (inference)."
+  ],
+  "recommendations": [
+   "AUTOMATABLE CHECKLIST (run per design x mode, also under prefers-contrast:more and forced-colors:active).",
+   "1. Token contrast (pure computation from CSS variables, no browser needed): composite any alpha tokens over the actual backdrop, then assert text/bg >= 4.5 for body, detail, quantity, 'required' and placeholder tokens; >= 3.0 only for tokens used at 24 px or larger (or 18.67 px bold or larger); >= 3.0 for tick-box border, check mark vs fill, focus ring vs adjacent, and divider tokens that carry meaning. No rounding.",
+   "2. Grain and gradients: for each noisy or gradient surface behind text, compute contrast against the worst-case local background (base color composited with noise at max lighter and max darker alpha; every gradient stop plus midpoint). Require >= 4.5, or require a --plate behind text.",
+   "3. Target size (Playwright): at widths 320, 360, 390 and 430, for every button, [role=button], input, a, tick row and drag-handle replacement on every screen, assert bounding box >= 24x24 as a hard fail and >= 44x44 (48 for tick rows) as the project target. Also assert 24 px circles of any undersized pair do not intersect.",
+   "4. Focus: Tab through every screen and theme. Assert computed outline-style is not none, outline-width >= 2 px (target 3 px), focus color vs adjacent >= 3:1, and focused-vs-unfocused change of contrast >= 3:1. Assert the focused element's bounding box is not fully covered (document.elementFromPoint at its corners and center resolves to it or a descendant, not the Close/Done bar).",
+   "5. Reorder: assert every draggable point has a single-tap up/down (or move-to) control and that it works by keyboard.",
+   "6. Reduced motion: emulateMedia({reducedMotion:'reduce'}); assert document.getAnimations() contains no running transform, translate, scale or rotate animations and no infinite iterations; opacity and color transitions are allowed. With no-preference, motion may run.",
+   "7. Color not only: for checked/unchecked, required/optional and any status color, assert a non-color cue exists in the DOM (SVG glyph, text, shape) plus aria-checked; optionally screenshot under html{filter:grayscale(1)} and assert checked and unchecked pixels differ.",
+   "8. Forced colors: emulateMedia({forcedColors:'active'}); assert the check mark is visible (screenshot diff checked vs unchecked), a focus outline renders, and grain and gradient layers are display:none or ignored.",
+   "9. High contrast: emulateMedia({contrast:'more'}); assert tokens switch to the higher-contrast set (text >= 7:1 is a reasonable policy) and grain is off.",
+   "10. Theme persistence: set the stored design and mode, reload with the opposite emulated colorScheme, and assert documentElement.dataset values are correct on first paint (init script plus a MutationObserver). Assert 'system' mode follows a live emulateMedia colorScheme change. Make localStorage throw (override Storage.prototype.getItem/setItem) and assert the app still renders a valid theme.",
+   "11. Reflow and text spacing: at 320x568, with the 1.4.12 override stylesheet injected and with root font-size scaled to 200 percent, assert no horizontal page scroll, no clipped text (scrollWidth/scrollHeight vs clientWidth/clientHeight on overflow:hidden containers), and that every action (tick, Done/Close, Save/Cancel) is reachable, via an inner scroller if needed.",
+   "12. axe-core pass (tags wcag2a, wcag2aa, wcag21aa, wcag22aa) per theme with zero violations; treat every color-contrast 'incomplete' as needing check 1 or 2; confirm whether the target-size rule is enabled in your axe version.",
+   "13. Status messages: assert a role=status (polite) region updates on tick and on complete, and that tick sound and speech remain off unless the checklist enables them.",
+   "DESIGN DECISIONS: (a) Ship every design with explicit light and dark token sets, or declare it single-mode with a matching color-scheme. (b) Use #121212-class surfaces and softened whites rather than #000/#FFF in dark. Keep Airplane dim, low-glare and uniform rather than glowing, and offer a red-tinted night variant only as an extra option. (c) For Modern (neobrutalism + grain), keep real 2 to 3 px borders (good for 1.4.11) and plates behind text; cap noise opacity low and disable it for prefers-contrast:more and forced-colors. (d) Settings: a 3-way Design selector (Classic / Airplane / Modern) plus a Mode selector (System / Light / Dark), plus optionally 'Motion: System / Reduce' and 'Contrast: System / High'; persist in localStorage with try/catch; default to system preferences; keep the settings controls themselves AA in every theme.",
+   "Apply the 44/48 px floor to tick rows (whole row tappable) and the right-thumb bottom-right controls; keep at least 8 px between adjacent targets; add env(safe-area-inset-bottom/right) padding so bottom-right controls are not under OS gesture areas.",
+   "Make the stack an inner scroller that only scrolls on overflow, with scroll-padding for the bottom bar, to reconcile the no-page-scroll design with Reflow, text-spacing and 2.4.11."
+  ],
+  "unverified": [
+   "WebFetch could not reach any host (DNS ENOTFOUND for www.w3.org and w3c.github.io), so every W3C/MDN claim comes from WebSearch result summaries, not from reading the pages. Exact normative wording was not checked against the page text.",
+   "Exact Apple HIG (44 pt) and Material (48 dp) wording and the recommended 8 dp spacing: only secondary summaries and a W3C GitHub issue were seen, not the primary pages.",
+   "Astigmatism and halation prevalence figures (30 percent vs 50 percent) and any peer-reviewed study specifically showing white-on-black halation harm. Only design-guidance sources were found.",
+   "Any specific upper bound on contrast to avoid halation (for example capping around 15:1) has no source found; Material only gives a 15.8:1 floor.",
+   "Whether red-only night themes hurt people with protan color vision or reduce legibility on phone screens is my inference, not sourced; also the blue-light and dark-adaptation effect of a bright phone screen was not researched.",
+   "Exact Airbus/Boeing color semantics: sources were flashcards, a Spanish study document and an EASA consultation comment; AMC 25.1322, SAE ARP4102/7 and the AC 25-11A text were not read, and no night luminance numbers were found.",
+   "How background-image (url and gradient) is handled under forced-colors in each browser: one source says images are removed; I could not confirm per-browser behavior.",
+   "Whether axe's target-size rule is enabled by default and its tag set (likely wcag22aa); the min axe version for stable use.",
+   "WCAG 1.4.4 Resize Text (200 percent), 2.2.2 Pause/Stop/Hide, and 2.3.1 Three Flashes details were not retrieved.",
+   "Whether non-default user-selectable themes are held to WCAG conformance in an audit (only G174's alternate-version framing was found).",
+   "Safe-area inset behavior for bottom-right anchored controls on iOS and Android gesture navigation was not researched.",
+   "Whether localStorage throwing in private or blocked-storage modes affects each target browser version: a general caution, not sourced here."
+  ]
+ }
+]

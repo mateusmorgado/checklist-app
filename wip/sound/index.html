@@ -1,0 +1,1230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checklist</title>
+<script>
+/* Applies the saved design before first paint so there is no flash of the wrong look.
+   Also used by the app when the design changes. Everything is wrapped: storage may be blocked. */
+(function () {
+  var DESIGNS = ['classic', 'airplane', 'modern'], MODES = ['system', 'light', 'dark'], EFFECTS = ['full', 'reduced'];
+  var FONTS = {
+    airplane: 'family=B612:wght@400;700&family=B612+Mono:wght@400;700',
+    modern: 'family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Space+Grotesk:wght@400..700'
+  };
+  function pick(v, list, d) { return list.indexOf(v) >= 0 ? v : d; }
+  window.APPEARANCE = { DESIGNS: DESIGNS, MODES: MODES, EFFECTS: EFFECTS };
+  window.applyAppearance = function (s) {
+    s = s || {};
+    var root = document.documentElement, design = pick(s.design, DESIGNS, 'classic');
+    root.setAttribute('data-design', design);
+    root.setAttribute('data-mode', pick(s.mode, MODES, 'system'));
+    root.setAttribute('data-effects', pick(s.effects, EFFECTS, 'full'));
+    if (FONTS[design] && !document.getElementById('font-' + design)) {
+      var link = document.createElement('link');
+      link.id = 'font-' + design; link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?' + FONTS[design] + '&display=swap';
+      document.head.appendChild(link);
+    }
+  };
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem('settings') || '{}') || {}; } catch (e) {}
+  window.applyAppearance(saved);
+})();
+</script>
+<style>
+  /* Full-viewport, no scroll. Everything is anchored bottom-right for the right thumb.
+     Every colour, font and shape comes from tokens. A design is a block of tokens plus a few component rules,
+     scoped by :root[data-design]. Classic is the base look; it follows the OS light/dark setting unless
+     Settings forces a mode. Add new design rules only inside their own marked block. */
+  :root, :root[data-design="classic"] {
+    --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-display: var(--font);
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --bg: #ffffff; --surface: #ffffff; --fg: #111111; --muted: #5c5c5c; --line: #d6d6d6; --line-strong: #767676;
+    --lift: #f3f3f3; --accent: #111111; --accent-fg: #ffffff; --ok: #17692e; --warn: #8a5200; --err: #b3261e;
+    --focus: #0a4fd6; --placeholder: #767676;
+    --radius: 8px; --border: 1px; --shadow: none; --hit-min: 48px; --row-h: 56px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-design="classic"][data-mode="system"]:not([data-theme="light"]) {
+      --bg: #111111; --surface: #161616; --fg: #f2f2f2; --muted: #a3a3a3; --line: #333333; --line-strong: #8a8a8a;
+      --lift: #1e1e1e; --accent: #f2f2f2; --accent-fg: #111111; --ok: #58d078; --warn: #f0b24a; --err: #ff8a80;
+      --focus: #7fb0ff; --placeholder: #8a8a8a; color-scheme: dark;
+    }
+  }
+  :root[data-design="classic"][data-mode="dark"], :root[data-design="classic"][data-mode="system"][data-theme="dark"] {
+    --bg: #111111; --surface: #161616; --fg: #f2f2f2; --muted: #a3a3a3; --line: #333333; --line-strong: #8a8a8a;
+    --lift: #1e1e1e; --accent: #f2f2f2; --accent-fg: #111111; --ok: #58d078; --warn: #f0b24a; --err: #ff8a80;
+    --focus: #7fb0ff; --placeholder: #8a8a8a; color-scheme: dark;
+  }
+  html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
+  body { background: var(--bg); color: var(--fg); font: 18px/1.3 var(--font); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  #root { height: 100%; }
+  .screen { height: 100%; box-sizing: border-box; padding: 16px 20px 20px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 8px; }
+  h1 { font-family: var(--font-display); font-size: 22px; font-weight: 500; margin: 0 0 12px; text-align: right; }
+  /* Item stack: first item sits at the bottom, later items stack upward. Rows shrink instead of scrolling. */
+  .stack { flex: 0 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column-reverse; align-items: flex-end; justify-content: flex-start; overflow: hidden; }
+  .stack > * { flex: 0 1 var(--row-h); min-height: 0; max-width: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; }
+  .stack > button, .stack > div.item { width: 100%; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+  .muted { color: var(--muted); }
+  .done { color: var(--muted); }
+  .row { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: grab; position: relative; }
+  .row.lifted { z-index: 1; background: var(--lift); font-weight: 500; cursor: grabbing; }
+  .x { margin-right: auto; width: var(--hit-min); height: var(--hit-min); font-size: 22px; line-height: 1; color: var(--muted); flex: none; }
+  .label { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; text-align: right; }
+  .detail { font-size: 13px; line-height: 1.25; color: var(--muted); overflow-wrap: anywhere; }
+  .row.selected { background: var(--lift); }
+  /* Home rows: the whole row opens the checklist; "edit" sits at the far left like the remove cross in the editor. */
+  .home-item > .edit-link { margin-right: auto; min-width: var(--hit-min); min-height: var(--hit-min); text-align: left; }
+  .home-item > .open { flex: 1; min-height: var(--hit-min); text-align: right; }
+  /* Editor: grid with the points, then the entry field on its own line, then the buttons. */
+  .screen.edit { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "points" "hint" "entry" "actions"; row-gap: 8px; justify-items: end; align-items: end; justify-content: stretch; }
+  .edit > .points { grid-area: points; width: 100%; min-height: 0; max-height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; }
+  .edit > .points > h1 { margin: 0 0 4px; flex: none; }
+  .edit > .hint { grid-area: hint; }
+  .edit > .entry { grid-area: entry; width: 100%; }
+  .edit > .actions { grid-area: actions; }
+  /* Explanatory text sits at the top of the screen; the controls stay at the bottom. */
+  .screen.edit.intro { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "intro" "points" "actions"; }
+  .edit > .intro-text { grid-area: intro; align-self: start; font-size: 15px; line-height: 1.4; }
+  /* Button rows: 48px hit areas. The negative margin and small gap keep the text exactly where it was. */
+  .actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; height: var(--row-h); margin-right: -8px; }
+  .bar { display: flex; flex-direction: row-reverse; align-items: center; gap: 12px; height: var(--row-h); flex: none; margin-right: -8px; }
+  .actions button, .bar button { flex: none; min-height: var(--hit-min); min-width: var(--hit-min); padding: 0 8px; }
+  .mark { font-size: 24px; line-height: 1; flex: none; }
+  input { font: inherit; color: inherit; background: none; border: 0; border-bottom: var(--border) solid var(--line-strong); border-radius: 0; padding: 10px 0; width: 100%; box-sizing: border-box; text-align: right; flex: none; min-height: var(--hit-min); }
+  input::placeholder { color: var(--placeholder); }
+  .hint { font-size: 14px; flex: none; text-align: right; }
+  .err { color: var(--err); }
+  /* @@REFS-CSS-START */
+  .edit > .refs { grid-area: points; align-self: stretch; width: 100%; min-height: 0; overflow-y: auto; touch-action: pan-y; }
+  .refs-in { text-align: right; font-size: 14px; line-height: 1.35; }
+  .refs-in h1 { margin: 0 0 8px; }
+  .refs-in h2 { font-size: 15px; font-weight: 500; margin: 14px 0 4px; }
+  .refs-in p { margin: 0 0 6px; }
+  .refs-in .muted { font-size: 13px; }
+  .refs-in ul { list-style: none; margin: 0; padding: 0; }
+  .refs-in li { margin: 0 0 8px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+  .refs-in a { color: inherit; text-decoration: underline; }
+  /* @@REFS-CSS-END */
+  .prop { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); cursor: pointer; }
+  .prop.selected { background: var(--lift); }
+  /* Settings: a list that scrolls inside itself only when it is taller than the screen. */
+  .screen.settings { justify-content: flex-end; }
+  .settings-scroll { flex: 0 1 auto; min-height: 0; width: 100%; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; }
+  .settings-in { text-align: right; }
+  .settings-in h1 { margin-bottom: 4px; }
+  .sec { font-family: var(--font-display); font-size: 13px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px; }
+  .choices, .rows { display: flex; flex-direction: column; align-items: stretch; }
+  .choice, .srow { width: 100%; box-sizing: border-box; min-height: var(--row-h); padding: 0 8px; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; border-radius: var(--radius); }
+  .choice.selected { background: var(--lift); }
+  .srow .value { color: var(--muted); font-size: 15px; }
+  .srow .name { margin-right: auto; }
+  /* @@SOUND-CSS-START */
+  /* Run bar: the mute button never wraps, and a pressed (muted) state is underlined so it shows without colour. */
+  .bar #mute { white-space: nowrap; }
+  .bar #mute[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 4px; }
+  /* Settings > Attention tone: the explanation sits under the title like the rest of the settings text. */
+  .tone-choices .choice { min-height: var(--hit-min); } /* six rows: 48px each so more of them fit */
+  .settings-in .tone-note { margin: 0 0 4px; font-size: 14px; line-height: 1.4; color: var(--muted); text-align: right; overflow-wrap: anywhere; }
+  /* @@SOUND-CSS-END */
+  /* @@QUICK-CSS-START */
+  /* @@QUICK-CSS-END */
+  /* @@UX-RUN-CSS-START */
+  /* @@UX-RUN-CSS-END */
+  /* @@UX-EDIT-CSS-START */
+  /* @@UX-EDIT-CSS-END */
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+  :root[data-effects="reduced"] *, :root[data-effects="reduced"] *::before, :root[data-effects="reduced"] *::after { transition: none !important; animation: none !important; }
+
+  /* @@DESIGN-AIRPLANE-START  (cockpit display; always dark) */
+  :root[data-design="airplane"] {
+    --font: 'B612', 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+    --font-mono: 'B612 Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --bg: #05080b; --surface: #0b1117; --fg: #f2f4f5; --muted: #93a3ad; --line: #26343e; --line-strong: #5f7886;
+    --lift: #121c24; --accent: #2fe0f5; --accent-fg: #031014; --ok: #3df07a; --warn: #ffb000; --err: #ff5a5a;
+    --focus: #ffffff; --placeholder: #6f8190; --radius: 0px; --border: 1px; --shadow: none; color-scheme: dark;
+  }
+  /* @@DESIGN-AIRPLANE-END */
+
+  /* @@DESIGN-MODERN-START  (neobrutalism + grain; light first) */
+  :root[data-design="modern"] {
+    --font: 'Space Grotesk', system-ui, 'Helvetica Neue', Arial, sans-serif;
+    --font-display: 'Bricolage Grotesque', 'Arial Black', 'Helvetica Neue', system-ui, sans-serif;
+    --bg: #f3ecdf; --surface: #ffffff; --fg: #111111; --muted: #4d4d4d; --line: #111111; --line-strong: #111111;
+    --lift: #fff3c4; --accent: #ffd23f; --accent-fg: #111111; --ok: #0a6b3a; --warn: #8a4b00; --err: #c4122f;
+    --focus: #1d3fe0; --placeholder: #6b6b6b; --radius: 6px; --border: 3px; --shadow: -4px -4px 0 0 #111111;
+  }
+  /* @@DESIGN-MODERN-END */
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useLayoutEffect, useRef, createElement: h } = React;
+const KEY = 'checklists';
+const SETTINGS_KEY = 'settings';
+const SAMPLE = [
+  { id: 'a', title: 'Preflight', items: [
+    { text: 'Check fuel', detail: 'Both tanks, visual check and drain a sample' },
+    { text: 'Check flaps' }, { text: 'Check radio' }, { text: 'Check lights' } ] },
+  { id: 'b', title: 'Leaving home', items: ['Keys', 'Wallet', 'Phone', 'Stove off'] },
+  // Example of questions and quantities: asks "Nights?" before the run.
+  { id: 'c', title: 'Weekend trip', questions: [{ id: 'q1', name: 'nights', type: 'number', text: 'nights', label: 'How many nights?' }], items: [
+    { text: 'Shirts', qty: 'nights' }, { text: 'Socks', qty: 'nights + 1' },
+    { text: 'Charger', detail: 'Phone and watch', required: true }, { text: 'Passport', required: true } ] },
+  // Example of a yes/no question: "Sauna?" counts as 1 for yes and 0 for no, so a towel is only asked for on yes.
+  { id: 'd', title: 'Gym', questions: [{ id: 'q2', name: 'sauna', type: 'yesno', text: 'I go to the sauna', label: 'I go to the sauna?' }], items: [
+    { text: 'Shoes' }, { text: 'Water bottle' }, { text: 'Towel', detail: 'For the sauna', qty: 'sauna' } ] },
+];
+
+// Older saved lists stored items as plain strings and had no questions, quantities or required flags.
+const normalize = lists => lists.map(l => ({
+  ...l,
+  sound: !!l.sound,
+  voice: !!l.voice,
+  questions: (l.questions || []).map(q => ({ ...q, type: q.type || 'number' })),
+  items: l.items.map(i => {
+    const o = typeof i === 'string' ? { text: i } : i;
+    return { text: o.text, detail: o.detail || '', qty: o.qty || '', required: !!o.required };
+  }),
+}));
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    return normalize(raw ? JSON.parse(raw) : SAMPLE);
+  } catch (e) { return normalize(SAMPLE); }
+}
+function save(lists) {
+  try { localStorage.setItem(KEY, JSON.stringify(lists)); } catch (e) {}
+}
+
+/* @@SOUND-ENGINE-START
+   Attention tone. Per checklist it is on or off; the sound itself is chosen in Settings. 'tick' is one short tick per
+   ticked item. The other choices are a soundscape that runs while the checklist is open and keeps a little pressure on.
+   Everything goes through one master gain and a limiter. The master gain is the hard volume cap (the voices peak at 1
+   or below), and it fades in and out so nothing clicks. Audio is optional: any failure here leaves the app silent.
+   The tone functions at the bottom are the only entry points the rest of the app uses. */
+const TONE_CHOICES = ['tick', 'heart', 'cabin', 'sonar', 'metronome', 'alarm'];
+const TONE_VOLUMES = ['low', 'medium', 'high'];
+const TONE_CAPS = { low: 0.06, medium: 0.12, high: 0.22 }; // peak master gain, never exceeded
+const TONE_FADE = 0.1;       // seconds: fade in and out on start, stop and mute
+const TONE_AHEAD = 0.15;     // seconds scheduled in advance, so a busy tab cannot make beats drift or bunch up
+const TONE_EVERY = 25;       // ms between scheduler runs
+const TONE_PREVIEW_MS = 3000;
+
+// One enveloped oscillator on the loop's bus. env = [[seconds after t, gain, 'exp'?], ...]; the first entry is the start.
+function toneVoice(L, type, freq, t, env) {
+  const c = L.G.ctx, osc = c.createOscillator(), g = c.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t);
+  g.gain.value = 0; // silent until the voice starts
+  g.gain.setValueAtTime(env[0][1], t);
+  for (let i = 1; i < env.length; i++) {
+    const [dt, v, expo] = env[i];
+    if (expo) g.gain.exponentialRampToValueAtTime(v, t + dt); else g.gain.linearRampToValueAtTime(v, t + dt);
+  }
+  const end = t + env[env.length - 1][0];
+  osc.connect(g); g.connect(L.bus);
+  osc.start(t); osc.stop(end + 0.02);
+  L.voices.push({ osc, g, start: t, end });
+}
+// Beats: period in seconds and what one beat sounds like. Gains stay at 0.9 or below.
+const TONE_BEATS = {
+  heart: { period: 60 / 72, play: (L, t) => toneVoice(L, 'sine', 1000, t, [[0, 0], [0.012, 0.9], [0.072, 0.9], [0.09, 0]]) },
+  metronome: { period: 1, play: (L, t) => toneVoice(L, 'sine', 1800, t, [[0, 0], [0.002, 0.9], [0.013, 0.0001, 1]]) },
+  sonar: { period: 3, play: (L, t) => toneVoice(L, 'sine', 1400, t, [[0, 0], [0.006, 0.9], [0.8, 0.0001, 1]]) },
+  alarm: { period: 5, play: (L, t) => [880, 1100, 880].forEach((f, k) =>
+    toneVoice(L, 'triangle', f, t + k * 0.22, [[0, 0], [0.01, 0.7], [0.11, 0.7], [0.13, 0]])) },
+};
+
+// Brown noise that loops without a seam (the end is cross-faded into the start). It is scaled to a solid body and then
+// soft-clipped, so it is dense rather than spiky and still never passes 0.95.
+function toneNoise(G) {
+  if (G.noise) return G.noise;
+  const c = G.ctx, rate = c.sampleRate || 44100, n = Math.floor(rate * 6), x = Math.floor(rate * 0.5);
+  const raw = new Float32Array(n + x), out = new Float32Array(n);
+  let y = 0, sum = 0;
+  for (let i = 0; i < raw.length; i++) { y = y * 0.996 + (Math.random() * 2 - 1) * 0.1; raw[i] = y; }
+  for (let i = 0; i < n; i++) {
+    const w = (i / x) * Math.PI / 2;
+    out[i] = i < x ? raw[i] * Math.sin(w) + raw[n + i] * Math.cos(w) : raw[i];
+    sum += out[i] * out[i];
+  }
+  const k = 0.4 / Math.sqrt(sum / n + 1e-12);
+  for (let i = 0; i < n; i++) out[i] = 0.95 * Math.tanh((out[i] * k) / 0.95);
+  const buf = c.createBuffer(1, n, rate);
+  buf.getChannelData(0).set(out);
+  return (G.noise = buf);
+}
+// Cabin: low-passed noise with a slow swell, plus two slightly detuned low sines. Levels add up to 0.83 at most.
+function toneCabin(L, t) {
+  const c = L.G.ctx;
+  const src = c.createBufferSource(), lp = c.createBiquadFilter(), body = c.createGain(), swell = c.createGain();
+  src.buffer = toneNoise(L.G); src.loop = true;
+  lp.type = 'lowpass'; lp.frequency.value = 500; lp.Q.value = 0.5;
+  body.gain.value = 0.7; swell.gain.value = 0.85;
+  const lfo = c.createOscillator(), depth = c.createGain();
+  lfo.frequency.value = 0.1; depth.gain.value = 0.15; // swell between 0.7 and 1.0, once every 10 s
+  lfo.connect(depth); depth.connect(swell.gain);
+  src.connect(lp); lp.connect(body); body.connect(swell); swell.connect(L.bus);
+  const hums = [110, 112.5].map(f => {
+    const o = c.createOscillator(), g = c.createGain();
+    o.frequency.value = f; g.gain.value = 0.08; o.connect(g); g.connect(L.bus);
+    return [o, g];
+  });
+  L.nodes = [src, lp, body, swell, lfo, depth, ...hums.flat()];
+  L.sources = [src, lfo, ...hums.map(x => x[0])];
+  L.sources.forEach(s => s.start(t));
+}
+
+// Moves a parameter to a value over a fade, starting from wherever it is now (so stopping mid-fade does not jump).
+function toneRamp(p, to, dur, t) {
+  if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(t);
+  else { p.cancelScheduledValues(t); p.setValueAtTime(p.value, t); }
+  p.linearRampToValueAtTime(to, t + dur);
+}
+function toneGraph(ctx) {
+  const master = ctx.createGain();
+  master.gain.value = 0;
+  let out = ctx.destination;
+  try {
+    const lim = ctx.createDynamicsCompressor();
+    // Threshold 0 dB keeps it transparent (the compressor adds make-up gain below that); it only catches overs.
+    lim.threshold.value = 0; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.003; lim.release.value = 0.1;
+    lim.connect(ctx.destination); out = lim;
+  } catch (e) {}
+  master.connect(out);
+  return { ctx, master, level: 0, noise: null };
+}
+function toneSetLevel(G, level, dur, at) {
+  if (G.level === level) return;
+  G.level = level;
+  toneRamp(G.master.gain, level, dur, at === undefined ? G.ctx.currentTime : at);
+}
+// A loop is one running soundscape: its own fading bus into the master, its voices and its beat position.
+function toneBegin(G, want, t) {
+  const bus = G.ctx.createGain();
+  bus.gain.value = 0;
+  bus.gain.setValueAtTime(0, t);
+  bus.gain.linearRampToValueAtTime(1, t + TONE_FADE);
+  bus.connect(G.master);
+  const L = { G, key: want.key, choice: want.choice, bus, voices: [], nodes: [], sources: [], timer: 0,
+    next: t + TONE_FADE, until: want.preview ? t + TONE_PREVIEW_MS / 1000 : Infinity };
+  if (want.choice === 'cabin') toneCabin(L, t);
+  return L;
+}
+// Schedules every beat that starts before the horizon. After a stall it skips the missed beats and keeps the phase.
+function toneSchedule(L, horizon, now) {
+  const b = TONE_BEATS[L.choice];
+  if (!b) return;
+  if (L.next < now - 0.03) L.next += Math.ceil((now - L.next) / b.period) * b.period;
+  while (L.next < horizon && L.next < L.until - TONE_FADE) { b.play(L, L.next); L.next += b.period; }
+}
+function tonePump(L) {
+  try {
+    const now = L.G.ctx.currentTime;
+    toneSchedule(L, now + TONE_AHEAD, now);
+    L.voices = L.voices.filter(v => {
+      if (v.end >= now - 0.2) return true;
+      try { v.osc.disconnect(); v.g.disconnect(); } catch (e) {}
+      return false;
+    });
+  } catch (e) {}
+}
+// Fades the loop out and drops everything it scheduled. Beats that have not started yet are cancelled.
+function toneEnd(L, t, live) {
+  clearInterval(L.timer); L.timer = 0;
+  try { toneRamp(L.bus.gain, 0, TONE_FADE, t); } catch (e) {}
+  const stopAt = t + TONE_FADE + 0.02;
+  L.voices.forEach(v => {
+    try { if (v.start > t) { v.osc.stop(t); v.g.disconnect(); } else if (v.end > stopAt) v.osc.stop(stopAt); } catch (e) {}
+  });
+  L.sources.forEach(s => { try { s.stop(stopAt); } catch (e) {} });
+  if (!live) return;
+  setTimeout(() => {
+    [...L.voices.flatMap(v => [v.osc, v.g]), ...L.nodes, L.bus].forEach(n => { try { n.disconnect(); } catch (e) {} });
+    // Nothing is playing any more: let the device sleep the audio hardware.
+    try { if (!toneLoop && toneG && toneG.ctx.suspend) { const p = toneG.ctx.suspend(); if (p && p.catch) p.catch(() => {}); } } catch (e) {}
+  }, (TONE_FADE + 0.15) * 1000);
+}
+
+// What is wanted right now: a preview first, else the run's soundscape unless muted. Nothing while the page is hidden.
+let toneG = null, toneLoop = null, toneRun = null, toneMuted = false, tonePrev = null, tonePrevTimer = 0, tonePrevId = 0;
+function toneWant() {
+  if (document.hidden) return null;
+  if (tonePrev) return tonePrev.choice === 'tick' ? null : { key: 'p' + tonePrev.id, preview: true, ...tonePrev };
+  if (toneRun && !toneMuted) return { key: 'r' + toneRun.choice + toneRun.volume, ...toneRun };
+  return null;
+}
+function toneLive() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (toneG && toneG.ctx.state === 'closed') toneG = null;
+    if (!toneG) toneG = toneGraph(new AC());
+    const c = toneG.ctx;
+    if (c.state !== 'running' && c.resume) { const p = c.resume(); if (p && p.catch) p.catch(() => {}); }
+    return toneG;
+  } catch (e) { toneG = null; return null; }
+}
+// Makes what is playing match what is wanted. Calling it again with nothing changed does nothing, so starts are idempotent.
+function toneSync() {
+  try {
+    const want = toneWant();
+    if (toneLoop && want && toneLoop.key === want.key) return;
+    if (toneLoop) { const old = toneLoop; toneLoop = null; toneEnd(old, old.G.ctx.currentTime, true); }
+    if (!want) { if (toneG) toneSetLevel(toneG, 0, TONE_FADE); return; }
+    const G = toneLive();
+    if (!G) return;
+    toneSetLevel(G, TONE_CAPS[want.volume], TONE_FADE);
+    const L = toneBegin(G, want, G.ctx.currentTime);
+    toneLoop = L;
+    if (TONE_BEATS[L.choice]) { L.timer = setInterval(() => tonePump(L), TONE_EVERY); tonePump(L); }
+  } catch (e) {}
+}
+const toneChoiceOf = tone => (tone && TONE_CHOICES.includes(tone.choice) ? tone.choice : 'tick');
+const toneVolumeOf = tone => (tone && TONE_VOLUMES.includes(tone.volume) ? tone.volume : 'medium');
+function toneSavedVolume() {
+  try { return toneVolumeOf(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}').tone); } catch (e) { return 'medium'; }
+}
+function toneTickNow(volume) {
+  const G = toneLive();
+  if (!G) return;
+  const c = G.ctx, cap = TONE_CAPS[volume];
+  let t = c.currentTime;
+  if (G.level !== cap) { toneSetLevel(G, cap, 0.02); t += 0.02; } // the master reaches the cap before the tick begins
+  const osc = c.createOscillator(), gain = c.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, t);
+  osc.frequency.exponentialRampToValueAtTime(1320, t + 0.06);
+  gain.gain.value = 0;
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.9, t + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+  osc.connect(gain); gain.connect(G.master);
+  osc.start(t); osc.stop(t + 0.15);
+  osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch (e) {} };
+}
+function playTick() { try { toneTickNow(toneSavedVolume()); } catch (e) {} } // editor preview when the toggle is switched on
+function speak(text) {
+  try {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  } catch (e) {}
+}
+function toneStart(tone) {                     // a run starts (called inside the user's tap)
+  try {
+    toneMuted = false;
+    const choice = toneChoiceOf(tone);
+    toneRun = choice === 'tick' ? null : { choice, volume: toneVolumeOf(tone) };
+    toneSync();
+  } catch (e) {}
+}
+function toneStop() {                          // a run ends or the screen is left; safe to call any time, any number of times
+  try {
+    toneRun = null; toneMuted = false; tonePrev = null;
+    clearTimeout(tonePrevTimer);
+    toneSync();
+  } catch (e) {}
+}
+function toneTick(tone) {                      // an item was ticked
+  try { if (toneChoiceOf(tone) === 'tick') toneTickNow(toneVolumeOf(tone)); } catch (e) {} // the other choices are the cue themselves
+}
+function toneMute(on) {
+  try { if (toneRun) { toneMuted = !!on; toneSync(); } } catch (e) {}
+}
+function tonePreview(choice, volume) {         // Settings: about 3 s of a sound; a new call replaces the one before
+  try {
+    const c = TONE_CHOICES.includes(choice) ? choice : 'tick', v = TONE_VOLUMES.includes(volume) ? volume : 'medium';
+    clearTimeout(tonePrevTimer);
+    const id = ++tonePrevId;
+    tonePrev = { id, choice: c, volume: v };
+    tonePrevTimer = setTimeout(() => { if (tonePrev && tonePrev.id === id) { tonePrev = null; toneSync(); } }, TONE_PREVIEW_MS);
+    toneSync();
+    if (c === 'tick') toneTickNow(v);
+  } catch (e) {}
+}
+function tonePreviewStop() {
+  try { tonePrev = null; clearTimeout(tonePrevTimer); toneSync(); } catch (e) {}
+}
+// Renders one sound into any context with the app's own graph (the tests pass an OfflineAudioContext).
+function toneRender(ctx, choice, volume, seconds) {
+  const G = toneGraph(ctx);
+  toneSetLevel(G, TONE_CAPS[volume], TONE_FADE);
+  const L = toneBegin(G, { key: 'render', choice, volume }, 0);
+  toneSchedule(L, seconds - TONE_FADE, 0);
+  toneEnd(L, seconds - TONE_FADE - 0.02, false);
+  toneSetLevel(G, 0, TONE_FADE, seconds - TONE_FADE - 0.02);
+  return G;
+}
+try { document.addEventListener('visibilitychange', () => { if (document.hidden) { tonePrev = null; clearTimeout(tonePrevTimer); } toneSync(); }); } catch (e) {}
+
+const TONE_INFO = {
+  tick: ['Tick', 'One short tick for each item'],
+  heart: ['Heart monitor', 'Steady beep, 72 a minute'],
+  cabin: ['Cabin hum', 'Low engine drone, no beeps'],
+  sonar: ['Sonar', 'A ping every 3 seconds'],
+  metronome: ['Metronome', 'A click every second'],
+  alarm: ['Alarm', 'Three beeps, then a pause'],
+};
+// Run bar: a Sound off / Sound on button for the soundscapes. It keeps its own state; every run starts unmuted.
+function ToneControls({ sound, tone }) {
+  const [muted, setMuted] = useState(false);
+  if (!sound || !tone || tone.choice === 'tick') return null;
+  return h('button', {
+    id: 'mute', className: 'muted', 'aria-pressed': muted ? 'true' : 'false',
+    onClick: () => { const next = !muted; setMuted(next); toneMute(next); },
+  }, muted ? 'Sound on' : 'Sound off');
+}
+// Settings > Attention tone: pick the sound and the volume; every change plays a 3 s preview.
+function ToneSettings({ settings, onChange, onBack }) {
+  const { choice, volume } = settings.tone;
+  const picked = useRef(null);
+  useEffect(() => () => tonePreviewStop(), []); // leaving the screen ends the preview
+  useEffect(() => { try { if (picked.current && picked.current.scrollIntoView) picked.current.scrollIntoView({ block: 'nearest' }); } catch (e) {} }, []);
+  const pick = c => { onChange({ tone: { choice: c } }); tonePreview(c, volume); };
+  const nextVolume = TONE_VOLUMES[(TONE_VOLUMES.indexOf(volume) + 1) % TONE_VOLUMES.length];
+  return h('div', { className: 'screen settings' },
+    h('div', { className: 'settings-scroll' },
+      h('div', { className: 'settings-in' },
+        h('h1', null, 'Attention tone'),
+        h('p', { className: 'tone-note' },
+          'Plays only for checklists that have Attention tone switched on. These sounds are meant to keep a little pressure on, ' +
+          'so keep the volume low. A run has a Sound off button.'),
+        h('div', { className: 'sec' }, 'Sound'),
+        h('div', { className: 'choices tone-choices', role: 'radiogroup', 'aria-label': 'Attention tone' },
+          TONE_CHOICES.map(c => h('button', {
+            key: c, id: 'tone-' + c, role: 'radio', 'aria-checked': choice === c ? 'true' : 'false',
+            ref: choice === c ? picked : null, className: 'choice' + (choice === c ? ' selected' : ''), onClick: () => pick(c),
+          },
+            h('span', { className: 'label' }, h('span', null, TONE_INFO[c][0]), h('span', { className: 'detail' }, TONE_INFO[c][1])),
+            h('span', { className: 'mark', 'data-done': choice === c ? '1' : '0', 'aria-hidden': 'true' }, choice === c ? '●' : '○')))),
+        h('div', { className: 'sec' }, 'Volume'),
+        h('div', { className: 'rows' },
+          h('button', { id: 'tone-volume', className: 'srow', onClick: () => { onChange({ tone: { volume: nextVolume } }); tonePreview(choice, nextVolume); } },
+            h('span', { className: 'name' }, 'Volume'), h('span', { className: 'value' }, cap(volume)))))),
+    h('div', { className: 'actions' },
+      h('button', { id: 'tone-preview', className: 'muted', onClick: () => tonePreview(choice, volume) }, 'Preview'),
+      h('button', { id: 'tone-back', onClick: () => { tonePreviewStop(); onBack(); } }, 'Back')));
+}
+/* @@SOUND-ENGINE-END */
+
+/* @@REFERENCES-START */
+// References behind the feedback settings, in APA 7th edition style (alphabetical by first author).
+// Entries without a DOI were not confirmed against a DOI record.
+const REFERENCES = [
+  { key: 'degani', authors: 'Degani, A., & Wiener, E. L.', year: 1993, title: 'Cockpit checklists: Concepts, design, and use',
+    journal: 'Human Factors', volume: '35', issue: '2', pages: '28–43' },
+  { key: 'macleod', authors: 'MacLeod, C. M., Gopie, N., Hourihan, K. L., Neary, K. R., & Ozubko, J. D.', year: 2010,
+    title: 'The production effect: Delineation of a phenomenon', journal: 'Journal of Experimental Psychology: Learning, Memory, and Cognition',
+    volume: '36', issue: '3', pages: '671–685', doi: '10.1037/a0018785' },
+  { key: 'nigg', authors: 'Nigg, J., Bruton, A., Kozlowski, M., Johnstone, J., & Karalunas, S.', year: 2024,
+    title: 'Systematic review and meta-analysis: Do white noise or pink noise help with task performance in youth with attention-deficit/hyperactivity disorder or with elevated attention problems?',
+    journal: 'Journal of the American Academy of Child and Adolescent Psychiatry', volume: '63', issue: '8', pages: '778–788', doi: '10.1016/j.jaac.2023.12.014' },
+  { key: 'posner', authors: 'Posner, M. I., & Petersen, S. E.', year: 1990, title: 'The attention system of the human brain',
+    journal: 'Annual Review of Neuroscience', volume: '13', pages: '25–42' },
+  { key: 'soderlund', authors: 'Söderlund, G., Sikström, S., & Smart, A.', year: 2007,
+    title: 'Listen to the noise: Noise is beneficial for cognitive performance in ADHD', journal: 'Journal of Child Psychology and Psychiatry',
+    volume: '48', issue: '8', pages: '840–847', doi: '10.1111/j.1469-7610.2007.01749.x' },
+  { key: 'szalma', authors: 'Szalma, J., & Hancock, P.', year: 2011, title: 'Noise effects on human performance: A meta-analytic synthesis',
+    journal: 'Psychological Bulletin', volume: '137', issue: '4', pages: '682–707', doi: '10.1037/a0023987' },
+];
+/* @@REFERENCES-END */
+
+/* @@QUICKLIST-START
+   AI quick list: describe a checklist and get a draft to review. Slot for the Quick list screens and the API call. */
+const DEFAULT_AI = { model: 'claude-haiku-5-5', endpoint: 'https://api.anthropic.com' };
+function QuickSettings({ settings, onChange, onBack }) {
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, 'Quick list')),
+    h('div', { className: 'muted hint' }, 'AI quick list is coming.'),
+    h('div', { className: 'actions' }, h('button', { id: 'ai-back', onClick: onBack }, 'Back')));
+}
+function QuickScreen({ settings, onDraft, onCancel, onOpenSettings }) {
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, 'Quick list')),
+    h('div', { className: 'muted hint' }, 'AI quick list is coming.'),
+    h('div', { className: 'actions' }, h('button', { id: 'quick-back', onClick: onCancel }, 'Back')));
+}
+/* @@QUICKLIST-END */
+
+// App-wide settings, saved in localStorage. Anything unknown or corrupt falls back to the defaults.
+function sanitizeSettings(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const pick = (v, list, d) => (list.includes(v) ? v : d);
+  const text = (v, d, max) => (typeof v === 'string' && v.trim() ? v.slice(0, max) : d);
+  const tone = r.tone && typeof r.tone === 'object' ? r.tone : {};
+  const ai = r.ai && typeof r.ai === 'object' ? r.ai : {};
+  return {
+    design: pick(r.design, window.APPEARANCE.DESIGNS, 'classic'),
+    mode: pick(r.mode, window.APPEARANCE.MODES, 'system'),
+    effects: pick(r.effects, window.APPEARANCE.EFFECTS, 'full'),
+    tone: { choice: pick(tone.choice, TONE_CHOICES, 'tick'), volume: pick(tone.volume, TONE_VOLUMES, 'medium') },
+    ai: {
+      key: typeof ai.key === 'string' ? ai.key.slice(0, 300) : '',
+      model: text(ai.model, DEFAULT_AI.model, 100),
+      endpoint: text(ai.endpoint, DEFAULT_AI.endpoint, 300),
+    },
+  };
+}
+function loadSettings() {
+  try { return sanitizeSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
+  catch (e) { return sanitizeSettings({}); }
+}
+function saveSettings(s) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) {}
+}
+
+// Quantity formulas, e.g. "nights + 1" or "ceil(nights / 2)". Numbers, question names, + - * / ( ) and
+// ceil floor round min max. A small parser on purpose: formulas are never passed to eval().
+const QTY_FNS = { ceil: [1, 1, Math.ceil], floor: [1, 1, Math.floor], round: [1, 1, Math.round], min: [1, 9, Math.min], max: [1, 9, Math.max] };
+function evalQty(expr, vars) {
+  const toks = String(expr).toLowerCase().match(/\d+\.?\d*|\.\d+|[a-z_][a-z0-9_]*|[-+*/(),]|\S/g) || [];
+  let pos = 0;
+  const peek = () => toks[pos];
+  const next = () => toks[pos++];
+  const expect = t => { if (next() !== t) throw new Error('Expected "' + t + '"'); };
+  function primary() {
+    const t = next();
+    if (t === undefined) throw new Error('Formula ends too early');
+    if (/^[\d.]/.test(t)) return parseFloat(t);
+    if (t === '(') { const v = sum(); expect(')'); return v; }
+    if (t === '-') return -primary();
+    if (/^[a-z_]/.test(t)) {
+      if (peek() === '(') {
+        const fn = QTY_FNS[t];
+        if (!fn) throw new Error('Unknown function "' + t + '"');
+        next();
+        const args = [];
+        if (peek() !== ')') { do { args.push(sum()); } while (peek() === ',' && next()); }
+        expect(')');
+        if (args.length < fn[0] || args.length > fn[1]) throw new Error('Wrong number of values for ' + t);
+        return fn[2](...args);
+      }
+      if (!Object.prototype.hasOwnProperty.call(vars, t)) throw new Error('Unknown name "' + t + '"');
+      return vars[t];
+    }
+    throw new Error('Unexpected "' + t + '"');
+  }
+  function term() {
+    let v = primary();
+    while (peek() === '*' || peek() === '/') v = next() === '*' ? v * primary() : v / primary();
+    return v;
+  }
+  function sum() {
+    let v = term();
+    while (peek() === '+' || peek() === '-') v = next() === '+' ? v + term() : v - term();
+    return v;
+  }
+  const result = sum();
+  if (pos < toks.length) throw new Error('Unexpected "' + toks[pos] + '"');
+  if (!Number.isFinite(result)) throw new Error('Not a number');
+  return result;
+}
+const fmtQty = n => String(Math.round(n * 100) / 100);
+
+// Questions read as sentences: "If I go to the sauna" (yes/no) or "How many nights" (number).
+const qSentence = q => (q.type === 'yesno' ? 'If ' : 'How many ') + (q.text || q.label.replace(/\?+$/, '').toLowerCase());
+// The name used in formulas is the last word of what was typed ("I go to the sauna" -> sauna), kept unique.
+function questionName(text, taken) {
+  const words = text.toLowerCase().match(/[a-z0-9]+/g) || [];
+  let base = words[words.length - 1] || '';
+  if (!base) return '';
+  if (/^\d/.test(base)) base = 'q' + base;
+  if (QTY_FNS[base]) base += '_q';
+  let name = base, n = 2;
+  while (taken.includes(name)) name = base + n++;
+  return name;
+}
+
+// Home: the list of checklists, first one at the bottom. "+ New" is the lowest control.
+function Home({ lists, onRun, onEdit, onSettings, onQuick }) {
+  return h('div', { className: 'screen' },
+    h('div', { className: 'stack' },
+      lists.map(c => h('div', { key: c.id, className: 'item home-item' },
+        h('button', { className: 'muted hint edit-link', onClick: () => onEdit(c) }, 'edit'),
+        h('button', { className: 'open', onClick: () => onRun(c) }, c.title)))),
+    lists.length === 0 && h('div', { className: 'muted' }, 'No checklists'),
+    h('div', { className: 'bar' },
+      h('button', { id: 'new', onClick: () => onEdit(null) }, '+ New'),
+      h('button', { id: 'quick', className: 'muted', onClick: onQuick }, 'Quick list'),
+      h('button', { id: 'settings', className: 'muted', onClick: onSettings }, 'Settings')));
+}
+
+// Settings: design, mode and effects up front, then the sub-screens. Changes apply immediately.
+const DESIGN_OPTIONS = [
+  ['classic', 'Classic', 'Minimal and quiet'],
+  ['airplane', 'Airplane', 'Cockpit display, always dark'],
+  ['modern', 'Modern', 'Bold borders and grain'],
+];
+const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+function SettingsHome({ settings, onChange, onNav, onBack }) {
+  const cycle = (key, list) => onChange({ [key]: list[(list.indexOf(settings[key]) + 1) % list.length] });
+  const toneLabel = settings.tone.choice === 'tick' ? 'Tick' : cap(settings.tone.choice);
+  const row = (id, name, value, onClick) => h('button', { key: id, id, className: 'srow', onClick },
+    h('span', { className: 'name' }, name), value ? h('span', { className: 'value' }, value) : null);
+  return h('div', { className: 'screen settings' },
+    h('div', { className: 'settings-scroll' },
+      h('div', { className: 'settings-in' },
+        h('h1', null, 'Settings'),
+        h('div', { className: 'sec' }, 'Design'),
+        h('div', { className: 'choices', role: 'radiogroup', 'aria-label': 'Design' },
+          DESIGN_OPTIONS.map(([id, name, note]) => h('button', {
+            key: id, id: 'design-' + id, role: 'radio', 'aria-checked': settings.design === id ? 'true' : 'false',
+            className: 'choice' + (settings.design === id ? ' selected' : ''), onClick: () => onChange({ design: id }),
+          },
+            h('span', { className: 'label' }, h('span', null, name), h('span', { className: 'detail' }, note)),
+            h('span', { className: 'mark', 'data-done': settings.design === id ? '1' : '0', 'aria-hidden': 'true' }, settings.design === id ? '●' : '○')))),
+        h('div', { className: 'sec' }, 'Appearance'),
+        h('div', { className: 'rows' },
+          row('set-mode', 'Mode', cap(settings.mode) + (settings.design === 'airplane' ? ' (Airplane is always dark)' : ''), () => cycle('mode', window.APPEARANCE.MODES)),
+          row('set-effects', 'Effects', settings.effects === 'full' ? 'Full' : 'Reduced', () => cycle('effects', window.APPEARANCE.EFFECTS))),
+        h('div', { className: 'sec' }, 'More'),
+        h('div', { className: 'rows' },
+          row('set-tone', 'Attention tone', toneLabel, () => onNav('settings-tone')),
+          row('set-ai', 'Quick list (AI)', settings.ai.key ? 'Key saved' : 'No key', () => onNav('settings-ai')),
+          row('set-refs', 'References', '', () => onNav('references'))))),
+    h('div', { className: 'actions' }, h('button', { id: 'settings-back', onClick: onBack }, 'Back')));
+}
+
+// Ask: one question per screen before a run. Numbers are typed, yes/no is one tap (yes = 1, no = 0).
+// The answers feed the quantity formulas.
+function Ask({ list, onDone, onCancel }) {
+  const qs = list.questions;
+  const [i, setI] = useState(0);
+  const [vals, setVals] = useState(() => qs.map(q => (q.type === 'yesno' ? null : '1')));
+  const ref = useRef(null);
+  const q = qs[i];
+  useLayoutEffect(() => { if (ref.current) { ref.current.focus(); ref.current.select(); } }, [i]);
+  const num = v => Number(String(v).replace(',', '.'));
+  const last = i === qs.length - 1;
+  const go = all => {
+    if (!last) { setI(i + 1); return; }
+    onDone(Object.fromEntries(qs.map((x, k) => [x.name, num(all[k])])));
+  };
+  const answerYesNo = yes => {
+    const all = vals.map((v, k) => (k === i ? (yes ? '1' : '0') : v));
+    setVals(all);
+    go(all);
+  };
+  const valid = q.type === 'yesno' ? vals[i] !== null : vals[i].trim() !== '' && Number.isFinite(num(vals[i]));
+  const next = () => {
+    if (!valid) { if (ref.current) ref.current.focus(); return; }
+    go(vals);
+  };
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, q.label)),
+    h('div', { className: 'muted hint' }, list.title + (qs.length > 1 ? ' · ' + (i + 1) + ' of ' + qs.length : '')),
+    q.type === 'yesno' ? null : h('div', { className: 'entry' },
+      h('input', {
+        id: 'answer', ref, inputMode: 'decimal', value: vals[i], enterKeyHint: last ? 'go' : 'next',
+        onChange: e => setVals(v => v.map((x, k) => (k === i ? e.target.value : x))),
+        onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); next(); } },
+      })),
+    h('div', { className: 'actions' },
+      h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+      i > 0 && h('button', { className: 'muted', onClick: () => setI(i - 1) }, 'Back'),
+      q.type === 'yesno'
+        ? [h('button', { key: 'no', id: 'no', onClick: () => answerYesNo(false) }, 'No'),
+           h('button', { key: 'yes', id: 'yes', onClick: () => answerYesNo(true) }, 'Yes')]
+        : h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next')));
+}
+
+function Run({ list, tone, onClose }) {
+  const [answers, setAnswers] = useState(null); // null while the questions are still being asked
+  if (list.questions.length > 0 && !answers) return h(Ask, { list, onDone: setAnswers, onCancel: onClose });
+  const items = list.items
+    .map(it => {
+      let n = null;
+      if (it.qty) { try { n = evalQty(it.qty, answers || {}); } catch (e) { n = null; } }
+      return { ...it, n };
+    })
+    .filter(it => it.n === null || it.n > 0); // a quantity of 0 leaves the item out of this run
+  return h(RunList, { title: list.title, items, sound: list.sound, voice: list.voice, tone, onClose });
+}
+
+// Run: first item at the bottom, working upward. Checkmarks on the right.
+// A ticked item stays where it is (dimmed with a tick), so nothing moves under the finger.
+// The checklist's own settings decide whether ticking plays a sound and/or says the item out loud.
+function RunList({ title, items, sound, voice, tone, onClose }) {
+  const [done, setDone] = useState([]); // ticked item indexes
+  // Layout effects run inside the tap that started the run, which browsers require before audio may start.
+  useLayoutEffect(() => { if (sound) toneStart(tone); return () => toneStop(); }, []);
+
+  const toggle = i => {
+    if (done.includes(i)) { setDone(d => d.filter(x => x !== i)); return; }
+    setDone(d => [...d, i]);
+    if (sound) toneTick(tone);
+    if (voice) speak(items[i].text + (items[i].n !== null && items[i].n !== 1 ? ', ' + fmtQty(items[i].n) : ''));
+  };
+
+  // With required items, only those have to be ticked before Done; otherwise everything does.
+  const required = items.map((it, i) => (it.required ? i : -1)).filter(i => i >= 0);
+  const complete = required.length ? required.every(i => done.includes(i)) : done.length === items.length;
+  return h('div', { className: 'screen' },
+    h('h1', null, title),
+    h('div', { className: 'stack' },
+      items.map((it, i) => h('button', {
+        key: i, className: 'item' + (done.includes(i) ? ' done' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
+      },
+        h('span', { className: 'label' },
+          h('span', null, it.text + (it.n !== null && it.n !== 1 ? ' ×' + fmtQty(it.n) : '')),
+          it.required && h('span', { className: 'detail' }, 'required'),
+          it.detail && h('span', { className: 'detail' }, it.detail)),
+        h('span', { className: 'mark', 'data-done': done.includes(i) ? '1' : '0', 'aria-hidden': 'true' }, done.includes(i) ? '☑' : '☐')))),
+    h('div', { className: 'bar' },
+      h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close'),
+      h(ToneControls, { sound, tone })));
+}
+
+/* @@REFSPAGE-START */
+// References page: the research behind the feedback settings. Used by the editor and by Settings.
+function ReferencesPage({ onBack }) {
+  return h('div', { className: 'screen edit' },
+      h('div', { className: 'refs' },
+        h('div', { className: 'refs-in' },
+          h('h1', null, 'References'),
+          h('p', { className: 'muted' }, 'These studies inspired the two settings. None of them tested this app.'),
+          h('h2', null, 'Confirmation cue'),
+          h('p', null, 'Saying an item aloud makes it more memorable than reading it silently (MacLeod et al., 2010). ' +
+            'Aviation checklists use spoken challenge and response between pilots (Degani & Wiener, 1993).'),
+          h('h2', null, 'Attention tone'),
+          h('p', null, 'Warning cues raise short-term alertness, the "alerting" part of the attention system (Posner & Petersen, 1990). ' +
+            'In ADHD, steady white or pink noise gave a small benefit to task performance (Nigg et al., 2024; Söderlund et al., 2007). ' +
+            'Those studies used steady noise, not a short beep. In people without ADHD the evidence is mixed: noise hurt the control group ' +
+            'in one study with children (Söderlund et al., 2007), the 2024 meta-analysis found no significant difference by diagnosis, ' +
+            'and effects depend on volume and task (Szalma & Hancock, 2011).'),
+          h('h2', null, 'Reference list'),
+          h('ul', null, REFERENCES.map(r => h('li', { key: r.key },
+            r.authors + ' (' + r.year + '). ' + r.title + (/[.?]$/.test(r.title) ? ' ' : '. '),
+            h('em', null, r.journal + ', ' + r.volume), r.issue ? '(' + r.issue + ')' : '', ', ' + r.pages + '.',
+            r.doi ? [' ', h('a', { key: 'doi', href: 'https://doi.org/' + r.doi, target: '_blank', rel: 'noopener noreferrer' }, 'https://doi.org/' + r.doi)] : null))),
+          h('p', { className: 'muted' }, 'Checked against abstracts and publisher records, not the full texts.'))),
+      h('div', { className: 'actions' },
+        h('button', { id: 'refs-back', onClick: onBack }, 'Back')));
+}
+
+/* @@REFSPAGE-END */
+
+// Editor steps: name -> points (add, reorder) -> item (details, quantity, required) and questions.
+// Press and hold an item, then drag it up or down to change its place.
+let nextId = 1;
+const mk = (text, detail = '', qty = '', required = false) => ({ id: nextId++, text, detail, qty, required });
+const HOLD_MS = 350;
+const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+function Editor({ list, draft: isDraft, onSave, onDelete, onCancel }) {
+  const [title, setTitle] = useState(list ? list.title : '');
+  const [items, setItems] = useState(() => (list ? list.items.map(i => mk(i.text, i.detail, i.qty, i.required)) : []));
+  const [questions, setQuestions] = useState(() => (list ? list.questions : []));
+  const [draft, setDraft] = useState('');
+  const [qdraft, setQdraft] = useState('');
+  const [qtype, setQtype] = useState('yesno'); // type of the question being added
+  const [qstage, setQstage] = useState('list'); // questions step: list -> type -> cond -> then
+  const [sound, setSound] = useState(() => (list ? list.sound : false));
+  const [voice, setVoice] = useState(() => (list ? list.voice : false));
+  const [qcur, setQcur] = useState(null); // id of the question whose items are being added
+  const [error, setError] = useState('');
+  const [itemId, setItemId] = useState(null); // item being edited on the item step
+  const [field, setField] = useState('detail'); // 'detail' | 'qty'
+  const [dragId, setDragId] = useState(null);
+  const [offset, setOffset] = useState(0);
+  // New checklists start by asking for the name; existing ones open straight on their points.
+  const [step, setStep] = useState(list ? 'points' : 'name');
+  const draftRef = useRef(null);
+  const titleRef = useRef(null);
+  const stackRef = useRef(null);
+  const rowEls = useRef({});
+  const press = useRef(null); // { id, x, y, timer, dragging, offset }
+  const justDragged = useRef(false);
+
+  // Focus the field of the current step so the phone keyboard opens and stays open between steps.
+  // Layout effects run inside the tap's event, which mobile browsers require for opening the keyboard.
+  useLayoutEffect(() => {
+    const el = step === 'name' ? titleRef.current : draftRef.current;
+    if (el) el.focus();
+  }, [step, qstage]);
+  useEffect(() => () => press.current && clearTimeout(press.current.timer), []);
+
+  const focusDraft = () => { if (draftRef.current) draftRef.current.focus(); };
+  const cur = items.find(i => i.id === itemId);
+  const names = questions.map(q => q.name);
+  const defaults = () => Object.fromEntries(names.map(n => [n, 1]));
+  const qtyProblem = i => {
+    if (!i.qty.trim()) return null;
+    try { evalQty(i.qty, defaults()); return null; } catch (e) { return e.message; }
+  };
+  const usable = names.length ? 'Use: ' + names.join(', ') : 'No questions yet (Back, then Questions)';
+
+  const add = () => {
+    const t = draft.trim();
+    if (!t) return;
+    setItems(prev => [...prev, mk(t)]);
+    setDraft('');
+    setError('');
+    focusDraft();
+  };
+
+  const openItem = id => {
+    if (justDragged.current) { justDragged.current = false; return; }
+    setItemId(id);
+    setField('detail');
+    setError('');
+    setStep('item');
+  };
+  const closeItem = () => {
+    setItems(prev => prev.map(i => (i.id === itemId ? { ...i, detail: i.detail.trim(), qty: i.qty.trim() } : i)));
+    setItemId(null);
+    setStep('points');
+  };
+  const setProp = (key, value) => setItems(prev => prev.map(i => (i.id === itemId ? { ...i, [key]: value } : i)));
+
+  // cond stage: creates the question and moves on to "then add ...".
+  const addQuestion = () => {
+    const text = qdraft.trim().replace(/\?+$/, '').replace(/^(if|how many)\s+/i, '').trim();
+    const name = questionName(text, names);
+    if (!name) return;
+    const q = {
+      id: 'q' + nextId++, name, type: qtype, text,
+      label: qtype === 'yesno' ? text.charAt(0).toUpperCase() + text.slice(1) + '?' : 'How many ' + text + '?',
+    };
+    setQuestions(prev => [...prev, q]);
+    setQcur(q.id);
+    setQdraft('');
+    setQstage('then');
+  };
+  // then stage: each entry adds a normal item whose quantity is the answer, so it shows up only when it should.
+  const addLinked = () => {
+    const t = qdraft.trim();
+    const q = questions.find(x => x.id === qcur);
+    if (!t || !q) { setQdraft(''); setQstage('list'); return; }
+    setItems(prev => [...prev, mk(t, '', q.name)]);
+    setQdraft('');
+  };
+  const linkedTo = q => items.filter(i => i.qty.trim() === q.name);
+  // Removing a question keeps its items; they just lose the quantity that tied them to it.
+  const removeQuestion = q => {
+    setQuestions(prev => prev.filter(x => x.id !== q.id));
+    setItems(prev => prev.map(i => (i.qty.trim() === q.name ? { ...i, qty: '' } : i)));
+  };
+
+  const submit = () => {
+    const all = (draft.trim() ? [...items, mk(draft.trim())] : items)
+      .map(i => ({ ...i, detail: i.detail.trim(), qty: i.qty.trim() }));
+    if (!title.trim() || all.length === 0) return;
+    const bad = all.find(qtyProblem);
+    if (bad) { setError('"' + bad.text + '": ' + qtyProblem(bad)); return; }
+    onSave({
+      id: list ? list.id : String(Date.now()),
+      title: title.trim(),
+      sound,
+      voice,
+      questions,
+      items: all.map(i => ({ text: i.text, detail: i.detail, qty: i.qty, required: i.required })),
+    });
+  };
+
+  const center = id => {
+    const r = rowEls.current[id].getBoundingClientRect();
+    return r.top + r.height / 2;
+  };
+
+  const onDown = (e, id) => {
+    justDragged.current = false;
+    if (e.target.closest('.x') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const el = e.currentTarget, pointerId = e.pointerId;
+    const p = { id, x: e.clientX, y: e.clientY, dragging: false, offset: 0 };
+    p.timer = setTimeout(() => {
+      p.dragging = true;
+      justDragged.current = true;
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      try { el.setPointerCapture(pointerId); } catch (err) {}
+      if (navigator.vibrate) navigator.vibrate(10);
+      setDragId(id);
+    }, HOLD_MS);
+    press.current = p;
+  };
+
+  const onMove = (e, id) => {
+    const p = press.current;
+    if (!p || p.id !== id) return;
+    if (!p.dragging) {
+      if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) { clearTimeout(p.timer); press.current = null; }
+      return;
+    }
+    const box = stackRef.current.getBoundingClientRect();
+    const y = Math.min(Math.max(e.clientY, box.top), box.bottom);
+    const i = items.findIndex(it => it.id === id);
+    // Stack is column-reverse: a higher index sits higher on screen.
+    const above = items[i + 1], below = items[i - 1];
+    if (above && y < center(above.id)) {
+      p.offset = y - center(above.id);
+      setItems(items.map((it, k) => (k === i ? above : k === i + 1 ? items[i] : it)));
+    } else if (below && y > center(below.id)) {
+      p.offset = y - center(below.id);
+      setItems(items.map((it, k) => (k === i ? below : k === i - 1 ? items[i] : it)));
+    } else {
+      p.offset = y - (center(id) - p.offset);
+    }
+    setOffset(p.offset);
+  };
+
+  const onUp = () => {
+    const p = press.current;
+    if (p) clearTimeout(p.timer);
+    press.current = null;
+    setDragId(null);
+    setOffset(0);
+  };
+
+  const goNext = () => {
+    if (title.trim()) setStep('feedback');
+    else if (titleRef.current) titleRef.current.focus(); // keep the keyboard open while the name is blank
+  };
+
+  if (step === 'name') {
+    return h('div', { className: 'screen edit' },
+      h('div', { className: 'muted hint' }, 'Name'),
+      h('div', { className: 'entry' },
+        h('input', {
+          id: 'title', ref: titleRef, placeholder: 'Checklist name', value: title, enterKeyHint: 'next',
+          onChange: e => setTitle(e.target.value),
+          onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); goNext(); } },
+        })),
+      h('div', { className: 'actions' },
+        h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+        h('button', { className: title.trim() ? '' : 'muted', onClick: goNext }, 'Next')));
+  }
+
+  if (step === 'feedback') {
+    const rows = [
+      ['sound', 'Attention tone', sound, () => { const on = !sound; setSound(on); if (on) playTick(); }],
+      ['voice', 'Confirmation cue', voice, () => { const on = !voice; setVoice(on); if (on) speak('Confirmation cue on'); }],
+    ];
+    return h('div', { className: 'screen edit intro' },
+      /* @@FEEDBACK-HINT-START */
+      h('div', { className: 'muted hint intro-text' },
+        'When you tick an item: the Confirmation cue repeats the item out loud (MacLeod et al., 2010). ' +
+        'The Attention tone plays a short sound to keep you focused on the task (Posner & Petersen, 1990).'),
+      /* @@FEEDBACK-HINT-END */
+      h('div', { className: 'points' },
+        h('h1', null, title),
+        h('div', { className: 'stack' },
+          rows.map(([key, label, on, toggle]) => h('button', {
+            key, id: 'fb-' + key, className: 'prop' + (on ? ' selected' : ''), onClick: toggle,
+          },
+            h('span', { className: 'label' },
+              h('span', { className: 'detail' }, label),
+              h('span', null, on ? 'on' : 'off')))))),
+      h('div', { className: 'actions' },
+        h('button', { className: 'muted', onClick: () => setStep('name') }, 'Back'),
+        h('button', { id: 'fb-refs', className: 'muted', onClick: () => setStep('references') }, 'References'),
+        h('button', { id: 'fb-next', onClick: () => setStep('points') }, 'Next')));
+  }
+
+  if (step === 'references') return h(ReferencesPage, { onBack: () => setStep('feedback') });
+
+  if (step === 'item' && cur) {
+    let hint = 'Shown under the item while running.', bad = false;
+    if (field === 'qty') {
+      if (!cur.qty.trim()) hint = 'Optional. ' + usable;
+      else {
+        try { hint = '= ' + fmtQty(evalQty(cur.qty, defaults())) + ' when every answer is 1 (yes). ' + usable; }
+        catch (e) { hint = e.message + '. ' + usable; bad = true; }
+      }
+    }
+    const props = [['detail', 'Details', cur.detail], ['qty', 'Quantity', cur.qty]];
+    return h('div', { className: 'screen edit' },
+      h('div', { className: 'points' },
+        h('h1', { onClick: closeItem, style: { cursor: 'pointer' } }, cur.text),
+        h('div', { className: 'stack' },
+          props.map(([key, label, value]) => h('div', {
+            key, className: 'prop' + (field === key ? ' selected' : ''),
+            onClick: () => { setField(key); focusDraft(); },
+          },
+            h('span', { className: 'label' },
+              h('span', { className: 'detail' }, label),
+              h('span', null, value || '—'))))),
+      ),
+      h('div', { className: 'hint ' + (bad ? 'err' : 'muted') }, hint),
+      h('div', { className: 'entry' },
+        h('input', {
+          id: 'field', ref: draftRef, value: cur[field],
+          placeholder: field === 'detail' ? 'Details' : 'Quantity, e.g. nights + 1',
+          enterKeyHint: field === 'detail' ? 'next' : 'done',
+          onChange: e => setProp(field, e.target.value),
+          onKeyDown: e => {
+            if (e.key === 'Enter') { e.preventDefault(); if (field === 'detail') setField('qty'); else closeItem(); }
+            if (e.key === 'Escape') closeItem();
+          },
+        })),
+      h('div', { className: 'actions' },
+        h('button', {
+          className: cur.required ? '' : 'muted', onClick: () => setProp('required', !cur.required),
+          onMouseDown: e => e.preventDefault(), // keep focus (and the phone keyboard) on the field
+        },
+          'Required: ' + (cur.required ? 'yes' : 'no')),
+        h('button', { onClick: closeItem }, 'Back')));
+  }
+
+  if (step === 'questions') {
+    const q = questions.find(x => x.id === qcur);
+    const toList = () => { setQdraft(''); setQstage('list'); };
+
+    if (qstage === 'type') {
+      return h('div', { className: 'screen edit' },
+        h('div', { className: 'points' }, h('h1', null, 'New question')),
+        h('div', { className: 'muted hint' }, 'Question type'),
+        h('div', { className: 'actions' },
+          h('button', { className: 'muted', onClick: toList }, 'Cancel'),
+          h('button', { id: 'type-number', onClick: () => { setQtype('number'); setQdraft(''); setQstage('cond'); } }, 'Number'),
+          h('button', { id: 'type-yesno', onClick: () => { setQtype('yesno'); setQdraft(''); setQstage('cond'); } }, 'Yes / no')));
+    }
+
+    if (qstage === 'cond') {
+      return h('div', { className: 'screen edit' },
+        h('div', { className: 'muted hint' }, qtype === 'yesno' ? 'Question: if…' : 'Question: how many…'),
+        h('div', { className: 'entry' },
+          h('input', {
+            id: 'qdraft', ref: draftRef, value: qdraft, enterKeyHint: 'next',
+            placeholder: qtype === 'yesno' ? 'I go to the sauna' : 'nights',
+            onChange: e => setQdraft(e.target.value),
+            onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addQuestion(); } },
+          })),
+        h('div', { className: 'actions' },
+          h('button', { className: 'muted', onClick: toList }, 'Cancel'),
+          h('button', { className: qdraft.trim() ? '' : 'muted', onClick: addQuestion }, 'Next')));
+    }
+
+    if (qstage === 'then' && q) {
+      return h('div', { className: 'screen edit' },
+        h('div', { className: 'points' },
+          h('h1', null, qSentence(q)),
+          h('div', { className: 'stack' },
+            linkedTo(q).map(i => h('div', { key: i.id },
+              h('span', { className: 'label' }, h('span', null, i.text)),
+              h('span', { className: 'mark' }, '•'))))),
+        h('div', { className: 'muted hint' }, q.type === 'yesno' ? 'then… (add ____)' : 'then… (add ____, quantity = ' + q.name + ')'),
+        h('div', { className: 'entry' },
+          h('input', {
+            id: 'qthen', ref: draftRef, value: qdraft, placeholder: 'Towel', enterKeyHint: 'next',
+            onChange: e => setQdraft(e.target.value),
+            onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); addLinked(); } },
+          })),
+        h('div', { className: 'actions' },
+          h('button', { onClick: () => { addLinked(); setQstage('list'); } }, 'Done')));
+    }
+
+    return h('div', { className: 'screen edit' },
+      h('div', { className: 'points' },
+        h('h1', null, 'Questions'),
+        h('div', { className: 'stack' },
+          questions.map(x => {
+            const linked = linkedTo(x);
+            return h('div', { key: x.id },
+              h('button', { className: 'x', 'aria-label': 'Remove ' + x.label, onClick: () => removeQuestion(x) }, '×'),
+              h('span', { className: 'label' },
+                h('span', null, qSentence(x)),
+                h('span', { className: 'detail' }, linked.length ? 'then add ' + linked.map(i => i.text).join(', ') : 'no items yet')));
+          }))),
+      h('div', { className: 'muted hint' },
+        questions.length ? 'Asked before each run. Use a name in a quantity, e.g. nights + 1.' : 'Example: if I go to the sauna, then add a towel.'),
+      h('div', { className: 'actions' },
+        h('button', { id: 'add-question', onClick: () => setQstage('type') }, '+ Question'),
+        h('button', { onClick: () => setStep('points') }, 'Back')));
+  }
+
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' },
+    h('h1', { onClick: () => setStep('name'), style: { cursor: 'pointer' } }, title),
+    h('div', { className: 'stack', ref: stackRef },
+      // DOM order stays fixed (by id) so the dragged element is never moved or loses pointer capture;
+      // the visible position comes from CSS `order`.
+      [...items].sort((a, b) => a.id - b.id).map(item => {
+        const note = [item.required ? 'required' : null, item.qty ? '× ' + item.qty : null, item.detail || null].filter(Boolean).join(' · ');
+        return h('div', {
+          key: item.id,
+          className: 'row' + (dragId === item.id ? ' lifted' : ''),
+          ref: el => { if (el) rowEls.current[item.id] = el; else delete rowEls.current[item.id]; },
+          style: {
+            order: items.indexOf(item),
+            ...(dragId === item.id ? { transform: 'translateY(' + offset + 'px) scale(1.03)' } : null),
+          },
+          onPointerDown: e => onDown(e, item.id),
+          onPointerMove: e => onMove(e, item.id),
+          onPointerUp: onUp, onPointerCancel: onUp, onPointerLeave: () => { const p = press.current; if (p && !p.dragging && p.id === item.id) onUp(); },
+          onContextMenu: e => e.preventDefault(),
+          onClick: e => { if (!e.target.closest('.x')) openItem(item.id); },
+        },
+          h('button', {
+            className: 'x', 'aria-label': 'Remove ' + item.text,
+            onClick: () => setItems(items.filter(i => i.id !== item.id)),
+          }, '×'),
+          h('span', { className: 'label' },
+            h('span', null, item.text),
+            note && h('span', { className: 'detail' }, note)),
+          h('span', { className: 'mark' }, '•'));
+      }))),
+    h('div', { className: 'hint ' + (error ? 'err' : 'muted') },
+      error || (items.length > 0 ? 'Tap an item to edit it. Hold and drag to reorder. Tap the name to rename.' : '')),
+    h('div', { className: 'entry' },
+      h('input', {
+        id: 'draft', ref: draftRef, value: draft, placeholder: 'Add item', enterKeyHint: 'next',
+        onChange: e => setDraft(e.target.value),
+        onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); add(); } },
+      })),
+    h('div', { className: 'actions' },
+      list && !isDraft && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
+      h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+      h('button', { className: 'muted', onClick: () => { setError(''); setQstage('list'); setStep('questions'); } },
+        'Questions' + (questions.length ? ' ' + questions.length : '')),
+      h('button', { onClick: submit }, 'Save')));
+}
+
+function App() {
+  const [lists, setLists] = useState(load);
+  const [settings, setSettings] = useState(loadSettings);
+  const [screen, setScreen] = useState({ name: 'home' });
+  useEffect(() => save(lists), [lists]);
+  useEffect(() => { saveSettings(settings); window.applyAppearance(settings); }, [settings]);
+  const home = () => setScreen({ name: 'home' });
+  const update = next => { setLists(next); home(); };
+  const change = patch => setSettings(prev => sanitizeSettings({
+    ...prev, ...patch, tone: { ...prev.tone, ...(patch.tone || {}) }, ai: { ...prev.ai, ...(patch.ai || {}) },
+  }));
+  const toSettings = () => setScreen({ name: 'settings' });
+
+  if (screen.name === 'run') return h(Run, { list: screen.list, tone: settings.tone, onClose: home });
+  if (screen.name === 'edit') return h(Editor, {
+    list: screen.list, draft: screen.draft, onCancel: home,
+    onDelete: id => update(lists.filter(l => l.id !== id)),
+    onSave: c => update(lists.some(l => l.id === c.id) ? lists.map(l => l.id === c.id ? c : l) : [...lists, c]),
+  });
+  if (screen.name === 'settings') return h(SettingsHome, { settings, onChange: change, onNav: name => setScreen({ name }), onBack: home });
+  if (screen.name === 'settings-tone') return h(ToneSettings, { settings, onChange: change, onBack: toSettings });
+  if (screen.name === 'settings-ai') return h(QuickSettings, { settings, onChange: change, onBack: toSettings });
+  if (screen.name === 'references') return h(ReferencesPage, { onBack: toSettings });
+  if (screen.name === 'quick') return h(QuickScreen, {
+    settings, onCancel: home, onOpenSettings: () => setScreen({ name: 'settings-ai' }),
+    onDraft: list => setScreen({ name: 'edit', list: { ...list, id: String(Date.now()) }, draft: true }),
+  });
+  return h(Home, {
+    lists, onSettings: toSettings, onQuick: () => setScreen({ name: 'quick' }),
+    onRun: list => setScreen({ name: 'run', list }), onEdit: list => setScreen({ name: 'edit', list }),
+  });
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>

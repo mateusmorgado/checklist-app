@@ -1,0 +1,222 @@
+--- base.html	2026-10-17 12:00:29.718949615 +0000
++++ uxrun/index.html	2026-10-17 12:44:05.166803672 +0000
+@@ -130,6 +130,43 @@
+   /* @@QUICK-CSS-START */
+   /* @@QUICK-CSS-END */
+   /* @@UX-RUN-CSS-START */
++  /* Run: the whole row is the tap target (56px, state changes on click only so sliding off cancels). The tick stays
++     about 28px. The next open item is the bottom-most unticked one: bold with an edge marker, no motion. */
++  .run .item { cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; padding: 0 4px 0 0; }
++  .run .item:active { background: var(--lift); }
++  .run .item .mark { font-size: 28px; width: 32px; text-align: center; }
++  .run .item.next { padding-right: 0; border-right: 4px solid var(--fg); }
++  .run .item.next .label > span:first-child { font-weight: 700; }
++  /* Progress sits just above the bar. It comes after the bar in the markup (status region), so order puts it first. */
++  .run .progress { order: 1; flex: none; width: 100%; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 6px; font-size: 14px; line-height: 1.25; color: var(--muted); text-align: right; }
++  .run .progress-text { overflow-wrap: anywhere; }
++  .run .progress-text.confirm-text { color: var(--fg); }
++  .run .progress-segs { display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 2px; width: 100%; }
++  /* One segment per item: filled = done, outline = open, tall = required (shape, not colour). */
++  .run .progress-seg { flex: 0 1 24px; min-width: 2px; height: 6px; box-sizing: border-box; border: 1px solid var(--line-strong); border-radius: calc(var(--radius) / 3); }
++  .run .progress-seg[data-required="1"] { height: 12px; }
++  .run .progress-seg[data-done="1"] { background: var(--fg); border-color: var(--fg); }
++  /* Dense (more rows than fit): the page still never scrolls, so text shrinks with the row and only 'required' stays. */
++  .run.dense .item { font-size: clamp(9px, calc(var(--run-row) * .75), 16px); line-height: 1; }
++  .run.dense .item .mark { font-size: clamp(10px, calc(var(--run-row) * .9), 28px); width: auto; }
++  .run.dense .label { flex-direction: row-reverse; align-items: baseline; gap: 6px; }
++  .run.dense .detail { font-size: .8em; line-height: 1; }
++  .run.dense .detail:not(.req) { display: none; }
++  .run .bar { order: 2; }
++  /* Close confirm: same bar, same right edge; Keep going takes the main button's place. */
++  .run .bar.confirming { gap: 8px; }
++  .run .bar.confirming button { font-size: 16px; padding: 0 6px; }
++  @media (forced-colors: active) { .run .progress-seg[data-done="1"] { background: CanvasText; forced-color-adjust: none; } }
++  /* Ask: number field with - and + steppers, a reserved line for the validation message, large Yes and No. */
++  .ask-entry { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
++  .ask-field { display: flex; align-items: center; gap: 8px; width: 100%; }
++  .ask-field input { flex: 1 1 auto; min-width: 0; font-size: 20px; }
++  .ask-step { flex: none; width: var(--hit-min); height: var(--hit-min); display: flex; align-items: center; justify-content: center; font-size: 24px; line-height: 1; border: var(--border) solid var(--line-strong); border-radius: var(--radius); }
++  .ask-msg { min-height: 20px; font-size: 14px; line-height: 20px; text-align: right; }
++  .edit > .actions.yn { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: auto; width: 100%; margin-right: 0; align-items: stretch; }
++  .actions.yn > .yn-secondary { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 4px; margin-right: -8px; }
++  .actions.yn > .yn-secondary button { min-height: var(--hit-min); min-width: var(--hit-min); padding: 0 8px; }
++  .actions.yn > #no, .actions.yn > #yes { min-height: 56px; width: 100%; font-size: 20px; border: var(--border) solid var(--line-strong); border-radius: var(--radius); }
+   /* @@UX-RUN-CSS-END */
+   /* @@UX-EDIT-CSS-START */
+   /* @@UX-EDIT-CSS-END */
+@@ -422,47 +459,77 @@
+     h('div', { className: 'actions' }, h('button', { id: 'settings-back', onClick: onBack }, 'Back')));
+ }
+ 
+-// Ask: one question per screen before a run. Numbers are typed, yes/no is one tap (yes = 1, no = 0).
++// Ask: one question per screen before a run. Numbers are typed (or stepped with - and +), yes/no is one tap (yes = 1, no = 0).
+ // The answers feed the quantity formulas.
++const ASK_MAX = 1e6;
++const ASK_NUM = /^[+-]?(\d+[.,]?\d*|[.,]\d+)(e[+-]?\d+)?$/i;
++// A usable answer is { n }; anything else is { err } with the text to show. Pasted text is trimmed and a comma is the decimal point.
++function parseAnswer(raw) {
++  const s = String(raw).replace(/−/g, '-').trim();
++  if (!ASK_NUM.test(s)) return { err: 'Enter a number' };
++  const n = Number(s.replace(',', '.'));
++  if (!Number.isFinite(n) || Math.abs(n) > ASK_MAX) return { err: 'Enter a number between -1000000 and 1000000' };
++  return { n: n + 0 }; // + 0 turns -0 into 0
++}
+ function Ask({ list, onDone, onCancel }) {
+   const qs = list.questions;
+   const [i, setI] = useState(0);
+   const [vals, setVals] = useState(() => qs.map(q => (q.type === 'yesno' ? null : '1')));
++  const [tried, setTried] = useState(false); // the message shows after a first attempt or a paste, not while typing
+   const ref = useRef(null);
+   const q = qs[i];
+   useLayoutEffect(() => { if (ref.current) { ref.current.focus(); ref.current.select(); } }, [i]);
+-  const num = v => Number(String(v).replace(',', '.'));
+   const last = i === qs.length - 1;
+   const go = all => {
+-    if (!last) { setI(i + 1); return; }
+-    onDone(Object.fromEntries(qs.map((x, k) => [x.name, num(all[k])])));
++    if (!last) { setTried(false); setI(i + 1); return; }
++    onDone(Object.fromEntries(qs.map((x, k) => { const r = parseAnswer(all[k]); return [x.name, r.n === undefined ? 0 : r.n]; })));
+   };
+   const answerYesNo = yes => {
+     const all = vals.map((v, k) => (k === i ? (yes ? '1' : '0') : v));
+     setVals(all);
+     go(all);
+   };
+-  const valid = q.type === 'yesno' ? vals[i] !== null : vals[i].trim() !== '' && Number.isFinite(num(vals[i]));
++  const yn = q.type === 'yesno';
++  const parsed = yn ? null : parseAnswer(vals[i]);
++  const valid = yn ? vals[i] !== null : parsed.n !== undefined;
++  const err = !yn && tried && parsed.err ? parsed.err : '';
+   const next = () => {
+-    if (!valid) { if (ref.current) ref.current.focus(); return; }
++    if (!valid) { setTried(true); if (ref.current) ref.current.focus(); return; }
+     go(vals);
+   };
++  // Steps by 1 from what is typed (decimals stay); empty or unreadable text counts as 0. Rounding hides float noise.
++  const stepBy = d => {
++    const s = vals[i].replace(/−/g, '-').trim().replace(',', '.');
++    const cur = ASK_NUM.test(s) ? Number(s) : 0;
++    const base = Math.max(-ASK_MAX, Math.min(ASK_MAX, Number.isNaN(cur) ? 0 : cur));
++    const out = Math.max(-ASK_MAX, Math.min(ASK_MAX, Math.round((base + d) * 1e9) / 1e9)) + 0;
++    setVals(v => v.map((x, k) => (k === i ? String(out) : x)));
++  };
++  const cancel = h('button', { className: 'muted', onClick: onCancel }, 'Cancel');
++  const back = i > 0 && h('button', { className: 'muted', onClick: () => { setTried(false); setI(i - 1); } }, 'Back');
+   return h('div', { className: 'screen edit' },
+     h('div', { className: 'points' }, h('h1', null, q.label)),
+     h('div', { className: 'muted hint' }, list.title + (qs.length > 1 ? ' · ' + (i + 1) + ' of ' + qs.length : '')),
+-    q.type === 'yesno' ? null : h('div', { className: 'entry' },
+-      h('input', {
+-        id: 'answer', ref, inputMode: 'decimal', value: vals[i], enterKeyHint: last ? 'go' : 'next',
+-        onChange: e => setVals(v => v.map((x, k) => (k === i ? e.target.value : x))),
+-        onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); next(); } },
+-      })),
+-    h('div', { className: 'actions' },
+-      h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
+-      i > 0 && h('button', { className: 'muted', onClick: () => setI(i - 1) }, 'Back'),
+-      q.type === 'yesno'
+-        ? [h('button', { key: 'no', id: 'no', onClick: () => answerYesNo(false) }, 'No'),
+-           h('button', { key: 'yes', id: 'yes', onClick: () => answerYesNo(true) }, 'Yes')]
+-        : h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next')));
++    yn ? null : h('div', { className: 'entry ask-entry' },
++      h('div', { className: 'ask-field' },
++        h('input', {
++          id: 'answer', ref, inputMode: 'decimal', value: vals[i], enterKeyHint: last ? 'go' : 'next', 'aria-label': q.label,
++          'aria-invalid': err ? 'true' : undefined, 'aria-describedby': err ? 'ask-error' : undefined,
++          onChange: e => setVals(v => v.map((x, k) => (k === i ? e.target.value : x))),
++          onPaste: () => setTried(true),
++          onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); next(); } },
++        }),
++        // mousedown is cancelled so the field keeps focus (and the keyboard stays up); the step itself happens on click
++        h('button', { id: 'dec', className: 'ask-step', 'aria-label': 'Decrease by 1', onMouseDown: e => e.preventDefault(), onClick: () => stepBy(-1) }, '-'),
++        h('button', { id: 'inc', className: 'ask-step', 'aria-label': 'Increase by 1', onMouseDown: e => e.preventDefault(), onClick: () => stepBy(1) }, '+')),
++      h('div', { className: 'ask-msg err' }, err && h('div', { id: 'ask-error', role: 'alert' }, err))),
++    yn
++      ? h('div', { className: 'actions yn' },
++          h('div', { className: 'yn-secondary' }, cancel, back),
++          h('button', { id: 'no', onClick: () => answerYesNo(false) }, 'No'),
++          h('button', { id: 'yes', onClick: () => answerYesNo(true) }, 'Yes'))
++      : h('div', { className: 'actions' }, cancel, back,
++          h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next')));
+ }
+ 
+ function Run({ list, tone, onClose }) {
+@@ -483,33 +550,70 @@
+ // The checklist's own settings decide whether ticking plays a sound and/or says the item out loud.
+ function RunList({ title, items, sound, voice, tone, onClose }) {
+   const [done, setDone] = useState([]); // ticked item indexes
++  const [confirming, setConfirming] = useState(false); // inline "keep going or close anyway" in the bar
++  const lastTap = useRef({}); // row -> time of its last accepted tap
++  const mainRef = useRef(null), keepRef = useRef(null), refocus = useRef(false), stackRef = useRef(null);
++  // Long lists: rows shrink to fit (the page never scrolls). Below 44px the screen goes dense (smaller text, no detail lines).
++  const [rowPx, setRowPx] = useState(56);
++  useLayoutEffect(() => {
++    const measure = () => { const r = stackRef.current && stackRef.current.firstElementChild; if (r) setRowPx(Math.round(r.getBoundingClientRect().height)); };
++    measure();
++    window.addEventListener('resize', measure);
++    return () => window.removeEventListener('resize', measure);
++  }, [items.length]);
+   // Layout effects run inside the tap that started the run, which browsers require before audio may start.
+   useLayoutEffect(() => { if (sound) toneStart(tone); return () => toneStop(); }, []);
++  useEffect(() => {
++    if (confirming) { if (keepRef.current) keepRef.current.focus(); }
++    else if (refocus.current) { refocus.current = false; if (mainRef.current) mainRef.current.focus(); }
++  }, [confirming]);
+ 
+   const toggle = i => {
++    // A second tap on the same row within 250 ms is a double tap: ignore it, so sound and speech fire once and nothing unticks by accident.
++    const now = Date.now(), prev = lastTap.current[i];
++    if (prev !== undefined && now - prev >= 0 && now - prev < 250) return;
++    lastTap.current[i] = now;
++    setConfirming(false);
+     if (done.includes(i)) { setDone(d => d.filter(x => x !== i)); return; }
+-    setDone(d => [...d, i]);
++    setDone(d => (d.includes(i) ? d : [...d, i]));
+     if (sound) toneTick(tone);
++    if (sound) { try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {} } // Android only
+     if (voice) speak(items[i].text + (items[i].n !== null && items[i].n !== 1 ? ', ' + fmtQty(items[i].n) : ''));
+   };
+ 
+   // With required items, only those have to be ticked before Done; otherwise everything does.
+   const required = items.map((it, i) => (it.required ? i : -1)).filter(i => i >= 0);
+   const complete = required.length ? required.every(i => done.includes(i)) : done.length === items.length;
+-  return h('div', { className: 'screen' },
++  const requiredLeft = required.filter(i => !done.includes(i)).length;
++  const nextItem = items.findIndex((it, i) => !done.includes(i)); // first open item in stack order
++  const status = items.length === 0 ? 'No items'
++    : done.length + ' of ' + items.length + ' done' + (requiredLeft ? ', ' + requiredLeft + ' required left' : '');
++  // Nothing ticked yet: nothing to lose, so Close leaves at once. Otherwise an unfinished run asks first.
++  const press = () => { if (complete || done.length === 0) onClose(); else setConfirming(true); };
++  const asking = confirming && !complete;
++  return h('div', { className: 'screen run' + (rowPx < 44 ? ' dense' : ''), style: { '--run-row': rowPx + 'px' } },
+     h('h1', null, title),
+-    h('div', { className: 'stack' },
++    h('div', { className: 'stack', ref: stackRef },
+       items.map((it, i) => h('button', {
+-        key: i, className: 'item' + (done.includes(i) ? ' done' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
++        key: i, className: 'item' + (done.includes(i) ? ' done' : '') + (i === nextItem ? ' next' : ''), role: 'checkbox',
++        'aria-checked': done.includes(i) ? 'true' : 'false', 'aria-current': i === nextItem ? 'step' : undefined, onClick: () => toggle(i),
+       },
+         h('span', { className: 'label' },
+           h('span', null, it.text + (it.n !== null && it.n !== 1 ? ' ×' + fmtQty(it.n) : '')),
+-          it.required && h('span', { className: 'detail' }, 'required'),
++          it.required && h('span', { className: 'detail req' }, 'required'),
+           it.detail && h('span', { className: 'detail' }, it.detail)),
+         h('span', { className: 'mark', 'data-done': done.includes(i) ? '1' : '0', 'aria-hidden': 'true' }, done.includes(i) ? '☑' : '☐')))),
+-    h('div', { className: 'bar' },
+-      h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close'),
+-      h(ToneControls, { sound, tone })));
++    h('div', { className: 'bar' + (asking ? ' confirming' : '') },
++      asking
++        ? [h('button', { key: 'keep', id: 'keep-going', ref: keepRef, onClick: () => { refocus.current = true; setConfirming(false); } }, 'Keep going'),
++           h('button', { key: 'any', id: 'close-anyway', className: 'muted', onClick: onClose }, 'Close anyway')]
++        : h('button', { key: 'main', ref: mainRef, className: complete ? '' : 'muted', onClick: press }, complete ? 'Done' : 'Close'),
++      h(ToneControls, { sound, tone })),
++    // Status region: after the bar in the markup, drawn above it (CSS order). Updates on tick only.
++    h('div', { className: 'progress', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' },
++      h('span', { className: 'progress-text' + (asking ? ' confirm-text' : '') }, asking ? status + '. Leave now?' : status),
++      items.length > 0 && items.length <= 24 && h('div', { className: 'progress-segs', 'aria-hidden': 'true' },
++        items.map((it, i) => h('span', { key: i, className: 'progress-seg', 'data-done': done.includes(i) ? '1' : '0', 'data-required': it.required ? '1' : '0' })))));
+ }
+ 
+ /* @@REFSPAGE-START */

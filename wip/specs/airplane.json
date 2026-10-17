@@ -1,0 +1,71 @@
+{
+ "name": "Airplane",
+ "mood": "Glass-cockpit electronic checklist: near-black display, thin outlined square boxes, uppercase labels, monospaced numerals, strict colour semantics (white = pending, green = done/normal, amber = caution/required, cyan = selectable/info/current item, red = error only, magenta optional for special info). Dark-only, calm and low-glare, minimal chrome in the normal state so that colour only appears when state changes (Airbus 'lights out' idea). Every colour is paired with a glyph or word. Approximate palette: no source gave cockpit hex values, so these are tuned for legibility, not authenticity.",
+ "fonts": [
+  {
+   "role": "Labels, item text, headings",
+   "family": "B612",
+   "googleFontsQuery": "family=B612:wght@400;700",
+   "fallback": "'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif",
+   "why": "B612 was designed with Airbus and ENAC for cockpit screens (open counterforms, light traps, 0/O and 1/I/l distinguished). Use at 15px to 20px, uppercase only for short labels with letter-spacing .06em; item text stays sentence case at 16px so reading text is not all-caps (BDA guidance). Avoid B612 above 28px (light traps look noisy). Do not claim it is on any in-service airliner."
+  },
+  {
+   "role": "Numerals, quantities, counters, timers",
+   "family": "B612 Mono",
+   "googleFontsQuery": "family=B612+Mono:wght@400;700",
+   "fallback": "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
+   "why": "Monospaced numerals with font-variant-numeric: tabular-nums so '03/08' never jitters. Use for quantities, the 'x/n' counter and number inputs only; at 16px a mono advance is about .6em so a 288px column holds roughly 30 characters, never set item names in it."
+  },
+  {
+   "role": "Optional condensed fallback for long labels at 320px",
+   "family": "Barlow Semi Condensed",
+   "googleFontsQuery": "family=Barlow+Semi+Condensed:wght@500;600",
+   "fallback": "'Arial Narrow', system-ui, sans-serif",
+   "why": "Only if B612 labels overflow at 320px; adds a third family so load it only on demand. Full single request: https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono:wght@400;700&display=swap"
+  }
+ ],
+ "colors": {
+  "bg": "#05080b",
+  "surface": "#0b1117",
+  "fg": "#f2f4f5",
+  "muted": "#93a3ad",
+  "line": "#26343e",
+  "lineStrong": "#5f7886",
+  "accent": "#2fe0f5",
+  "accentFg": "#031014",
+  "ok": "#3df07a",
+  "warn": "#ffb000",
+  "err": "#ff5a5a",
+  "lift": "#121c24",
+  "focus": "#ffffff",
+  "special": "#ff7bff",
+  "placeholder": "#6f8190",
+  "mutedDeep": "#7f909b"
+ },
+ "contrastNotes": "All values computed. fg/bg 18.20, fg/surface 17.20, fg/lift 15.64. muted/bg 7.73, muted/surface 7.30, muted/lift 6.64. mutedDeep #7f909b (hints only) 6.08 on bg, 5.75 on surface. accent cyan on bg 12.53, on surface 11.84, accentFg on accent 12.04 (cyan filled button with near-black text). ok green on bg 13.33, surface 12.60, lift 11.45; accentFg on ok 12.81. warn amber on bg 10.96, surface 10.36, lift 9.42. err red on bg 6.56, surface 6.20, lift 5.64 (the original #ff4d4d-class red was nudged to #ff5a5a so it clears 5.5 on lift). special magenta on bg 9.11. placeholder 4.72 on surface. UI boundaries: lineStrong on bg 4.32, on surface 4.08, on lift 3.71, all above 3:1 (tick box outlines, input borders, toggle outlines). line #26343e is 1.57, decorative hairline only. focus white on bg 20.08, on surface 18.97. Pure blue is deliberately absent (#0000FF on black is 2.44:1, fails). Off-black and off-white avoid halation. White on cyan is 1.60, so never put white text on cyan fills. All pairs pass AA.",
+ "motion": "Displays do not animate, so the design is static: every state change is instant (0ms), including the cyan current-item box which jumps to the next open item. No pulse, no flash, no needle sweeps, no scanline animation, no glow animation. The only optional motion is a 100ms opacity fade on screen change, wrapped in @media (prefers-reduced-motion: no-preference); under reduce, even that is removed. A thicker outline replaces any pulse analogue. Scanline or vignette texture, if used, is a static CSS repeating-linear-gradient at under 4 percent opacity and is switched off under prefers-contrast: more, forced-colors, and the in-app 'Reduce effects'.",
+ "shape": {
+  "radius": "0 for boxes (square, bezel-like); 2px maximum on buttons",
+  "borderWidth": "1px --lineStrong for item rows and inputs; 2px for the current item (--accent), buttons and focus; 3px focus ring",
+  "shadow": "none; optional inset 0 0 0 1px --line to suggest a recessed bezel; no glow (text-shadow off)",
+  "spacing": "16px gutter (safe-area aware), 8px gap between boxes, row min-height 56px with a 1px box outline, label column then 48px tick cell",
+  "hitMin": "48px; dense look comes from the thin outlines and 14px caps labels, never from smaller hit areas",
+  "tickBox": "28px square outline, 48px hit area via ::before inset -10px",
+  "type": "item 16px B612 400, caps labels 13px to 14px B612 700 uppercase tracking .06em (labels only, never running text), numerals B612 Mono 16px"
+ },
+ "componentRules": [
+  "Home list rows: square 1px --lineStrong outlined boxes on --surface, min-height 56px, 8px gap, checklist name in --fg 17px B612, right-aligned, with a small mono caps meta label on the left side of the box ('08 PTS') in --muted 13px. Whole box is the button. Pressed: background --lift and border --accent, instant. Optional 'LAST RUN' line in --muted.",
+  "Primary button (DONE, SAVE, + NEW): min-height 48px, background --accent, text --accentFg, B612 700 uppercase 15px, tracking .06em, 0 radius, 2px --accent border. Bottom-right. DONE with open required items switches to an amber outlined style (transparent fill, 2px --warn border, --warn text 'DONE - 2 OPEN') so the caution is text plus colour. Pressed: background --fg, text --bg (inverse), instant.",
+  "Secondary button (CANCEL, QUESTIONS, CLOSE): transparent fill, 2px --lineStrong border (4.32:1), --fg uppercase 15px text, min-height 48px, 0 radius. Same bottom row as primary, 8px or more gap. Pressed: background --lift, border --accent. Destructive actions use an --err 2px outline plus the word 'DELETE' and an undo toast.",
+  "Text inputs: min-height 48px, 16px minimum, B612 Mono for number inputs and B612 for text, 1px --lineStrong border (2px --accent on focus in addition to the white focus ring), background --surface, text --fg, caret --accent, placeholder --placeholder (4.72). Label above in caps --muted 13px. Set color-scheme: dark so native number steppers and scrollbars match.",
+  "Item rows with tick box: 1px --lineStrong square box, min-height 56px, label in --fg 16px B612 on the right of centre, tick cell on the far right with a 28px square outline (empty = pending, text white). Detail and quantity lines in --accent cyan (11.84:1) 14px, indented, quantity in B612 Mono. The NEXT open item gets a 2px --accent outline box (no fill, no motion) mirroring the Boeing current-line box, and jumps to the next incomplete item when ticked or skipped. Items never move or reorder.",
+  "Done state: label and box turn --ok green, tick box shows a 3px green check glyph inside a green 2px outline (12.60:1), row outline becomes 1px --ok at 60 percent, plus screen-reader 'done'. Pending stays white (Boeing ECL white to green convention). Skipped (override): white dashed 1px box with a dash glyph and the word 'SKIPPED' in --muted caps, never green. When all items are done a green line 'CHECKLIST COMPLETE' appears above DONE; if DONE is pressed with open required items show an amber line 'ITEMS OPEN 02'.",
+  "Required marker: small amber caps tag 'REQ' (B612 Mono 700 13px, --warn text, 1px --warn border, 4px 6px padding) before the label, and the row box outline becomes --warn until ticked; amber is reserved for required-and-open only so caution keeps its meaning. After ticking the tag disappears (or turns --ok 'REQ OK').",
+  "Toggle rows: boxed row (1px --lineStrong) with the label right-aligned and, at the right, an ECAM-style two-state box 64x32 showing the words ON or OFF in B612 Mono 700: ON = 2px --ok outline, --ok text, small filled square at the right; OFF = 1px --lineStrong outline, --muted text. State is carried by the word and the square position as well as colour (muted 7.30:1, ok 12.60:1). Whole row toggles.",
+  "Hints: --accent cyan 14px/1.4 (information = cyan) or --mutedDeep for long explanations (6.08:1), lines start with a small caps label such as 'NOTE', max 60ch, never placeholder-only. Errors: --err text prefixed with 'ERROR' and a triangle glyph, 2px --err outline on the field; red appears nowhere else.",
+  "Headings: screen title in B612 700 uppercase 18px tracking .08em, --fg, right-aligned, underlined by a 1px --lineStrong rule; section labels 13px caps --muted. Optional dot leader between a label and its value via flex plus border-bottom: 1px dotted --line. References page body: B612 400 16px/1.6, sentence case, left-aligned, letter-spacing .03em, word-spacing .08em, max-width 60ch, on a flat --surface panel with no texture.",
+  "Progress indicator: mono counter '03/08' in --fg B612 Mono 700 18px next to a segmented bar (one 8px-high box per item, 4px gap): done segments --ok, current segment --accent outline, pending segments 1px --lineStrong outline; text label 'REMAINING 05' in --muted caps. Static, updated on tick only. Segments carry done or pending via fill versus outline, not hue alone.",
+  "Focus ring: :focus-visible { outline: 3px solid #fff; outline-offset: 3px } (20.08:1 on bg); white is chosen so it is never confused with the 2px cyan current-item box or the 2px amber required outline. Keeps the 48px hit area.",
+  "Pressed state: instant inverse fill (background --fg, text --bg) on buttons, background --lift plus 2px --accent border on rows and tick boxes; no transform, no shadow, no transition. A ticked row changes to green outline in the same frame."
+ ]
+}
