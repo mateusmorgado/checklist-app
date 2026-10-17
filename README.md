@@ -14,10 +14,12 @@ Checklists are saved in the browser's `localStorage`.
 
 - **Run:** items stack from the bottom up, checkmarks on the right. A ticked item stays where it is, dimmed with a tick, so nothing moves under the finger. Everything sits within reach of the right thumb.
 - **Create:** name first, then the feedback settings (an Attention tone when you tick an item, and/or a Confirmation cue that repeats the item out loud, with the research behind them on a References page), then the points, one at a time. Tap an item for details, a quantity formula and a "required" flag. Hold and drag to reorder.
-- **Questions:** asked before a run, as sentences: "If I go to the sauna, then add a towel" (yes/no) or "How many nights, then add shirts" (number). Yes counts as 1 and no as 0, so linked items appear only when they should. Quantities can use formulas such as `nights + 1`.
+- **Questions:** yes/no only for now, asked once before a run: "If [I go to the sauna], then add Towel". A Yes adds the linked items. Number questions and quantity formulas ("5 nights, 7 socks") are parked until the workflow is designed; saved ones still run.
+- **List direction** (Settings): lists grow bottom to top by default so the first item and the buttons are close to the thumb, or top to bottom.
+- **Cues:** Attention tone and Confirmation cue can be toggled from Settings (default for new lists) and per checklist while editing (Cues button).
 - **Required items:** a run can be finished once the required items are ticked.
 
-- **Three designs** (Settings): *Classic* (paper, Newsreader serif), *Airplane* (always-dark glass cockpit, B612 fonts) and *Modern* (neobrutalism with grain, Bricolage Grotesque + Space Grotesk). Each has its own typeface and logo treatment. Mode (system/light/dark) and Effects (full/reduced) are also in Settings.
+- **Three designs** (Settings): *Minimalist* (plain white, system font, nothing extra), *Airplane* (always-dark glass cockpit, B612 fonts) and *Modern* (neobrutalism with grain in mint and coral, Bricolage Grotesque + Space Grotesk). Each has its own typeface and logo treatment. Mode (system/light/dark) and Effects (full/reduced) are also in Settings.
 - **Attention tone options** (Settings > Attention tone): Tick, Heart monitor, Cabin hum, Sonar, Metronome and Alarm, with a 3 s preview and a low/medium/high volume that is a hard cap. The soundscapes play while a checklist with Attention tone on is open; the run has a Sound off button, and everything stops when you leave or the tab is hidden.
 - **Parked:** the AI Quick list is switched off (`QUICK_LIST_ENABLED = false`; draft in `wip/quick/`), as are the other drafts in `wip/`.
 
