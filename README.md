@@ -18,7 +18,8 @@ Checklists are saved in the browser's `localStorage`.
 - **Required items:** a run can be finished once the required items are ticked.
 
 - **Three designs** (Settings): *Classic* (paper, Newsreader serif), *Airplane* (always-dark glass cockpit, B612 fonts) and *Modern* (neobrutalism with grain, Bricolage Grotesque + Space Grotesk). Each has its own typeface and logo treatment. Mode (system/light/dark) and Effects (full/reduced) are also in Settings.
-- **Parked:** the AI Quick list is switched off (`QUICK_LIST_ENABLED = false`; draft in `wip/quick/`), as are the urgency sound options and other drafts in `wip/`.
+- **Attention tone options** (Settings > Attention tone): Tick, Heart monitor, Cabin hum, Sonar, Metronome and Alarm, with a 3 s preview and a low/medium/high volume that is a hard cap. The soundscapes play while a checklist with Attention tone on is open; the run has a Sound off button, and everything stops when you leave or the tab is hidden.
+- **Parked:** the AI Quick list is switched off (`QUICK_LIST_ENABLED = false`; draft in `wip/quick/`), as are the other drafts in `wip/`.
 
 ## Reference
 

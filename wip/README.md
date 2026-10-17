@@ -16,7 +16,7 @@ none reported back, and none is verified. Treat the code as a draft.
 
 | Folder | Draft of | State when stopped |
 |---|---|---|
-| `sound/` | Attention tone sounds (heart monitor, cabin noise, sonar, metronome, alarm), Settings tone screen, mute button | engine written, tests partly written, not run to completion |
+| `sound/` (**merged into the app**) | Attention tone sounds (heart monitor, cabin noise, sonar, metronome, alarm), Settings tone screen, mute button | engine written, tests partly written, not run to completion |
 | `quick/` | AI Quick list (screen, Settings, API call, hardening) plus `mock-anthropic.cjs` test server | code and tests partly written |
 | `uxrun/` | Progress line, next-item emphasis, Done guard, Ask screen improvements | partial |
 | `uxedit/` | Move up/down, Undo toast, inner scroll, input limits | partial |
