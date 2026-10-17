@@ -101,6 +101,7 @@
   input::placeholder { color: var(--placeholder); }
   .hint { font-size: 14px; flex: none; text-align: right; }
   .err { color: var(--err); }
+  /* @@REFS-CSS-START */
   .edit > .refs { grid-area: points; align-self: stretch; width: 100%; min-height: 0; overflow-y: auto; touch-action: pan-y; }
   .refs-in { text-align: right; font-size: 14px; line-height: 1.35; }
   .refs-in h1 { margin: 0 0 8px; }
@@ -110,6 +111,7 @@
   .refs-in ul { list-style: none; margin: 0; padding: 0; }
   .refs-in li { margin: 0 0 8px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
   .refs-in a { color: inherit; text-decoration: underline; }
+  /* @@REFS-CSS-END */
   .prop { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); cursor: pointer; }
   .prop.selected { background: var(--lift); }
   /* Settings: a list that scrolls inside itself only when it is taller than the screen. */
@@ -242,6 +244,7 @@ function ToneSettings({ settings, onChange, onBack }) {
 }
 /* @@SOUND-ENGINE-END */
 
+/* @@REFERENCES-START */
 // References behind the feedback settings, in APA 7th edition style (alphabetical by first author).
 // Entries without a DOI were not confirmed against a DOI record.
 const REFERENCES = [
@@ -261,6 +264,7 @@ const REFERENCES = [
   { key: 'szalma', authors: 'Szalma, J., & Hancock, P.', year: 2011, title: 'Noise effects on human performance: A meta-analytic synthesis',
     journal: 'Psychological Bulletin', volume: '137', issue: '4', pages: '682–707', doi: '10.1037/a0023987' },
 ];
+/* @@REFERENCES-END */
 
 /* @@QUICKLIST-START
    AI quick list: describe a checklist and get a draft to review. Slot for the Quick list screens and the API call. */
@@ -508,6 +512,7 @@ function RunList({ title, items, sound, voice, tone, onClose }) {
       h(ToneControls, { sound, tone })));
 }
 
+/* @@REFSPAGE-START */
 // References page: the research behind the feedback settings. Used by the editor and by Settings.
 function ReferencesPage({ onBack }) {
   return h('div', { className: 'screen edit' },
@@ -533,6 +538,8 @@ function ReferencesPage({ onBack }) {
       h('div', { className: 'actions' },
         h('button', { id: 'refs-back', onClick: onBack }, 'Back')));
 }
+
+/* @@REFSPAGE-END */
 
 // Editor steps: name -> points (add, reorder) -> item (details, quantity, required) and questions.
 // Press and hold an item, then drag it up or down to change its place.
@@ -730,9 +737,11 @@ function Editor({ list, draft: isDraft, onSave, onDelete, onCancel }) {
       ['voice', 'Confirmation cue', voice, () => { const on = !voice; setVoice(on); if (on) speak('Confirmation cue on'); }],
     ];
     return h('div', { className: 'screen edit intro' },
+      /* @@FEEDBACK-HINT-START */
       h('div', { className: 'muted hint intro-text' },
         'When you tick an item: the Confirmation cue repeats the item out loud (MacLeod et al., 2010). ' +
         'The Attention tone plays a short sound to keep you focused on the task (Posner & Petersen, 1990).'),
+      /* @@FEEDBACK-HINT-END */
       h('div', { className: 'points' },
         h('h1', null, title),
         h('div', { className: 'stack' },
