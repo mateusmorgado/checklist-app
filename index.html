@@ -4,31 +4,83 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Checklist</title>
+<script>
+/* Applies the saved design before first paint so there is no flash of the wrong look.
+   Also used by the app when the design changes. Everything is wrapped: storage may be blocked. */
+(function () {
+  var DESIGNS = ['classic', 'airplane', 'modern'], MODES = ['system', 'light', 'dark'], EFFECTS = ['full', 'reduced'];
+  var FONTS = {
+    airplane: 'family=B612:wght@400;700&family=B612+Mono:wght@400;700',
+    modern: 'family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Space+Grotesk:wght@400..700'
+  };
+  function pick(v, list, d) { return list.indexOf(v) >= 0 ? v : d; }
+  window.APPEARANCE = { DESIGNS: DESIGNS, MODES: MODES, EFFECTS: EFFECTS };
+  window.applyAppearance = function (s) {
+    s = s || {};
+    var root = document.documentElement, design = pick(s.design, DESIGNS, 'classic');
+    root.setAttribute('data-design', design);
+    root.setAttribute('data-mode', pick(s.mode, MODES, 'system'));
+    root.setAttribute('data-effects', pick(s.effects, EFFECTS, 'full'));
+    if (FONTS[design] && !document.getElementById('font-' + design)) {
+      var link = document.createElement('link');
+      link.id = 'font-' + design; link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?' + FONTS[design] + '&display=swap';
+      document.head.appendChild(link);
+    }
+  };
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem('settings') || '{}') || {}; } catch (e) {}
+  window.applyAppearance(saved);
+})();
+</script>
 <style>
-  /* Full-viewport, no scroll. Everything is anchored bottom-right for the right thumb. */
-  :root { --bg: #ffffff; --fg: #111111; --muted: #8a8a8a; --line: #e2e2e2; --lift: #f1f1f1; --err: #b3261e; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg: #111111; --fg: #f2f2f2; --muted: #8a8a8a; --line: #2e2e2e; --lift: #1e1e1e; --err: #ff8a80; color-scheme: dark; }
+  /* Full-viewport, no scroll. Everything is anchored bottom-right for the right thumb.
+     Every colour, font and shape comes from tokens. A design is a block of tokens plus a few component rules,
+     scoped by :root[data-design]. Classic is the base look; it follows the OS light/dark setting unless
+     Settings forces a mode. Add new design rules only inside their own marked block. */
+  :root, :root[data-design="classic"] {
+    --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-display: var(--font);
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --bg: #ffffff; --surface: #ffffff; --fg: #111111; --muted: #5c5c5c; --line: #d6d6d6; --line-strong: #767676;
+    --lift: #f3f3f3; --accent: #111111; --accent-fg: #ffffff; --ok: #17692e; --warn: #8a5200; --err: #b3261e;
+    --focus: #0a4fd6; --placeholder: #767676;
+    --radius: 8px; --border: 1px; --shadow: none; --hit-min: 48px; --row-h: 56px;
   }
-  :root[data-theme="dark"] { --bg: #111111; --fg: #f2f2f2; --muted: #8a8a8a; --line: #2e2e2e; --lift: #1e1e1e; --err: #ff8a80; color-scheme: dark; }
+  @media (prefers-color-scheme: dark) {
+    :root[data-design="classic"][data-mode="system"]:not([data-theme="light"]) {
+      --bg: #111111; --surface: #161616; --fg: #f2f2f2; --muted: #a3a3a3; --line: #333333; --line-strong: #8a8a8a;
+      --lift: #1e1e1e; --accent: #f2f2f2; --accent-fg: #111111; --ok: #58d078; --warn: #f0b24a; --err: #ff8a80;
+      --focus: #7fb0ff; --placeholder: #8a8a8a; color-scheme: dark;
+    }
+  }
+  :root[data-design="classic"][data-mode="dark"], :root[data-design="classic"][data-mode="system"][data-theme="dark"] {
+    --bg: #111111; --surface: #161616; --fg: #f2f2f2; --muted: #a3a3a3; --line: #333333; --line-strong: #8a8a8a;
+    --lift: #1e1e1e; --accent: #f2f2f2; --accent-fg: #111111; --ok: #58d078; --warn: #f0b24a; --err: #ff8a80;
+    --focus: #7fb0ff; --placeholder: #8a8a8a; color-scheme: dark;
+  }
   html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
-  body { background: var(--bg); color: var(--fg); font: 18px/1.3 system-ui, -apple-system, sans-serif; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--fg); font: 18px/1.3 var(--font); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   #root { height: 100%; }
   .screen { height: 100%; box-sizing: border-box; padding: 16px 20px 20px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 8px; }
-  h1 { font-size: 22px; font-weight: 500; margin: 0 0 12px; text-align: right; }
+  h1 { font-family: var(--font-display); font-size: 22px; font-weight: 500; margin: 0 0 12px; text-align: right; }
   /* Item stack: first item sits at the bottom, later items stack upward. Rows shrink instead of scrolling. */
   .stack { flex: 0 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column-reverse; align-items: flex-end; justify-content: flex-start; overflow: hidden; }
-  .stack > * { flex: 0 1 56px; min-height: 0; max-width: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; }
+  .stack > * { flex: 0 1 var(--row-h); min-height: 0; max-width: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; }
+  .stack > button, .stack > div.item { width: 100%; }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
-  button:focus-visible, input:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
   .muted { color: var(--muted); }
   .done { color: var(--muted); }
-  .row { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: 8px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: grab; position: relative; }
+  .row { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: grab; position: relative; }
   .row.lifted { z-index: 1; background: var(--lift); font-weight: 500; cursor: grabbing; }
-  .x { margin-right: auto; width: 44px; height: 44px; font-size: 22px; line-height: 1; color: var(--muted); flex: none; }
+  .x { margin-right: auto; width: var(--hit-min); height: var(--hit-min); font-size: 22px; line-height: 1; color: var(--muted); flex: none; }
   .label { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; text-align: right; }
   .detail { font-size: 13px; line-height: 1.25; color: var(--muted); overflow-wrap: anywhere; }
   .row.selected { background: var(--lift); }
+  /* Home rows: the whole row opens the checklist; "edit" sits at the far left like the remove cross in the editor. */
+  .home-item > .edit-link { margin-right: auto; min-width: var(--hit-min); min-height: var(--hit-min); text-align: left; }
+  .home-item > .open { flex: 1; min-height: var(--hit-min); text-align: right; }
   /* Editor: grid with the points, then the entry field on its own line, then the buttons. */
   .screen.edit { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto;
     grid-template-areas: "points" "hint" "entry" "actions"; row-gap: 8px; justify-items: end; align-items: end; justify-content: stretch; }
@@ -40,12 +92,13 @@
   /* Explanatory text sits at the top of the screen; the controls stay at the bottom. */
   .screen.edit.intro { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "intro" "points" "actions"; }
   .edit > .intro-text { grid-area: intro; align-self: start; font-size: 15px; line-height: 1.4; }
-  .actions { display: flex; align-items: center; justify-content: flex-end; gap: 20px; height: 56px; }
-  .actions button { flex: none; }
+  /* Button rows: 48px hit areas. The negative margin and small gap keep the text exactly where it was. */
+  .actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; height: var(--row-h); margin-right: -8px; }
+  .bar { display: flex; flex-direction: row-reverse; align-items: center; gap: 12px; height: var(--row-h); flex: none; margin-right: -8px; }
+  .actions button, .bar button { flex: none; min-height: var(--hit-min); min-width: var(--hit-min); padding: 0 8px; }
   .mark { font-size: 24px; line-height: 1; flex: none; }
-  .bar { display: flex; flex-direction: row-reverse; align-items: center; gap: 28px; height: 56px; flex: none; }
-  input { font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 10px 0; width: 100%; box-sizing: border-box; text-align: right; flex: none; }
-  input::placeholder { color: var(--muted); }
+  input { font: inherit; color: inherit; background: none; border: 0; border-bottom: var(--border) solid var(--line-strong); border-radius: 0; padding: 10px 0; width: 100%; box-sizing: border-box; text-align: right; flex: none; min-height: var(--hit-min); }
+  input::placeholder { color: var(--placeholder); }
   .hint { font-size: 14px; flex: none; text-align: right; }
   .err { color: var(--err); }
   .edit > .refs { grid-area: points; align-self: stretch; width: 100%; min-height: 0; overflow-y: auto; touch-action: pan-y; }
@@ -57,8 +110,49 @@
   .refs-in ul { list-style: none; margin: 0; padding: 0; }
   .refs-in li { margin: 0 0 8px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
   .refs-in a { color: inherit; text-decoration: underline; }
-  .prop { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: 8px; cursor: pointer; }
+  .prop { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); cursor: pointer; }
   .prop.selected { background: var(--lift); }
+  /* Settings: a list that scrolls inside itself only when it is taller than the screen. */
+  .screen.settings { justify-content: flex-end; }
+  .settings-scroll { flex: 0 1 auto; min-height: 0; width: 100%; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; }
+  .settings-in { text-align: right; }
+  .settings-in h1 { margin-bottom: 4px; }
+  .sec { font-family: var(--font-display); font-size: 13px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px; }
+  .choices, .rows { display: flex; flex-direction: column; align-items: stretch; }
+  .choice, .srow { width: 100%; box-sizing: border-box; min-height: var(--row-h); padding: 0 8px; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; border-radius: var(--radius); }
+  .choice.selected { background: var(--lift); }
+  .srow .value { color: var(--muted); font-size: 15px; }
+  .srow .name { margin-right: auto; }
+  /* @@SOUND-CSS-START */
+  /* @@SOUND-CSS-END */
+  /* @@QUICK-CSS-START */
+  /* @@QUICK-CSS-END */
+  /* @@UX-RUN-CSS-START */
+  /* @@UX-RUN-CSS-END */
+  /* @@UX-EDIT-CSS-START */
+  /* @@UX-EDIT-CSS-END */
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+  :root[data-effects="reduced"] *, :root[data-effects="reduced"] *::before, :root[data-effects="reduced"] *::after { transition: none !important; animation: none !important; }
+
+  /* @@DESIGN-AIRPLANE-START  (cockpit display; always dark) */
+  :root[data-design="airplane"] {
+    --font: 'B612', 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+    --font-mono: 'B612 Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    --bg: #05080b; --surface: #0b1117; --fg: #f2f4f5; --muted: #93a3ad; --line: #26343e; --line-strong: #5f7886;
+    --lift: #121c24; --accent: #2fe0f5; --accent-fg: #031014; --ok: #3df07a; --warn: #ffb000; --err: #ff5a5a;
+    --focus: #ffffff; --placeholder: #6f8190; --radius: 0px; --border: 1px; --shadow: none; color-scheme: dark;
+  }
+  /* @@DESIGN-AIRPLANE-END */
+
+  /* @@DESIGN-MODERN-START  (neobrutalism + grain; light first) */
+  :root[data-design="modern"] {
+    --font: 'Space Grotesk', system-ui, 'Helvetica Neue', Arial, sans-serif;
+    --font-display: 'Bricolage Grotesque', 'Arial Black', 'Helvetica Neue', system-ui, sans-serif;
+    --bg: #f3ecdf; --surface: #ffffff; --fg: #111111; --muted: #4d4d4d; --line: #111111; --line-strong: #111111;
+    --lift: #fff3c4; --accent: #ffd23f; --accent-fg: #111111; --ok: #0a6b3a; --warn: #8a4b00; --err: #c4122f;
+    --focus: #1d3fe0; --placeholder: #6b6b6b; --radius: 6px; --border: 3px; --shadow: -4px -4px 0 0 #111111;
+  }
+  /* @@DESIGN-MODERN-END */
 </style>
 </head>
 <body>
@@ -68,6 +162,7 @@
 <script>
 const { useState, useEffect, useLayoutEffect, useRef, createElement: h } = React;
 const KEY = 'checklists';
+const SETTINGS_KEY = 'settings';
 const SAMPLE = [
   { id: 'a', title: 'Preflight', items: [
     { text: 'Check fuel', detail: 'Both tanks, visual check and drain a sample' },
@@ -104,7 +199,11 @@ function save(lists) {
   try { localStorage.setItem(KEY, JSON.stringify(lists)); } catch (e) {}
 }
 
-// Feedback when an item is ticked. Both are optional per checklist and fail silently where unsupported.
+/* @@SOUND-ENGINE-START
+   Feedback when an item is ticked. The sound is optional per checklist and fails silently where unsupported.
+   The tone functions below are the only entry points the rest of the app uses. */
+const TONE_CHOICES = ['tick'];
+const TONE_VOLUMES = ['low', 'medium', 'high'];
 let audioCtx = null;
 function playTick() {
   try {
@@ -130,6 +229,18 @@ function speak(text) {
     window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
   } catch (e) {}
 }
+function toneStart(tone) {}                    // a run starts (called inside the user's tap)
+function toneStop() {}                         // a run ends or the screen is left
+function toneTick(tone) { playTick(); }        // an item was ticked
+function tonePreview(choice, volume) { playTick(); } // Settings: play a sample
+function ToneControls({ sound, tone }) { return null; } // rendered in the run bar (mute button lives here)
+function ToneSettings({ settings, onChange, onBack }) {
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, 'Attention tone')),
+    h('div', { className: 'muted hint' }, 'Sound options are coming.'),
+    h('div', { className: 'actions' }, h('button', { id: 'tone-back', onClick: onBack }, 'Back')));
+}
+/* @@SOUND-ENGINE-END */
 
 // References behind the feedback settings, in APA 7th edition style (alphabetical by first author).
 // Entries without a DOI were not confirmed against a DOI record.
@@ -150,6 +261,50 @@ const REFERENCES = [
   { key: 'szalma', authors: 'Szalma, J., & Hancock, P.', year: 2011, title: 'Noise effects on human performance: A meta-analytic synthesis',
     journal: 'Psychological Bulletin', volume: '137', issue: '4', pages: '682–707', doi: '10.1037/a0023987' },
 ];
+
+/* @@QUICKLIST-START
+   AI quick list: describe a checklist and get a draft to review. Slot for the Quick list screens and the API call. */
+const DEFAULT_AI = { model: 'claude-haiku-5-5', endpoint: 'https://api.anthropic.com' };
+function QuickSettings({ settings, onChange, onBack }) {
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, 'Quick list')),
+    h('div', { className: 'muted hint' }, 'AI quick list is coming.'),
+    h('div', { className: 'actions' }, h('button', { id: 'ai-back', onClick: onBack }, 'Back')));
+}
+function QuickScreen({ settings, onDraft, onCancel, onOpenSettings }) {
+  return h('div', { className: 'screen edit' },
+    h('div', { className: 'points' }, h('h1', null, 'Quick list')),
+    h('div', { className: 'muted hint' }, 'AI quick list is coming.'),
+    h('div', { className: 'actions' }, h('button', { id: 'quick-back', onClick: onCancel }, 'Back')));
+}
+/* @@QUICKLIST-END */
+
+// App-wide settings, saved in localStorage. Anything unknown or corrupt falls back to the defaults.
+function sanitizeSettings(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const pick = (v, list, d) => (list.includes(v) ? v : d);
+  const text = (v, d, max) => (typeof v === 'string' && v.trim() ? v.slice(0, max) : d);
+  const tone = r.tone && typeof r.tone === 'object' ? r.tone : {};
+  const ai = r.ai && typeof r.ai === 'object' ? r.ai : {};
+  return {
+    design: pick(r.design, window.APPEARANCE.DESIGNS, 'classic'),
+    mode: pick(r.mode, window.APPEARANCE.MODES, 'system'),
+    effects: pick(r.effects, window.APPEARANCE.EFFECTS, 'full'),
+    tone: { choice: pick(tone.choice, TONE_CHOICES, 'tick'), volume: pick(tone.volume, TONE_VOLUMES, 'medium') },
+    ai: {
+      key: typeof ai.key === 'string' ? ai.key.slice(0, 300) : '',
+      model: text(ai.model, DEFAULT_AI.model, 100),
+      endpoint: text(ai.endpoint, DEFAULT_AI.endpoint, 300),
+    },
+  };
+}
+function loadSettings() {
+  try { return sanitizeSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
+  catch (e) { return sanitizeSettings({}); }
+}
+function saveSettings(s) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) {}
+}
 
 // Quantity formulas, e.g. "nights + 1" or "ceil(nights / 2)". Numbers, question names, + - * / ( ) and
 // ceil floor round min max. A small parser on purpose: formulas are never passed to eval().
@@ -214,14 +369,53 @@ function questionName(text, taken) {
 }
 
 // Home: the list of checklists, first one at the bottom. "+ New" is the lowest control.
-function Home({ lists, onRun, onEdit }) {
+function Home({ lists, onRun, onEdit, onSettings, onQuick }) {
   return h('div', { className: 'screen' },
     h('div', { className: 'stack' },
-      lists.map(c => h('div', { key: c.id },
-        h('button', { className: 'muted hint', onClick: () => onEdit(c) }, 'edit'),
-        h('button', { onClick: () => onRun(c) }, c.title)))),
+      lists.map(c => h('div', { key: c.id, className: 'item home-item' },
+        h('button', { className: 'muted hint edit-link', onClick: () => onEdit(c) }, 'edit'),
+        h('button', { className: 'open', onClick: () => onRun(c) }, c.title)))),
     lists.length === 0 && h('div', { className: 'muted' }, 'No checklists'),
-    h('div', { className: 'bar' }, h('button', { onClick: () => onEdit(null) }, '+ New')));
+    h('div', { className: 'bar' },
+      h('button', { id: 'new', onClick: () => onEdit(null) }, '+ New'),
+      h('button', { id: 'quick', className: 'muted', onClick: onQuick }, 'Quick list'),
+      h('button', { id: 'settings', className: 'muted', onClick: onSettings }, 'Settings')));
+}
+
+// Settings: design, mode and effects up front, then the sub-screens. Changes apply immediately.
+const DESIGN_OPTIONS = [
+  ['classic', 'Classic', 'Minimal and quiet'],
+  ['airplane', 'Airplane', 'Cockpit display, always dark'],
+  ['modern', 'Modern', 'Bold borders and grain'],
+];
+const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+function SettingsHome({ settings, onChange, onNav, onBack }) {
+  const cycle = (key, list) => onChange({ [key]: list[(list.indexOf(settings[key]) + 1) % list.length] });
+  const toneLabel = settings.tone.choice === 'tick' ? 'Tick' : cap(settings.tone.choice);
+  const row = (id, name, value, onClick) => h('button', { key: id, id, className: 'srow', onClick },
+    h('span', { className: 'name' }, name), value ? h('span', { className: 'value' }, value) : null);
+  return h('div', { className: 'screen settings' },
+    h('div', { className: 'settings-scroll' },
+      h('div', { className: 'settings-in' },
+        h('h1', null, 'Settings'),
+        h('div', { className: 'sec' }, 'Design'),
+        h('div', { className: 'choices', role: 'radiogroup', 'aria-label': 'Design' },
+          DESIGN_OPTIONS.map(([id, name, note]) => h('button', {
+            key: id, id: 'design-' + id, role: 'radio', 'aria-checked': settings.design === id ? 'true' : 'false',
+            className: 'choice' + (settings.design === id ? ' selected' : ''), onClick: () => onChange({ design: id }),
+          },
+            h('span', { className: 'label' }, h('span', null, name), h('span', { className: 'detail' }, note)),
+            h('span', { className: 'mark', 'data-done': settings.design === id ? '1' : '0', 'aria-hidden': 'true' }, settings.design === id ? '●' : '○')))),
+        h('div', { className: 'sec' }, 'Appearance'),
+        h('div', { className: 'rows' },
+          row('set-mode', 'Mode', cap(settings.mode) + (settings.design === 'airplane' ? ' (Airplane is always dark)' : ''), () => cycle('mode', window.APPEARANCE.MODES)),
+          row('set-effects', 'Effects', settings.effects === 'full' ? 'Full' : 'Reduced', () => cycle('effects', window.APPEARANCE.EFFECTS))),
+        h('div', { className: 'sec' }, 'More'),
+        h('div', { className: 'rows' },
+          row('set-tone', 'Attention tone', toneLabel, () => onNav('settings-tone')),
+          row('set-ai', 'Quick list (AI)', settings.ai.key ? 'Key saved' : 'No key', () => onNav('settings-ai')),
+          row('set-refs', 'References', '', () => onNav('references'))))),
+    h('div', { className: 'actions' }, h('button', { id: 'settings-back', onClick: onBack }, 'Back')));
 }
 
 // Ask: one question per screen before a run. Numbers are typed, yes/no is one tap (yes = 1, no = 0).
@@ -267,7 +461,7 @@ function Ask({ list, onDone, onCancel }) {
         : h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next')));
 }
 
-function Run({ list, onClose }) {
+function Run({ list, tone, onClose }) {
   const [answers, setAnswers] = useState(null); // null while the questions are still being asked
   if (list.questions.length > 0 && !answers) return h(Ask, { list, onDone: setAnswers, onCancel: onClose });
   const items = list.items
@@ -277,19 +471,21 @@ function Run({ list, onClose }) {
       return { ...it, n };
     })
     .filter(it => it.n === null || it.n > 0); // a quantity of 0 leaves the item out of this run
-  return h(RunList, { title: list.title, items, sound: list.sound, voice: list.voice, onClose });
+  return h(RunList, { title: list.title, items, sound: list.sound, voice: list.voice, tone, onClose });
 }
 
 // Run: first item at the bottom, working upward. Checkmarks on the right.
 // A ticked item stays where it is (dimmed with a tick), so nothing moves under the finger.
 // The checklist's own settings decide whether ticking plays a sound and/or says the item out loud.
-function RunList({ title, items, sound, voice, onClose }) {
+function RunList({ title, items, sound, voice, tone, onClose }) {
   const [done, setDone] = useState([]); // ticked item indexes
+  // Layout effects run inside the tap that started the run, which browsers require before audio may start.
+  useLayoutEffect(() => { if (sound) toneStart(tone); return () => toneStop(); }, []);
 
   const toggle = i => {
     if (done.includes(i)) { setDone(d => d.filter(x => x !== i)); return; }
     setDone(d => [...d, i]);
-    if (sound) playTick();
+    if (sound) toneTick(tone);
     if (voice) speak(items[i].text + (items[i].n !== null && items[i].n !== 1 ? ', ' + fmtQty(items[i].n) : ''));
   };
 
@@ -299,14 +495,43 @@ function RunList({ title, items, sound, voice, onClose }) {
   return h('div', { className: 'screen' },
     h('h1', null, title),
     h('div', { className: 'stack' },
-      items.map((it, i) => h('button', { key: i, className: done.includes(i) ? 'done' : '', onClick: () => toggle(i) },
+      items.map((it, i) => h('button', {
+        key: i, className: 'item' + (done.includes(i) ? ' done' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
+      },
         h('span', { className: 'label' },
           h('span', null, it.text + (it.n !== null && it.n !== 1 ? ' ×' + fmtQty(it.n) : '')),
           it.required && h('span', { className: 'detail' }, 'required'),
           it.detail && h('span', { className: 'detail' }, it.detail)),
-        h('span', { className: 'mark' }, done.includes(i) ? '☑' : '☐')))),
+        h('span', { className: 'mark', 'data-done': done.includes(i) ? '1' : '0', 'aria-hidden': 'true' }, done.includes(i) ? '☑' : '☐')))),
     h('div', { className: 'bar' },
-      h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close')));
+      h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close'),
+      h(ToneControls, { sound, tone })));
+}
+
+// References page: the research behind the feedback settings. Used by the editor and by Settings.
+function ReferencesPage({ onBack }) {
+  return h('div', { className: 'screen edit' },
+      h('div', { className: 'refs' },
+        h('div', { className: 'refs-in' },
+          h('h1', null, 'References'),
+          h('p', { className: 'muted' }, 'These studies inspired the two settings. None of them tested this app.'),
+          h('h2', null, 'Confirmation cue'),
+          h('p', null, 'Saying an item aloud makes it more memorable than reading it silently (MacLeod et al., 2010). ' +
+            'Aviation checklists use spoken challenge and response between pilots (Degani & Wiener, 1993).'),
+          h('h2', null, 'Attention tone'),
+          h('p', null, 'Warning cues raise short-term alertness, the "alerting" part of the attention system (Posner & Petersen, 1990). ' +
+            'In ADHD, steady white or pink noise gave a small benefit to task performance (Nigg et al., 2024; Söderlund et al., 2007). ' +
+            'Those studies used steady noise, not a short beep. In people without ADHD the evidence is mixed: noise hurt the control group ' +
+            'in one study with children (Söderlund et al., 2007), the 2024 meta-analysis found no significant difference by diagnosis, ' +
+            'and effects depend on volume and task (Szalma & Hancock, 2011).'),
+          h('h2', null, 'Reference list'),
+          h('ul', null, REFERENCES.map(r => h('li', { key: r.key },
+            r.authors + ' (' + r.year + '). ' + r.title + (/[.?]$/.test(r.title) ? ' ' : '. '),
+            h('em', null, r.journal + ', ' + r.volume), r.issue ? '(' + r.issue + ')' : '', ', ' + r.pages + '.',
+            r.doi ? [' ', h('a', { key: 'doi', href: 'https://doi.org/' + r.doi, target: '_blank', rel: 'noopener noreferrer' }, 'https://doi.org/' + r.doi)] : null))),
+          h('p', { className: 'muted' }, 'Checked against abstracts and publisher records, not the full texts.'))),
+      h('div', { className: 'actions' },
+        h('button', { id: 'refs-back', onClick: onBack }, 'Back')));
 }
 
 // Editor steps: name -> points (add, reorder) -> item (details, quantity, required) and questions.
@@ -316,7 +541,7 @@ const mk = (text, detail = '', qty = '', required = false) => ({ id: nextId++, t
 const HOLD_MS = 350;
 const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
-function Editor({ list, onSave, onDelete, onCancel }) {
+function Editor({ list, draft: isDraft, onSave, onDelete, onCancel }) {
   const [title, setTitle] = useState(list ? list.title : '');
   const [items, setItems] = useState(() => (list ? list.items.map(i => mk(i.text, i.detail, i.qty, i.required)) : []));
   const [questions, setQuestions] = useState(() => (list ? list.questions : []));
@@ -523,30 +748,7 @@ function Editor({ list, onSave, onDelete, onCancel }) {
         h('button', { id: 'fb-next', onClick: () => setStep('points') }, 'Next')));
   }
 
-  if (step === 'references') {
-    return h('div', { className: 'screen edit' },
-      h('div', { className: 'refs' },
-        h('div', { className: 'refs-in' },
-          h('h1', null, 'References'),
-          h('p', { className: 'muted' }, 'These studies inspired the two settings. None of them tested this app.'),
-          h('h2', null, 'Confirmation cue'),
-          h('p', null, 'Saying an item aloud makes it more memorable than reading it silently (MacLeod et al., 2010). ' +
-            'Aviation checklists use spoken challenge and response between pilots (Degani & Wiener, 1993).'),
-          h('h2', null, 'Attention tone'),
-          h('p', null, 'Warning cues raise short-term alertness, the "alerting" part of the attention system (Posner & Petersen, 1990). ' +
-            'In ADHD, steady white or pink noise gave a small benefit to task performance (Nigg et al., 2024; Söderlund et al., 2007). ' +
-            'Those studies used steady noise, not a short beep. In people without ADHD the evidence is mixed: noise hurt the control group ' +
-            'in one study with children (Söderlund et al., 2007), the 2024 meta-analysis found no significant difference by diagnosis, ' +
-            'and effects depend on volume and task (Szalma & Hancock, 2011).'),
-          h('h2', null, 'Reference list'),
-          h('ul', null, REFERENCES.map(r => h('li', { key: r.key },
-            r.authors + ' (' + r.year + '). ' + r.title + (/[.?]$/.test(r.title) ? ' ' : '. '),
-            h('em', null, r.journal + ', ' + r.volume), r.issue ? '(' + r.issue + ')' : '', ', ' + r.pages + '.',
-            r.doi ? [' ', h('a', { key: 'doi', href: 'https://doi.org/' + r.doi, target: '_blank', rel: 'noopener noreferrer' }, 'https://doi.org/' + r.doi)] : null))),
-          h('p', { className: 'muted' }, 'Checked against abstracts and publisher records, not the full texts.'))),
-      h('div', { className: 'actions' },
-        h('button', { id: 'refs-back', onClick: () => setStep('feedback') }, 'Back')));
-  }
+  if (step === 'references') return h(ReferencesPage, { onBack: () => setStep('feedback') });
 
   if (step === 'item' && cur) {
     let hint = 'Shown under the item while running.', bad = false;
@@ -698,7 +900,7 @@ function Editor({ list, onSave, onDelete, onCancel }) {
         onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); add(); } },
       })),
     h('div', { className: 'actions' },
-      list && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
+      list && !isDraft && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
       h('button', { className: 'muted', onClick: onCancel }, 'Cancel'),
       h('button', { className: 'muted', onClick: () => { setError(''); setQstage('list'); setStep('questions'); } },
         'Questions' + (questions.length ? ' ' + questions.length : '')),
@@ -707,18 +909,35 @@ function Editor({ list, onSave, onDelete, onCancel }) {
 
 function App() {
   const [lists, setLists] = useState(load);
+  const [settings, setSettings] = useState(loadSettings);
   const [screen, setScreen] = useState({ name: 'home' });
   useEffect(() => save(lists), [lists]);
+  useEffect(() => { saveSettings(settings); window.applyAppearance(settings); }, [settings]);
   const home = () => setScreen({ name: 'home' });
   const update = next => { setLists(next); home(); };
+  const change = patch => setSettings(prev => sanitizeSettings({
+    ...prev, ...patch, tone: { ...prev.tone, ...(patch.tone || {}) }, ai: { ...prev.ai, ...(patch.ai || {}) },
+  }));
+  const toSettings = () => setScreen({ name: 'settings' });
 
-  if (screen.name === 'run') return h(Run, { list: screen.list, onClose: home });
+  if (screen.name === 'run') return h(Run, { list: screen.list, tone: settings.tone, onClose: home });
   if (screen.name === 'edit') return h(Editor, {
-    list: screen.list, onCancel: home,
+    list: screen.list, draft: screen.draft, onCancel: home,
     onDelete: id => update(lists.filter(l => l.id !== id)),
     onSave: c => update(lists.some(l => l.id === c.id) ? lists.map(l => l.id === c.id ? c : l) : [...lists, c]),
   });
-  return h(Home, { lists, onRun: list => setScreen({ name: 'run', list }), onEdit: list => setScreen({ name: 'edit', list }) });
+  if (screen.name === 'settings') return h(SettingsHome, { settings, onChange: change, onNav: name => setScreen({ name }), onBack: home });
+  if (screen.name === 'settings-tone') return h(ToneSettings, { settings, onChange: change, onBack: toSettings });
+  if (screen.name === 'settings-ai') return h(QuickSettings, { settings, onChange: change, onBack: toSettings });
+  if (screen.name === 'references') return h(ReferencesPage, { onBack: toSettings });
+  if (screen.name === 'quick') return h(QuickScreen, {
+    settings, onCancel: home, onOpenSettings: () => setScreen({ name: 'settings-ai' }),
+    onDraft: list => setScreen({ name: 'edit', list: { ...list, id: String(Date.now()) }, draft: true }),
+  });
+  return h(Home, {
+    lists, onSettings: toSettings, onQuick: () => setScreen({ name: 'quick' }),
+    onRun: list => setScreen({ name: 'run', list }), onEdit: list => setScreen({ name: 'edit', list }),
+  });
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(App));
