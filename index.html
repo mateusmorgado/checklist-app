@@ -3,30 +3,35 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Checklist</title>
+<title>ChecklistPro</title>
 <script>
 /* Applies the saved design before first paint so there is no flash of the wrong look.
    Also used by the app when the design changes. Everything is wrapped: storage may be blocked. */
 (function () {
   var DESIGNS = ['classic', 'airplane', 'modern'], MODES = ['system', 'light', 'dark'], EFFECTS = ['full', 'reduced'];
   var FONTS = {
+    classic: 'family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600',
     airplane: 'family=B612:wght@400;700&family=B612+Mono:wght@400;700',
     modern: 'family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Space+Grotesk:wght@400..700'
   };
   function pick(v, list, d) { return list.indexOf(v) >= 0 ? v : d; }
   window.APPEARANCE = { DESIGNS: DESIGNS, MODES: MODES, EFFECTS: EFFECTS };
-  window.applyAppearance = function (s) {
-    s = s || {};
-    var root = document.documentElement, design = pick(s.design, DESIGNS, 'classic');
-    root.setAttribute('data-design', design);
-    root.setAttribute('data-mode', pick(s.mode, MODES, 'system'));
-    root.setAttribute('data-effects', pick(s.effects, EFFECTS, 'full'));
+  // Each design loads only its own fonts; Settings preloads all of them so every choice shows in its own typeface.
+  window.ensureDesignFonts = function (design) {
     if (FONTS[design] && !document.getElementById('font-' + design)) {
       var link = document.createElement('link');
       link.id = 'font-' + design; link.rel = 'stylesheet';
       link.href = 'https://fonts.googleapis.com/css2?' + FONTS[design] + '&display=swap';
       document.head.appendChild(link);
     }
+  };
+  window.applyAppearance = function (s) {
+    s = s || {};
+    var root = document.documentElement, design = pick(s.design, DESIGNS, 'classic');
+    root.setAttribute('data-design', design);
+    root.setAttribute('data-mode', pick(s.mode, MODES, 'system'));
+    root.setAttribute('data-effects', pick(s.effects, EFFECTS, 'full'));
+    window.ensureDesignFonts(design);
   };
   var saved = {};
   try { saved = JSON.parse(localStorage.getItem('settings') || '{}') || {}; } catch (e) {}
@@ -39,25 +44,25 @@
      scoped by :root[data-design]. Classic is the base look; it follows the OS light/dark setting unless
      Settings forces a mode. Add new design rules only inside their own marked block. */
   :root, :root[data-design="classic"] {
-    --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font: 'Newsreader', Georgia, 'Times New Roman', serif;
     --font-display: var(--font);
     --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-    --bg: #ffffff; --surface: #ffffff; --fg: #111111; --muted: #5c5c5c; --line: #d6d6d6; --line-strong: #767676;
-    --lift: #f3f3f3; --accent: #111111; --accent-fg: #ffffff; --ok: #17692e; --warn: #8a5200; --err: #b3261e;
-    --focus: #0a4fd6; --placeholder: #767676;
-    --radius: 8px; --border: 1px; --shadow: none; --hit-min: 48px; --row-h: 56px;
+    --bg: #fbf9f4; --surface: #fffdf8; --fg: #1b1a17; --muted: #5f5a52; --line: #e1dccf; --line-strong: #7a7468;
+    --lift: #f1ede3; --accent: #1b1a17; --accent-fg: #fbf9f4; --ok: #1f6b33; --warn: #8a5200; --err: #a8281e;
+    --focus: #0a4fd6; --placeholder: #77715f;
+    --radius: 5px; --border: 1px; --shadow: none; --hit-min: 48px; --row-h: 56px;
   }
   @media (prefers-color-scheme: dark) {
     :root[data-design="classic"][data-mode="system"]:not([data-theme="light"]) {
-      --bg: #111111; --surface: #161616; --fg: #f2f2f2; --muted: #a3a3a3; --line: #333333; --line-strong: #8a8a8a;
-      --lift: #1e1e1e; --accent: #f2f2f2; --accent-fg: #111111; --ok: #58d078; --warn: #f0b24a; --err: #ff8a80;
-      --focus: #7fb0ff; --placeholder: #8a8a8a; color-scheme: dark;
+      --bg: #121110; --surface: #1a1917; --fg: #f1ede4; --muted: #a9a396; --line: #34312c; --line-strong: #8c8678;
+      --lift: #211f1c; --accent: #f1ede4; --accent-fg: #121110; --ok: #6bd68a; --warn: #f0b24a; --err: #ff8a80;
+      --focus: #8bb7ff; --placeholder: #8c8678; color-scheme: dark;
     }
   }
   :root[data-design="classic"][data-mode="dark"], :root[data-design="classic"][data-mode="system"][data-theme="dark"] {
-    --bg: #111111; --surface: #161616; --fg: #f2f2f2; --muted: #a3a3a3; --line: #333333; --line-strong: #8a8a8a;
-    --lift: #1e1e1e; --accent: #f2f2f2; --accent-fg: #111111; --ok: #58d078; --warn: #f0b24a; --err: #ff8a80;
-    --focus: #7fb0ff; --placeholder: #8a8a8a; color-scheme: dark;
+    --bg: #121110; --surface: #1a1917; --fg: #f1ede4; --muted: #a9a396; --line: #34312c; --line-strong: #8c8678;
+    --lift: #211f1c; --accent: #f1ede4; --accent-fg: #121110; --ok: #6bd68a; --warn: #f0b24a; --err: #ff8a80;
+    --focus: #8bb7ff; --placeholder: #8c8678; color-scheme: dark;
   }
   html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
   body { background: var(--bg); color: var(--fg); font: 18px/1.3 var(--font); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -67,7 +72,7 @@
   /* Item stack: first item sits at the bottom, later items stack upward. Rows shrink instead of scrolling. */
   .stack { flex: 0 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column-reverse; align-items: flex-end; justify-content: flex-start; overflow: hidden; }
   .stack > * { flex: 0 1 var(--row-h); min-height: 0; max-width: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; }
-  .stack > button, .stack > div.item { width: 100%; }
+  .stack > button, .stack > div.item { width: 100%; box-sizing: border-box; }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
   button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
   .muted { color: var(--muted); }
@@ -93,23 +98,37 @@
   .screen.edit.intro { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "intro" "points" "actions"; }
   .edit > .intro-text { grid-area: intro; align-self: start; font-size: 15px; line-height: 1.4; }
   /* Button rows: 48px hit areas. The negative margin and small gap keep the text exactly where it was. */
-  .actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; height: var(--row-h); margin-right: -8px; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px; min-height: var(--row-h); margin-right: -8px; }
   .bar { display: flex; flex-direction: row-reverse; align-items: center; gap: 12px; height: var(--row-h); flex: none; margin-right: -8px; }
   .actions button, .bar button { flex: none; min-height: var(--hit-min); min-width: var(--hit-min); padding: 0 8px; }
   .mark { font-size: 24px; line-height: 1; flex: none; }
+  /* Tick boxes and radio dots are drawn from tokens (the glyph text is kept for screen readers and tests). */
+  .item .mark[data-done], .choice .mark[data-done] { position: relative; box-sizing: border-box; width: 28px; height: 28px; font-size: 0; border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); flex: none; }
+  .choice .mark[data-done] { border-radius: 50%; }
+  .item .mark[data-done="1"]::after { content: ''; position: absolute; left: 8px; top: 3px; width: 7px; height: 13px; border: solid var(--fg); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
+  .choice .mark[data-done="1"]::after { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: var(--fg); }
+  .item.next { font-weight: 500; }
+  /* Logo (top of Home): mark + wordmark, restyled by each design. */
+  .logo { align-self: flex-start; margin-bottom: auto; display: flex; align-items: center; gap: 10px; }
+  .logo-mark { width: 32px; height: 32px; flex: none; overflow: visible; }
+  .logo-box { fill: none; stroke: var(--fg); stroke-width: 2; }
+  .logo-tick { fill: none; stroke: var(--fg); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .logo-word { font-family: var(--font-display); font-size: 22px; font-weight: 500; letter-spacing: -.01em; line-height: 1; }
+  .logo-b { font-style: italic; }
+  @media (max-height: 520px) { .logo { display: none; } }
   input { font: inherit; color: inherit; background: none; border: 0; border-bottom: var(--border) solid var(--line-strong); border-radius: 0; padding: 10px 0; width: 100%; box-sizing: border-box; text-align: right; flex: none; min-height: var(--hit-min); }
   input::placeholder { color: var(--placeholder); }
   .hint { font-size: 14px; flex: none; text-align: right; }
   .err { color: var(--err); }
   /* @@REFS-CSS-START */
   .edit > .refs { grid-area: points; align-self: stretch; width: 100%; min-height: 0; overflow-y: auto; touch-action: pan-y; }
-  .refs-in { text-align: right; font-size: 14px; line-height: 1.35; }
+  .refs-in { text-align: right; font-size: 15px; line-height: 1.5; }
   .refs-in h1 { margin: 0 0 8px; }
   .refs-in h2 { font-size: 15px; font-weight: 500; margin: 14px 0 4px; }
   .refs-in p { margin: 0 0 6px; }
   .refs-in .muted { font-size: 13px; }
   .refs-in ul { list-style: none; margin: 0; padding: 0; }
-  .refs-in li { margin: 0 0 8px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+  .refs-in li { margin: 0 0 10px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
   .refs-in a { color: inherit; text-decoration: underline; }
   /* @@REFS-CSS-END */
   .prop { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); cursor: pointer; }
@@ -125,6 +144,10 @@
   .choice.selected { background: var(--lift); }
   .srow .value { color: var(--muted); font-size: 15px; }
   .srow .name { margin-right: auto; }
+  /* Each design's name is shown in its own typeface. */
+  .choice[data-d="classic"] .label > span:first-child { font-family: 'Newsreader', Georgia, serif; }
+  .choice[data-d="airplane"] .label > span:first-child { font-family: 'B612', 'Arial Narrow', sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  .choice[data-d="modern"] .label > span:first-child { font-family: 'Bricolage Grotesque', 'Arial Black', sans-serif; font-weight: 800; }
   /* @@SOUND-CSS-START */
   /* @@SOUND-CSS-END */
   /* @@QUICK-CSS-START */
@@ -136,24 +159,135 @@
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
   :root[data-effects="reduced"] *, :root[data-effects="reduced"] *::before, :root[data-effects="reduced"] *::after { transition: none !important; animation: none !important; }
 
-  /* @@DESIGN-AIRPLANE-START  (cockpit display; always dark) */
+  /* @@DESIGN-CLASSIC-START  (paper: serif, warm off-white, hairlines) */
+  :root[data-design="classic"] body { font-size: 19px; line-height: 1.35; }
+  :root[data-design="classic"] h1 { font-size: 27px; letter-spacing: -.01em; }
+  :root[data-design="classic"] .hint { font-size: 15px; }
+  :root[data-design="classic"] .detail { font-size: 14px; }
+  :root[data-design="classic"] .stack > .item { border-top: 1px solid var(--line); }
+  :root[data-design="classic"] .home-item .open { font-size: 21px; }
+  :root[data-design="classic"] .actions button:not(.muted), :root[data-design="classic"] .bar button:not(.muted) { font-weight: 600; }
+  :root[data-design="classic"] .actions button.muted, :root[data-design="classic"] .bar button.muted { text-decoration: underline; text-decoration-thickness: 1px; text-decoration-color: var(--line-strong); text-underline-offset: 5px; }
+  :root[data-design="classic"] .logo-box { stroke-width: 1.8; }
+  :root[data-design="classic"] .logo-word { font-size: 24px; }
+  /* @@DESIGN-CLASSIC-END */
+
+  /* @@DESIGN-AIRPLANE-START  (glass cockpit; always dark, static, thin square outlines) */
   :root[data-design="airplane"] {
     --font: 'B612', 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+    --font-display: var(--font);
     --font-mono: 'B612 Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
     --bg: #05080b; --surface: #0b1117; --fg: #f2f4f5; --muted: #93a3ad; --line: #26343e; --line-strong: #5f7886;
     --lift: #121c24; --accent: #2fe0f5; --accent-fg: #031014; --ok: #3df07a; --warn: #ffb000; --err: #ff5a5a;
     --focus: #ffffff; --placeholder: #6f8190; --radius: 0px; --border: 1px; --shadow: none; color-scheme: dark;
   }
+  :root[data-design="airplane"] body { font-size: 16px; letter-spacing: .01em; }
+  :root[data-design="airplane"] *, :root[data-design="airplane"] *::before, :root[data-design="airplane"] *::after { transition: none !important; animation: none !important; }
+  :root[data-design="airplane"] .screen { position: relative; }
+  :root[data-design="airplane"] .screen::before { content: ''; position: absolute; inset: 5px; border: 1px solid var(--line); pointer-events: none; }
+  :root[data-design="airplane"] h1 { font-size: 16px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); padding-bottom: 6px; border-bottom: 2px solid var(--accent); margin-bottom: 12px; }
+  :root[data-design="airplane"] .sec { color: var(--accent); letter-spacing: .16em; font-size: 12px; font-weight: 700; padding-bottom: 4px; border-bottom: 1px solid var(--line); margin: 18px 0 8px; }
+  :root[data-design="airplane"] .stack, :root[data-design="airplane"] .choices, :root[data-design="airplane"] .rows { gap: 8px; }
+  :root[data-design="airplane"] .stack > button.item, :root[data-design="airplane"] .stack > div.item, :root[data-design="airplane"] .row, :root[data-design="airplane"] .prop, :root[data-design="airplane"] .choice, :root[data-design="airplane"] .srow { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 0; padding: 0 12px; }
+  :root[data-design="airplane"] .item.done { border-color: var(--ok); color: var(--ok); }
+  :root[data-design="airplane"] .item.done .detail { color: var(--muted); }
+  :root[data-design="airplane"] .item.next { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 700; }
+  :root[data-design="airplane"] .row.selected, :root[data-design="airplane"] .prop.selected, :root[data-design="airplane"] .choice.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--lift); }
+  :root[data-design="airplane"] .row.lifted { background: var(--lift); border-color: var(--accent); }
+  :root[data-design="airplane"] .detail { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .03em; }
+  :root[data-design="airplane"] .srow .value { font-family: var(--font-mono); font-size: 13px; }
+  :root[data-design="airplane"] .home-item .edit-link { font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
+  :root[data-design="airplane"] .item .mark[data-done], :root[data-design="airplane"] .choice .mark[data-done] { border: 2px solid var(--fg); background: transparent; width: 26px; height: 26px; border-radius: 0; }
+  :root[data-design="airplane"] .choice .mark[data-done] { border-radius: 50%; }
+  :root[data-design="airplane"] .item .mark[data-done="1"] { border-color: var(--ok); background: var(--ok); }
+  :root[data-design="airplane"] .item .mark[data-done="1"]::after { border-color: var(--accent-fg); left: 7px; top: 2px; }
+  :root[data-design="airplane"] .choice .mark[data-done="1"] { border-color: var(--accent); }
+  :root[data-design="airplane"] .choice .mark[data-done="1"]::after { background: var(--accent); }
+  :root[data-design="airplane"] .actions button, :root[data-design="airplane"] .bar button { border: 2px solid var(--line-strong); border-radius: 0; background: transparent; color: var(--fg); padding: 0 14px; min-width: 76px; margin: 2px 4px; font-size: 12.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  :root[data-design="airplane"] .actions button:not(.muted), :root[data-design="airplane"] .bar button:not(.muted) { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  :root[data-design="airplane"] .actions button:active, :root[data-design="airplane"] .bar button:active { background: var(--lift); color: var(--fg); border-color: var(--accent); }
+  :root[data-design="airplane"] .x { border: 0; }
+  :root[data-design="airplane"] input { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 0; padding: 0 12px; caret-color: var(--accent); }
+  :root[data-design="airplane"] #answer, :root[data-design="airplane"] #field { font-family: var(--font-mono); }
+  :root[data-design="airplane"] input:focus { border-color: var(--accent); }
+  :root[data-design="airplane"] button:focus-visible, :root[data-design="airplane"] input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  :root[data-design="airplane"] .hint { font-size: 12.5px; letter-spacing: .02em; }
+  :root[data-design="airplane"] .logo-box { stroke: var(--accent); stroke-width: 2.4; rx: 0; }
+  :root[data-design="airplane"] .logo-tick { stroke: var(--accent); stroke-width: 3.2; stroke-linecap: square; stroke-linejoin: miter; }
+  :root[data-design="airplane"] .logo-word { font-size: 15px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; display: flex; align-items: center; }
+  :root[data-design="airplane"] .logo-b { font-style: normal; font-size: 10.5px; letter-spacing: .14em; color: var(--warn); border: 1px solid var(--warn); padding: 3px 5px; margin-left: 8px; }
+  :root[data-design="airplane"] .refs-in li { color: var(--muted); }
   /* @@DESIGN-AIRPLANE-END */
 
-  /* @@DESIGN-MODERN-START  (neobrutalism + grain; light first) */
+  /* @@DESIGN-MODERN-START  (neobrutalism + grain: cream page, opaque cards, thick borders, hard up-left shadows) */
   :root[data-design="modern"] {
     --font: 'Space Grotesk', system-ui, 'Helvetica Neue', Arial, sans-serif;
     --font-display: 'Bricolage Grotesque', 'Arial Black', 'Helvetica Neue', system-ui, sans-serif;
     --bg: #f3ecdf; --surface: #ffffff; --fg: #111111; --muted: #4d4d4d; --line: #111111; --line-strong: #111111;
     --lift: #fff3c4; --accent: #ffd23f; --accent-fg: #111111; --ok: #0a6b3a; --warn: #8a4b00; --err: #c4122f;
-    --focus: #1d3fe0; --placeholder: #6b6b6b; --radius: 6px; --border: 3px; --shadow: -4px -4px 0 0 #111111;
+    --ok-fill: #6ee79a; --warn-fill: #ffb347; --err-fill: #ff7b8c;
+    --focus: #1d3fe0; --placeholder: #6b6b6b; --radius: 6px; --border: 3px; --shadow: -4px -4px 0 0 var(--line);
+    --gradient: radial-gradient(60% 45% at 12% 8%, #ffb4c8 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #b9a7ff 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #9fe8d2 0, transparent 70%), #f3ecdf;
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
   }
+  @media (prefers-color-scheme: dark) {
+    :root[data-design="modern"][data-mode="system"]:not([data-theme="light"]) {
+      --bg: #121210; --surface: #1a1a18; --fg: #f0f0e8; --muted: #b4b4a6; --line: #f0f0e8; --line-strong: #f0f0e8;
+      --lift: #26261f; --accent: #ffd23f; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a;
+      --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #8c8c80; color-scheme: dark;
+      --gradient: radial-gradient(60% 45% at 12% 8%, #3b2a6b 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #0f4f4a 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #6b2450 0, transparent 70%), #121210;
+    }
+  }
+  :root[data-design="modern"][data-mode="dark"], :root[data-design="modern"][data-mode="system"][data-theme="dark"] {
+    --bg: #121210; --surface: #1a1a18; --fg: #f0f0e8; --muted: #b4b4a6; --line: #f0f0e8; --line-strong: #f0f0e8;
+    --lift: #26261f; --accent: #ffd23f; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a;
+    --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #8c8c80; color-scheme: dark;
+    --gradient: radial-gradient(60% 45% at 12% 8%, #3b2a6b 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #0f4f4a 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #6b2450 0, transparent 70%), #121210;
+  }
+  /* One static background layer: grain over a mesh gradient (soft-light blend on the body only, never on scrollers). */
+  :root[data-design="modern"] body { background-color: var(--bg); background-image: var(--grain), var(--gradient); background-size: 180px 180px, auto; background-blend-mode: soft-light, normal; font-size: 17px; font-weight: 500; }
+  :root[data-design="modern"][data-effects="reduced"] body { background-image: none; }
+  @media (prefers-contrast: more), (forced-colors: active) { :root[data-design="modern"] body { background-image: none; } }
+  :root[data-design="modern"] h1 { font-weight: 800; font-size: 30px; letter-spacing: -.02em; line-height: 1.05; display: inline-block; padding: 0 6px; background: linear-gradient(transparent 58%, var(--accent) 58% 92%, transparent 92%); color: var(--fg); margin-bottom: 12px; }
+  :root[data-design="modern"] .refs-in h1 { display: inline-block; }
+  :root[data-design="modern"][data-mode="dark"] h1, :root[data-design="modern"][data-mode="system"][data-theme="dark"] h1 { background: var(--accent); color: var(--accent-fg); }
+  :root[data-design="modern"] .sec { display: table; margin: 18px 0 10px auto; padding: 2px 9px; background: var(--fg); color: var(--bg); font-size: 12px; font-weight: 700; letter-spacing: .06em; border-radius: var(--radius); }
+  :root[data-design="modern"] .stack { gap: 14px; padding: 5px 0 0 5px; }
+  :root[data-design="modern"] .choices, :root[data-design="modern"] .rows { gap: 14px; padding: 5px 0 0 5px; }
+  :root[data-design="modern"] .stack > button.item, :root[data-design="modern"] .stack > div.item, :root[data-design="modern"] .row, :root[data-design="modern"] .prop, :root[data-design="modern"] .choice, :root[data-design="modern"] .srow { background: var(--surface); border: var(--border) solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0 12px; }
+  :root[data-design="modern"] .stack > button.item, :root[data-design="modern"] .stack > div.item { width: calc(100% - 5px); }
+  :root[data-design="modern"] .item { font-family: var(--font-display); font-weight: 700; font-size: 19px; }
+  :root[data-design="modern"] .item.done { background: var(--ok-fill); color: var(--fg); }
+  :root[data-design="modern"] .item.next { background: var(--lift); }
+  :root[data-design="modern"] .row.selected, :root[data-design="modern"] .prop.selected, :root[data-design="modern"] .choice.selected { background: var(--lift); }
+  :root[data-design="modern"] .row.lifted { background: var(--lift); }
+  :root[data-design="modern"] .detail { font-family: var(--font); font-weight: 500; font-size: 13px; color: var(--muted); }
+  :root[data-design="modern"] .srow { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
+  :root[data-design="modern"] .srow .value { font-family: var(--font); font-weight: 500; font-size: 14px; }
+  :root[data-design="modern"] .choice .label > span:first-child { font-size: 20px; }
+  :root[data-design="modern"] .item .mark[data-done], :root[data-design="modern"] .choice .mark[data-done] { width: 36px; height: 36px; border: 3px solid var(--line); border-radius: 4px; background: #fff; }
+  :root[data-design="modern"] .choice .mark[data-done] { border-radius: 50%; }
+  :root[data-design="modern"] .item .mark[data-done="1"]::after { border-color: #111; border-width: 0 4px 4px 0; left: 11px; top: 3px; width: 9px; height: 17px; }
+  :root[data-design="modern"] .choice .mark[data-done="1"]::after { inset: 8px; background: #111; }
+  :root[data-design="modern"] .actions { padding: 5px 0 0 5px; gap: 10px; margin-right: 0; }
+  :root[data-design="modern"] .bar { margin-right: 0; gap: 12px; padding-top: 5px; padding-left: 5px; }
+  :root[data-design="modern"] .actions button, :root[data-design="modern"] .bar button { font-family: var(--font-display); font-weight: 700; font-size: 16px; background: var(--surface); color: var(--fg); border: var(--border) solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0 16px; min-height: 48px; }
+  :root[data-design="modern"] .actions button:not(.muted), :root[data-design="modern"] .bar button:not(.muted) { background: var(--accent); color: var(--accent-fg); font-weight: 800; }
+  :root[data-design="modern"] .actions button.muted, :root[data-design="modern"] .bar button.muted { color: var(--fg); }
+  :root[data-design="modern"] .x { border: 0; box-shadow: none; background: transparent; font-family: var(--font); color: var(--fg); }
+  :root[data-design="modern"] .actions button:active, :root[data-design="modern"] .bar button:active, :root[data-design="modern"] .stack > button.item:active, :root[data-design="modern"] .choice:active, :root[data-design="modern"] .srow:active, :root[data-design="modern"] .prop:active { transform: translate(-4px, -4px); box-shadow: none; }
+  :root[data-design="modern"] input { border: var(--border) solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 0 12px; font-weight: 500; }
+  :root[data-design="modern"] input:focus { box-shadow: var(--shadow); }
+  :root[data-design="modern"] button:focus-visible, :root[data-design="modern"] input:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  :root[data-design="modern"] div.hint, :root[data-design="modern"] div.intro-text { background: var(--surface); border: 2px solid var(--line); border-radius: var(--radius); padding: 6px 10px; color: var(--muted); }
+  :root[data-design="modern"] div.hint:empty { display: none; }
+  :root[data-design="modern"] .edit > .entry { padding-left: 0; }
+  :root[data-design="modern"] .logo { background: var(--surface); border: 3px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 4px 12px 4px 8px; margin: 5px 0 auto 5px; }
+  :root[data-design="modern"] .logo-box { fill: var(--accent); stroke: var(--line); stroke-width: 3; }
+  :root[data-design="modern"] .logo-tick { stroke: var(--line); stroke-width: 3.6; }
+  :root[data-design="modern"] .logo-word { font-weight: 800; font-size: 25px; letter-spacing: -.03em; }
+  :root[data-design="modern"] .logo-b { font-style: normal; background: var(--accent); color: var(--accent-fg); padding: 0 4px; margin-left: 3px; }
+  :root[data-design="modern"] .refs-in a { color: var(--focus); }
   /* @@DESIGN-MODERN-END */
 </style>
 </head>
@@ -268,6 +402,8 @@ const REFERENCES = [
 
 /* @@QUICKLIST-START
    AI quick list: describe a checklist and get a draft to review. Slot for the Quick list screens and the API call. */
+// The AI quick list is parked for later (draft in wip/quick). Flip this to show its entry points again.
+const QUICK_LIST_ENABLED = false;
 const DEFAULT_AI = { model: 'claude-haiku-5-5', endpoint: 'https://api.anthropic.com' };
 function QuickSettings({ settings, onChange, onBack }) {
   return h('div', { className: 'screen edit' },
@@ -372,9 +508,19 @@ function questionName(text, taken) {
   return name;
 }
 
+// ChecklistPro logo: an inline SVG tick mark and the wordmark. Decorative-plus-label, never a button.
+function Logo() {
+  return h('div', { className: 'logo', role: 'img', 'aria-label': 'ChecklistPro' },
+    h('svg', { className: 'logo-mark', viewBox: '0 0 32 32', 'aria-hidden': 'true', focusable: 'false' },
+      h('rect', { className: 'logo-box', x: 2.5, y: 2.5, width: 27, height: 27, rx: 5 }),
+      h('path', { className: 'logo-tick', d: 'M9 17l5.2 5.2L23.5 10.5' })),
+    h('span', { className: 'logo-word', 'aria-hidden': 'true' }, h('span', { className: 'logo-a' }, 'Checklist'), h('span', { className: 'logo-b' }, 'Pro')));
+}
+
 // Home: the list of checklists, first one at the bottom. "+ New" is the lowest control.
 function Home({ lists, onRun, onEdit, onSettings, onQuick }) {
   return h('div', { className: 'screen' },
+    h(Logo),
     h('div', { className: 'stack' },
       lists.map(c => h('div', { key: c.id, className: 'item home-item' },
         h('button', { className: 'muted hint edit-link', onClick: () => onEdit(c) }, 'edit'),
@@ -382,7 +528,7 @@ function Home({ lists, onRun, onEdit, onSettings, onQuick }) {
     lists.length === 0 && h('div', { className: 'muted' }, 'No checklists'),
     h('div', { className: 'bar' },
       h('button', { id: 'new', onClick: () => onEdit(null) }, '+ New'),
-      h('button', { id: 'quick', className: 'muted', onClick: onQuick }, 'Quick list'),
+      QUICK_LIST_ENABLED && h('button', { id: 'quick', className: 'muted', onClick: onQuick }, 'Quick list'),
       h('button', { id: 'settings', className: 'muted', onClick: onSettings }, 'Settings')));
 }
 
@@ -394,6 +540,7 @@ const DESIGN_OPTIONS = [
 ];
 const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
 function SettingsHome({ settings, onChange, onNav, onBack }) {
+  useEffect(() => { window.APPEARANCE.DESIGNS.forEach(window.ensureDesignFonts); }, []);
   const cycle = (key, list) => onChange({ [key]: list[(list.indexOf(settings[key]) + 1) % list.length] });
   const toneLabel = settings.tone.choice === 'tick' ? 'Tick' : cap(settings.tone.choice);
   const row = (id, name, value, onClick) => h('button', { key: id, id, className: 'srow', onClick },
@@ -406,7 +553,7 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
         h('div', { className: 'choices', role: 'radiogroup', 'aria-label': 'Design' },
           DESIGN_OPTIONS.map(([id, name, note]) => h('button', {
             key: id, id: 'design-' + id, role: 'radio', 'aria-checked': settings.design === id ? 'true' : 'false',
-            className: 'choice' + (settings.design === id ? ' selected' : ''), onClick: () => onChange({ design: id }),
+            className: 'choice' + (settings.design === id ? ' selected' : ''), 'data-d': id, onClick: () => onChange({ design: id }),
           },
             h('span', { className: 'label' }, h('span', null, name), h('span', { className: 'detail' }, note)),
             h('span', { className: 'mark', 'data-done': settings.design === id ? '1' : '0', 'aria-hidden': 'true' }, settings.design === id ? '●' : '○')))),
@@ -417,7 +564,7 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
         h('div', { className: 'sec' }, 'More'),
         h('div', { className: 'rows' },
           row('set-tone', 'Attention tone', toneLabel, () => onNav('settings-tone')),
-          row('set-ai', 'Quick list (AI)', settings.ai.key ? 'Key saved' : 'No key', () => onNav('settings-ai')),
+          QUICK_LIST_ENABLED && row('set-ai', 'Quick list (AI)', settings.ai.key ? 'Key saved' : 'No key', () => onNav('settings-ai')),
           row('set-refs', 'References', '', () => onNav('references'))))),
     h('div', { className: 'actions' }, h('button', { id: 'settings-back', onClick: onBack }, 'Back')));
 }
@@ -483,6 +630,7 @@ function Run({ list, tone, onClose }) {
 // The checklist's own settings decide whether ticking plays a sound and/or says the item out loud.
 function RunList({ title, items, sound, voice, tone, onClose }) {
   const [done, setDone] = useState([]); // ticked item indexes
+  const nextOpen = items.findIndex((_, k) => !done.includes(k)); // the first open item gets a quiet marker (no motion)
   // Layout effects run inside the tap that started the run, which browsers require before audio may start.
   useLayoutEffect(() => { if (sound) toneStart(tone); return () => toneStop(); }, []);
 
@@ -500,7 +648,7 @@ function RunList({ title, items, sound, voice, tone, onClose }) {
     h('h1', null, title),
     h('div', { className: 'stack' },
       items.map((it, i) => h('button', {
-        key: i, className: 'item' + (done.includes(i) ? ' done' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
+        key: i, className: 'item' + (done.includes(i) ? ' done' : '') + (i === nextOpen ? ' next' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
       },
         h('span', { className: 'label' },
           h('span', null, it.text + (it.n !== null && it.n !== 1 ? ' ×' + fmtQty(it.n) : '')),
