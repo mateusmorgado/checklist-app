@@ -8,13 +8,14 @@
 /* Applies the saved design before first paint so there is no flash of the wrong look.
    Also used by the app when the design changes. Everything is wrapped: storage may be blocked. */
 (function () {
-  var DESIGNS = ['classic', 'airplane', 'modern'], MODES = ['system', 'light', 'dark'], EFFECTS = ['full', 'reduced'], DIRECTIONS = ['up', 'down'];
+  var DESIGNS = ['classic', 'airplane', 'modern'], MODES = ['system', 'light', 'dark'], EFFECTS = ['full', 'reduced'], DIRECTIONS = ['up', 'down'], AIRFRAMES = ['airbus', 'boeing', 'embraer'], PALETTES = ['mint', 'blue', 'cream'];
   var FONTS = {
     airplane: 'family=B612:wght@400;700&family=B612+Mono:wght@400;700',
+    boeing: 'family=Barlow+Semi+Condensed:wght@400;500;600;700',
     modern: 'family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Space+Grotesk:wght@400..700'
   };
   function pick(v, list, d) { return list.indexOf(v) >= 0 ? v : d; }
-  window.APPEARANCE = { DESIGNS: DESIGNS, MODES: MODES, EFFECTS: EFFECTS, DIRECTIONS: DIRECTIONS };
+  window.APPEARANCE = { DESIGNS: DESIGNS, MODES: MODES, EFFECTS: EFFECTS, DIRECTIONS: DIRECTIONS, AIRFRAMES: AIRFRAMES, PALETTES: PALETTES };
   // Each design loads only its own fonts; Settings preloads all of them so every choice shows in its own typeface.
   window.ensureDesignFonts = function (design) {
     if (FONTS[design] && !document.getElementById('font-' + design)) {
@@ -31,7 +32,11 @@
     root.setAttribute('data-mode', pick(s.mode, MODES, 'system'));
     root.setAttribute('data-effects', pick(s.effects, EFFECTS, 'full'));
     root.setAttribute('data-direction', pick(s.direction, DIRECTIONS, 'up'));
+    var airframe = pick(s.airframe, AIRFRAMES, 'airbus');
+    root.setAttribute('data-airframe', airframe);
+    root.setAttribute('data-palette', pick(s.palette, PALETTES, 'mint'));
     window.ensureDesignFonts(design);
+    if (design === 'airplane' && airframe === 'boeing') window.ensureDesignFonts('boeing');
   };
   var saved = {};
   try { saved = JSON.parse(localStorage.getItem('settings') || '{}') || {}; } catch (e) {}
@@ -112,7 +117,7 @@
   .actions button.cancel, .bar button.cancel { background: var(--cancel-bg); color: var(--cancel-fg); border-radius: var(--radius); }
   :root[data-design] .actions button.muted.cancel { background: var(--cancel-bg); color: var(--cancel-fg); text-decoration: none; }
   :root[data-design="airplane"] .actions button.muted.cancel { border: 1px solid var(--cancel-fg); }
-  .screen.edit.intro { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "intro" "points" "actions"; }
+  .screen.edit.intro { grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "intro" "reflink" "points" "actions"; row-gap: 0; }
   .edit > .intro-text { grid-area: intro; align-self: start; font-size: 15px; line-height: 1.4; }
   /* Button rows: 48px hit areas. The negative margin and small gap keep the text exactly where it was. */
   .actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px; min-height: var(--row-h); margin-right: -8px; }
@@ -164,6 +169,7 @@
   /* Home: right-aligned link under the logo (the logo is on the left).  */
   .home-top { align-self: stretch; margin-bottom: auto; display: flex; flex-direction: column; }
   :root[data-design] .home-top .logo { margin-bottom: 0; }
+  .refs-link { grid-area: reflink; align-self: start; justify-self: end; }
   .manifesto-link { align-self: flex-end; min-height: var(--hit-min); min-width: var(--hit-min); padding: 0 4px; font-size: 14px; }
   /* @@REFS-CSS-END */
   .prop { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); cursor: pointer; }
@@ -265,6 +271,55 @@
   :root[data-design="airplane"] .progress-fill { border-radius: 0; background: repeating-linear-gradient(90deg, var(--ok) 0 10px, transparent 10px 13px); }
   :root[data-design="airplane"] .progress.full .progress-fill { background: var(--ok); }
   :root[data-design="airplane"] .progress-label { font-family: var(--font-mono); color: var(--ok); letter-spacing: .06em; }
+
+  /* Airplane variants. Airbus is the base block above. Boeing and Embraer only change tokens and a few shapes. They are
+     inspired by each maker's display conventions (colour meaning, type, panel shape), not copies of real screens. */
+  :root[data-design="airplane"][data-airframe="boeing"] {
+    --font: 'Barlow Semi Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+    --font-display: var(--font);
+    --bg: #000000; --surface: #000000; --fg: #ffffff; --muted: #a3acb2; --line: #2b2f33; --line-strong: #8d969c;
+    --lift: #0d1519; --accent: #00dcf0; --accent-fg: #00080a; --ok: #2df26b; --warn: #ffc400; --err: #ff5252;
+    --cancel-fg: #ff6e6e; --placeholder: #7d878e;
+  }
+  :root[data-design="airplane"][data-airframe="boeing"] body { font-size: 18px; letter-spacing: 0; }
+  :root[data-design="airplane"][data-airframe="boeing"] .screen::before { display: none; }
+  :root[data-design="airplane"][data-airframe="boeing"] h1 { color: var(--fg); border: 1px solid var(--fg); padding: 4px 12px; letter-spacing: .08em; font-size: 15px; display: inline-block; }
+  :root[data-design="airplane"][data-airframe="boeing"] .stack > button.item, :root[data-design="airplane"][data-airframe="boeing"] .stack > div.item, :root[data-design="airplane"][data-airframe="boeing"] .row, :root[data-design="airplane"][data-airframe="boeing"] .prop, :root[data-design="airplane"][data-airframe="boeing"] .srow, :root[data-design="airplane"][data-airframe="boeing"] .choice { border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 0 4px; }
+  :root[data-design="airplane"][data-airframe="boeing"] .item.next { border: 0; box-shadow: none; background: var(--lift); font-weight: 600; outline: 1px solid var(--accent); outline-offset: -1px; }
+  :root[data-design="airplane"][data-airframe="boeing"] .item.done { border-color: var(--line); color: var(--ok); }
+  :root[data-design="airplane"][data-airframe="boeing"] .row.selected, :root[data-design="airplane"][data-airframe="boeing"] .prop.selected, :root[data-design="airplane"][data-airframe="boeing"] .choice.selected { border: 0; box-shadow: none; outline: 1px solid var(--accent); outline-offset: -1px; }
+  :root[data-design="airplane"][data-airframe="boeing"] .item .mark[data-done="1"] { background: transparent; border-color: var(--ok); }
+  :root[data-design="airplane"][data-airframe="boeing"] .item .mark[data-done="1"]::after { border-color: var(--ok); }
+  :root[data-design="airplane"][data-airframe="boeing"] .actions button:not(.muted), :root[data-design="airplane"][data-airframe="boeing"] .bar button:not(.muted) { background: transparent; color: var(--fg); border-color: var(--fg); }
+  :root[data-design="airplane"][data-airframe="boeing"] .progress-fill { background: var(--ok); }
+  :root[data-design="airplane"][data-airframe="boeing"] .progress-track { padding: 0; height: 8px; }
+  :root[data-design="airplane"][data-airframe="boeing"] .logo-word { text-transform: none; letter-spacing: .02em; font-size: 20px; font-weight: 600; }
+  :root[data-design="airplane"][data-airframe="boeing"] .logo-b { margin-left: 4px; font-size: inherit; letter-spacing: inherit; border: 0; padding: 0; color: var(--accent); }
+
+  :root[data-design="airplane"][data-airframe="embraer"] {
+    --font: Roboto, 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
+    --font-display: var(--font);
+    --bg: #11161b; --surface: #1b222a; --fg: #f4f6f8; --muted: #a2afba; --line: #2c353f; --line-strong: #6f7d89;
+    --lift: #243039; --accent: #41c7ff; --accent-fg: #04141d; --ok: #4ade80; --warn: #fbbf24; --err: #ff6b6b;
+    --cancel-fg: #ff8a8a; --placeholder: #7e8c98; --radius: 10px;
+  }
+  :root[data-design="airplane"][data-airframe="embraer"] body { font-size: 17px; }
+  :root[data-design="airplane"][data-airframe="embraer"] .screen::before { border-radius: 14px; border-color: var(--line); }
+  :root[data-design="airplane"][data-airframe="embraer"] h1 { text-transform: none; letter-spacing: .01em; font-size: 21px; border-bottom: 0; color: var(--fg); padding-bottom: 0; }
+  :root[data-design="airplane"][data-airframe="embraer"] .sec { text-transform: none; color: var(--muted); letter-spacing: .04em; }
+  :root[data-design="airplane"][data-airframe="embraer"] .stack > button.item, :root[data-design="airplane"][data-airframe="embraer"] .stack > div.item, :root[data-design="airplane"][data-airframe="embraer"] .row, :root[data-design="airplane"][data-airframe="embraer"] .prop, :root[data-design="airplane"][data-airframe="embraer"] .choice, :root[data-design="airplane"][data-airframe="embraer"] .srow { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  :root[data-design="airplane"][data-airframe="embraer"] .item.done { border-color: var(--ok); }
+  :root[data-design="airplane"][data-airframe="embraer"] .item.next, :root[data-design="airplane"][data-airframe="embraer"] .row.selected, :root[data-design="airplane"][data-airframe="embraer"] .prop.selected, :root[data-design="airplane"][data-airframe="embraer"] .choice.selected { border-color: var(--accent); box-shadow: none; background: var(--lift); }
+  :root[data-design="airplane"][data-airframe="embraer"] .item .mark[data-done], :root[data-design="airplane"][data-airframe="embraer"] .choice .mark[data-done] { border-radius: 7px; }
+  :root[data-design="airplane"][data-airframe="embraer"] .choice .mark[data-done] { border-radius: 50%; }
+  :root[data-design="airplane"][data-airframe="embraer"] .actions button, :root[data-design="airplane"][data-airframe="embraer"] .bar button, :root[data-design="airplane"][data-airframe="embraer"] input { border-radius: var(--radius); }
+  :root[data-design="airplane"][data-airframe="embraer"] .actions button { text-transform: none; letter-spacing: .02em; font-size: 14px; }
+  :root[data-design="airplane"][data-airframe="embraer"] .progress-track { border-radius: 6px; }
+  :root[data-design="airplane"][data-airframe="embraer"] .progress-fill { border-radius: 3px; background: var(--ok); }
+  :root[data-design="airplane"][data-airframe="embraer"] .progress.full .progress-fill { background: var(--ok); }
+  :root[data-design="airplane"][data-airframe="embraer"] .logo-word { text-transform: none; font-size: 19px; letter-spacing: 0; }
+  :root[data-design="airplane"][data-airframe="embraer"] .logo-b { margin-left: 3px; border: 0; padding: 0; font-size: inherit; letter-spacing: inherit; color: var(--accent); }
+  :root[data-design="airplane"][data-airframe="embraer"] .logo-box { rx: 6px; }
   /* @@DESIGN-AIRPLANE-END */
 
   /* @@DESIGN-MODERN-START  (neobrutalism + grain: cream page, opaque cards, thick borders, hard up-left shadows) */
@@ -342,6 +397,14 @@
   :root[data-design="modern"] .progress-fill[style*="width: 0%"] { border-right-width: 0; }
   :root[data-design="modern"] .progress.full .progress-fill { background: var(--ok-fill); }
   :root[data-design="modern"] .progress-label { font-family: var(--font-display); font-weight: 700; color: var(--fg); }
+
+  /* Modern palettes (Settings > Colours). Mint and coral is the base block above. */
+  :root[data-design="modern"][data-palette="blue"] { --bg: #2f8bff; --surface: #ffffff; --fg: #111111; --muted: #14161f; --line: #111111; --line-strong: #111111; --lift: #fff1a6; --accent: #f6d800; --accent-fg: #111111; --ok: #0a6b3a; --warn: #8a4b00; --err: #b3122d; --ok-fill: #1de9c8; --warn-fill: #ffb347; --err-fill: #ff5c7a; --focus: #111111; --placeholder: #666666; --cancel-bg: #ff5c7a; --cancel-fg: #111111; --gradient: radial-gradient(60% 45% at 12% 8%, #7fc0ff 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #1d57e0 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #4fe3d2 0, transparent 70%), #2f8bff; }
+  @media (prefers-color-scheme: dark) { :root[data-design="modern"][data-palette="blue"][data-mode="system"]:not([data-theme="light"]) { --bg: #0b1633; --surface: #13224a; --fg: #eef3ff; --muted: #aebde0; --line: #eef3ff; --line-strong: #eef3ff; --lift: #1d3a7a; --accent: #f6d800; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a; --ok-fill: #136b5c; --warn-fill: #6b4313; --err-fill: #7a2238; --focus: #ffe44d; --placeholder: #8fa2cf; --cancel-bg: #ff5c7a; --cancel-fg: #111111; --gradient: radial-gradient(60% 45% at 12% 8%, #1b3f8a 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #3a1f6b 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0b4f5a 0, transparent 70%), #0b1633; color-scheme: dark; } }
+  :root[data-design="modern"][data-palette="blue"][data-mode="dark"], :root[data-design="modern"][data-palette="blue"][data-mode="system"][data-theme="dark"] { --bg: #0b1633; --surface: #13224a; --fg: #eef3ff; --muted: #aebde0; --line: #eef3ff; --line-strong: #eef3ff; --lift: #1d3a7a; --accent: #f6d800; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a; --ok-fill: #136b5c; --warn-fill: #6b4313; --err-fill: #7a2238; --focus: #ffe44d; --placeholder: #8fa2cf; --cancel-bg: #ff5c7a; --cancel-fg: #111111; --gradient: radial-gradient(60% 45% at 12% 8%, #1b3f8a 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #3a1f6b 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0b4f5a 0, transparent 70%), #0b1633; color-scheme: dark; }
+  :root[data-design="modern"][data-palette="cream"] { --bg: #fdf0e9; --surface: #fffaf6; --fg: #0f1d21; --muted: #3b4a4e; --line: #0f1d21; --line-strong: #0f1d21; --lift: #c9fbe3; --accent: #6df5b9; --accent-fg: #0f1d21; --ok: #0a6b3a; --warn: #8a4b00; --err: #b3122d; --ok-fill: #6df5b9; --warn-fill: #ffc247; --err-fill: #ff9a8a; --focus: #1d3fe0; --placeholder: #66757a; --cancel-bg: #ffb4a6; --cancel-fg: #0f1d21; --gradient: radial-gradient(60% 45% at 12% 8%, #ffe1d3 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #d4fbe9 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #ffd9c4 0, transparent 70%), #fdf0e9; }
+  @media (prefers-color-scheme: dark) { :root[data-design="modern"][data-palette="cream"][data-mode="system"]:not([data-theme="light"]) { --bg: #0b1417; --surface: #112126; --fg: #f6ede7; --muted: #aebec2; --line: #f6ede7; --line-strong: #f6ede7; --lift: #17402f; --accent: #6df5b9; --accent-fg: #0f1d21; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a; --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #7f9296; --cancel-bg: #ffb4a6; --cancel-fg: #0f1d21; --gradient: radial-gradient(60% 45% at 12% 8%, #123c3a 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #3a2a24 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0f4a3a 0, transparent 70%), #0b1417; color-scheme: dark; } }
+  :root[data-design="modern"][data-palette="cream"][data-mode="dark"], :root[data-design="modern"][data-palette="cream"][data-mode="system"][data-theme="dark"] { --bg: #0b1417; --surface: #112126; --fg: #f6ede7; --muted: #aebec2; --line: #f6ede7; --line-strong: #f6ede7; --lift: #17402f; --accent: #6df5b9; --accent-fg: #0f1d21; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a; --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #7f9296; --cancel-bg: #ffb4a6; --cancel-fg: #0f1d21; --gradient: radial-gradient(60% 45% at 12% 8%, #123c3a 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #3a2a24 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0f4a3a 0, transparent 70%), #0b1417; color-scheme: dark; }
   /* @@DESIGN-MODERN-END */
 </style>
 </head>
@@ -758,6 +821,8 @@ function sanitizeSettings(raw) {
     direction: pick(r.direction, window.APPEARANCE.DIRECTIONS, 'up'),
     voiceDefault: r.voiceDefault === true,
     progress: r.progress !== false,
+    airframe: pick(r.airframe, window.APPEARANCE.AIRFRAMES, 'airbus'),
+    palette: pick(r.palette, window.APPEARANCE.PALETTES, 'mint'),
     tone: { choice: pick(tone.choice, TONE_CHOICES, 'tick'), volume: pick(tone.volume, TONE_VOLUMES, 'medium') },
     ai: {
       key: typeof ai.key === 'string' ? ai.key.slice(0, 300) : '',
@@ -868,6 +933,13 @@ const DESIGN_OPTIONS = [
   ['modern', 'Modern', 'Bold borders and grain'],
 ];
 const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+const AIRFRAME_NAMES = { airbus: 'Airbus', boeing: 'Boeing', embraer: 'Embraer' };
+const AIRFRAME_NOTES = {
+  airbus: 'Inspired by Airbus: the B612 typeface was designed with Airbus for cockpit screens, with ECAM-style colours (green normal, amber caution, cyan information).',
+  boeing: 'Inspired by Boeing: a plain condensed face, white text on black, a pending line turns green when done, cyan labels.',
+  embraer: 'Inspired by Embraer: the E-Jets use Honeywell Primus Epic screens. Softer graphite panels with rounded corners, cyan and green on a dark grey.',
+};
+const PALETTE_NAMES = { mint: 'Mint & coral', blue: 'Electric blue', cream: 'Cream & mint' };
 function SettingsHome({ settings, onChange, onNav, onBack }) {
   useEffect(() => { window.APPEARANCE.DESIGNS.forEach(window.ensureDesignFonts); }, []);
   const cycle = (key, list) => onChange({ [key]: list[(list.indexOf(settings[key]) + 1) % list.length] });
@@ -886,6 +958,11 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
           },
             h('span', { className: 'label' }, h('span', null, name), h('span', { className: 'detail' }, note)),
             h('span', { className: 'mark', 'data-done': settings.design === id ? '1' : '0', 'aria-hidden': 'true' }, settings.design === id ? '●' : '○')))),
+        settings.design === 'airplane' && h('div', { className: 'rows' },
+          row('set-airframe', 'Cockpit style', AIRFRAME_NAMES[settings.airframe], () => cycle('airframe', window.APPEARANCE.AIRFRAMES))),
+        settings.design === 'airplane' && h('p', { className: 'tone-note', id: 'airframe-note' }, AIRFRAME_NOTES[settings.airframe]),
+        settings.design === 'modern' && h('div', { className: 'rows' },
+          row('set-palette', 'Colours', PALETTE_NAMES[settings.palette], () => cycle('palette', window.APPEARANCE.PALETTES))),
         h('div', { className: 'sec' }, 'Appearance'),
         h('div', { className: 'rows' },
           row('set-mode', 'Mode', cap(settings.mode) + (settings.design === 'airplane' ? ' (Airplane is always dark)' : ''), () => cycle('mode', window.APPEARANCE.MODES)),
@@ -1274,6 +1351,7 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
       h('div', { className: 'muted hint intro-text' },
         'When you tick an item: the Confirmation cue repeats the item out loud (MacLeod et al., 2010). ' +
         'The Attention tone plays a short sound to keep you focused on the task (Posner & Petersen, 1990).'),
+      h('button', { id: 'fb-refs', className: 'muted manifesto-link refs-link', onClick: () => setStep('references') }, 'References'),
       /* @@FEEDBACK-HINT-END */
       h('div', { className: 'points' },
         h('h1', null, title),
@@ -1286,7 +1364,6 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
               h('span', null, on ? 'on' : 'off')))))),
       h('div', { className: 'actions' },
         h('button', { className: 'muted', onClick: () => setStep(fbFrom === 'points' ? 'points' : 'name') }, 'Back'),
-        h('button', { id: 'fb-refs', className: 'muted', onClick: () => setStep('references') }, 'References'),
         h('button', { id: 'fb-next', onClick: () => setStep('points') }, fbFrom === 'points' ? 'Done' : 'Next')));
   }
 

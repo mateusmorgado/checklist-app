@@ -16,6 +16,7 @@ Checklists are saved in the browser's `localStorage`.
 - **Create:** name first, then the feedback settings (an Attention tone when you tick an item, and/or a Confirmation cue that repeats the item out loud, with the research behind them on a References page), then the points, one at a time. Tap an item for details, a quantity formula and a "required" flag. Hold and drag to reorder.
 - **Questions:** yes/no only for now, asked once before a run: "If [I go to the sauna], then add Towel". A Yes adds the linked items. Number questions and quantity formulas ("5 nights, 7 socks") are parked until the workflow is designed; saved ones still run.
 - **List direction** (Settings): lists grow bottom to top by default so the first item and the buttons are close to the thumb, or top to bottom.
+- **Style options:** with Airplane selected, Settings offers a cockpit style: Airbus (the original look), Boeing or Embraer. With Modern selected it offers three colour sets: Mint & coral, Electric blue, Cream & mint. The cockpit styles are inspired by each maker's display conventions, not copies.
 - **Progress bar:** a bar fills smoothly as items are ticked during a run (Settings > Progress bar to turn it off).
 - **Manifesto:** the link under the logo explains where checklists come from (pilots, then doctors) and why they help.
 - **Cues:** Attention tone and Confirmation cue can be toggled from Settings (default for new lists) and per checklist while editing (Cues button).
