@@ -109,14 +109,10 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   /* Built for a phone held in one hand: on wide screens the app stays a centred phone-width column instead of stretching. */
   body { display: flex; justify-content: center; align-items: center; }
   #root { width: 100%; height: 100%; max-width: 768px; max-height: 1024px; position: relative; }
-  /* On big screens the app is a soft raised card (claymorphism): a slightly darker page, a barely-there rim, layered diffuse shadows
-     and a faint inner highlight, instead of a hard outline. The page behind it is a shade darker than the app. */
-  @media (min-width: 769px), (min-height: 1025px) {
-    body { background-color: color-mix(in srgb, var(--bg) 91%, #000); }
-    #root { background: var(--bg); border-radius: 28px; overflow: hidden;
-      box-shadow: 0 0 0 1px rgba(0, 0, 0, .04), 0 2px 4px rgba(0, 0, 0, .05), 0 12px 24px -4px rgba(0, 0, 0, .10), 0 32px 64px -16px rgba(0, 0, 0, .16),
-        inset 0 2px 3px color-mix(in srgb, var(--surface) 70%, #fff), inset 0 -4px 10px rgba(0, 0, 0, .05); }
-  }
+  /* On big screens the app stays a centred phone-shaped column with just a faint outline. */
+  @media (min-width: 769px), (min-height: 1025px) { #root { border-radius: 22px; overflow: hidden; box-shadow: 0 0 0 1px color-mix(in srgb, var(--line-strong) 28%, transparent); } }
+  /* Modern: the same idea in neobrutalist weight, a thicker ink line that is still faint. */
+  @media (min-width: 769px), (min-height: 1025px) { :root[data-design="modern"] #root { box-shadow: 0 0 0 2px color-mix(in srgb, var(--line) 38%, transparent); } }
   .screen { height: 100%; box-sizing: border-box; padding: max(16px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 8px; }
   h1 { font-family: var(--font-display); font-size: 22px; font-weight: 500; margin: 0 0 12px; text-align: right; }
   /* Item stack: first item sits at the bottom, later items stack upward. Rows shrink instead of scrolling. */
@@ -452,11 +448,6 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   /* One static background layer: grain over a mesh gradient (soft-light blend on the body only, never on scrollers). */
   :root[data-design="modern"] body { background-color: var(--bg); background-image: var(--grain), var(--gradient); background-size: 180px 180px, auto; background-blend-mode: soft-light, normal; font-size: 17px; font-weight: 500; }
   :root[data-design="modern"][data-effects="reduced"] body { background-image: none; }
-  @media (min-width: 769px), (min-height: 1025px) {
-    :root[data-design="modern"] body { background-image: none; background-color: color-mix(in srgb, var(--bg) 86%, #000); }
-    :root[data-design="modern"] #root { background-color: var(--bg); background-image: var(--grain), var(--gradient); background-size: 180px 180px, auto; background-blend-mode: soft-light, normal; }
-    :root[data-design="modern"][data-effects="reduced"] #root { background-image: none; }
-  }
   @media (prefers-contrast: more), (forced-colors: active) { :root[data-design="modern"] body { background-image: none; } }
   :root[data-design="modern"] h1 { font-weight: 800; font-size: 30px; letter-spacing: -.02em; line-height: 1.05; display: inline-block; padding: 0 6px; background: linear-gradient(transparent 58%, var(--accent) 58% 92%, transparent 92%); color: var(--fg); margin-bottom: 12px; }
   :root[data-design="modern"] .refs-in h1 { display: inline-block; }
