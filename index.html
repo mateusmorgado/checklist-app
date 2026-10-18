@@ -1345,6 +1345,7 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
           row('set-voice', 'Confirmation cue', settings.voiceDefault ? 'On for new lists' : 'Off for new lists', () => onChange({ voiceDefault: !settings.voiceDefault })),
           QUICK_LIST_ENABLED && row('set-ai', 'Quick list (AI)', settings.ai.key ? 'Key saved' : 'No key', () => onNav('settings-ai')),
           row('set-refs', 'References', '', () => onNav('references')),
+          row('set-report', 'Report a bug', '', () => onNav('report')),
           row('set-reset', 'Reset app', '', () => onNav('reset'))),
         h('p', { className: 'tone-note', id: 'voice-note' }, 'Confirmation cue repeats each item out loud when you tick it. This sets the starting choice for new checklists; each checklist can change it under Cues.'))),
     h('div', { className: 'actions' }, h('button', { id: 'settings-back', onClick: onBack }, 'Back')));
@@ -1642,6 +1643,66 @@ function RunList({ title, items, sound, voice, tone, progress, onClose }) {
 
 /* @@REFSPAGE-START */
 // References page: the research behind the feedback settings. Used by the editor and by Settings.
+// Report a bug: a small contact form. It posts to FormSubmit (a form-to-email service, no server of ours), which mails it to the
+// owner; if that fails the same text opens in the person's own mail app. The first ever submission makes FormSubmit send the owner
+// a one-time activation email. Technical details (design, screen, browser) are added only when the switch is on; the checklists
+// themselves are never sent.
+const REPORT_TO = 'mateusmorgado@hotmail.com';
+function reportDetails(settings) {
+  const d = [];
+  try {
+    d.push('Design: ' + settings.design + (settings.design === 'modern' ? ' / ' + settings.palette : '') + ', mode ' + settings.mode + ', effects ' + settings.effects);
+    d.push('Screen: ' + window.innerWidth + 'x' + window.innerHeight + ' @' + (window.devicePixelRatio || 1) + 'x' + (isStandalone() ? ', installed app' : ', in browser'));
+    d.push('Browser: ' + navigator.userAgent);
+    d.push('Language: ' + navigator.language + ', online: ' + navigator.onLine);
+    d.push('Time: ' + new Date().toISOString());
+  } catch (e) {}
+  return d.join('\n');
+}
+function ReportPage({ settings, onBack }) {
+  const [msg, setMsg] = useState('');
+  const [reply, setReply] = useState('');
+  const [tech, setTech] = useState(true);
+  const [phase, setPhase] = useState('idle'); // idle | sending | sent | failed
+  const [note, setNote] = useState('');
+  const honey = useRef(null);
+  const body = () => msg.trim() + (reply.trim() ? '\n\nReply to: ' + reply.trim() : '') + (tech ? '\n\n--\n' + reportDetails(settings) : '');
+  const mailto = () => 'mailto:' + REPORT_TO + '?subject=' + encodeURIComponent('ChecklistPro bug report') + '&body=' + encodeURIComponent(body().slice(0, 1800));
+  const send = async () => {
+    if (msg.trim().length < 5) { setNote('Describe what went wrong first.'); return; }
+    if (reply.trim() && !/^\S+@\S+\.\S+$/.test(reply.trim())) { setNote('That email address does not look right. You can also leave it empty.'); return; }
+    if (honey.current && honey.current.value) { setPhase('sent'); return; } // a bot filled the hidden field
+    setPhase('sending'); setNote('');
+    try {
+      const res = await fetch('https://formsubmit.co/ajax/' + REPORT_TO, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ message: msg.trim(), reply_to: reply.trim() || undefined, details: tech ? reportDetails(settings) : undefined, _subject: 'ChecklistPro bug report', _template: 'table', _captcha: 'false', _replyto: reply.trim() || undefined }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data.success === true || data.success === 'true')) { setPhase('sent'); setNote('Sent. Thank you!'); }
+      else { setPhase('failed'); setNote('It could not be sent' + (data && data.message ? ' (' + String(data.message).slice(0, 120) + ')' : '') + '. You can send the same text from your email app instead.'); }
+    } catch (e) { setPhase('failed'); setNote('It could not be sent (are you offline?). You can send the same text from your email app instead.'); }
+  };
+  if (phase === 'sent') return h('div', { className: 'screen quick' },
+    h('h1', null, 'Report a bug'),
+    h('div', { className: 'quick-text', id: 'report-done', role: 'status' }, h('p', null, note || 'Sent. Thank you!'), h('p', { className: 'muted' }, 'It goes straight to the developer.')),
+    h('div', { className: 'actions' }, h('button', { id: 'report-back', onClick: onBack }, 'Back')));
+  const busy = phase === 'sending';
+  return h('div', { className: 'screen quick' },
+    h('h1', null, 'Report a bug'),
+    h('div', { className: 'muted hint', id: 'report-hint' }, 'Tell me what went wrong and what you expected. It is sent to the developer.'),
+    h('textarea', { id: 'report-msg', className: 'ta', rows: 6, value: msg, maxLength: 3000, placeholder: 'What happened?', onChange: e => setMsg(e.target.value) }),
+    h('input', { id: 'report-reply', type: 'email', inputMode: 'email', autoComplete: 'email', value: reply, maxLength: 120, placeholder: 'Your email (optional, for a reply)', onChange: e => setReply(e.target.value) }),
+    h('input', { ref: honey, name: 'website', tabIndex: -1, autoComplete: 'off', 'aria-hidden': 'true', style: { position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 } }),
+    h('div', { className: 'rows', style: { width: '100%' } },
+      h('button', { id: 'report-tech', className: 'srow', 'aria-pressed': tech ? 'true' : 'false', onClick: () => setTech(t => !t) },
+        h('span', { className: 'name' }, 'Include technical details'), h('span', { className: 'value' }, tech ? 'On' : 'Off'))),
+    h('p', { className: 'tone-note', id: 'report-note', role: 'status', 'aria-live': 'polite' }, note || 'Details are the design, screen size and browser. Your checklists are never sent. It travels through FormSubmit, an email form service.'),
+    phase === 'failed' && h('a', { id: 'report-mail', className: 'muted', href: mailto() }, 'Open my email app'),
+    h('div', { className: 'actions final' },
+      h('button', { id: 'report-back', className: 'muted', onClick: onBack }, 'Back'),
+      h('button', { id: 'report-send', disabled: busy, onClick: send }, busy ? 'Sending…' : 'Send')));
+}
 // Reset: back to the standard app. "Reset settings" keeps the checklists; "Erase everything" also removes them, clears the
 // offline copy and the service worker, and reloads. Each needs a second tap so it cannot happen by accident.
 function ResetPage({ onResetSettings, onBack }) {
@@ -2119,6 +2180,7 @@ function App() {
   if (screen.name === 'settings') return h(SettingsHome, { settings, onChange: change, onNav: name => setScreen({ name }), onBack: home });
   if (screen.name === 'settings-tone') return h(ToneSettings, { settings, onChange: change, onBack: toSettings });
   if (screen.name === 'settings-ai') return h(QuickSettings, { settings, onChange: change, onBack: toSettings });
+  if (screen.name === 'report') return h(ReportPage, { settings, onBack: toSettings });
   if (screen.name === 'reset') return h(ResetPage, { onResetSettings: () => { setSettings(sanitizeSettings({})); toSettings(); }, onBack: toSettings });
   if (screen.name === 'references') return h(ReferencesPage, { onBack: toSettings });
   if (screen.name === 'manifesto') return h(ManifestoPage, { onBack: home });
