@@ -20,7 +20,9 @@ Checklists are saved in the browser's `localStorage`.
 - **Quick list (bolt button on Home):** say a list out loud (up to 17 seconds, tap Stop when done). The recording goes to `api/quick.js`, a Vercel function that asks Google Gemini to turn it into a checklist, and the text lands in an editable box. Good for groceries. Limit: 3 per IP per day.
   - **Setup in Vercel:** add the environment variable `GOOGLE_API_KEY` (a Google AI Studio key; optional `GEMINI_MODEL`, default `gemini-2.5-flash`). For a daily limit that holds across servers, connect an Upstash Redis store from the Vercel Marketplace (it adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`). Without a store the limit is kept in memory and is only approximate.
   - Opening `index.html` on its own (no `/api`) shows "Quick list is not available" and you can still type the items.
-- **Phone-width column:** on a wide screen the app stays a centred, phone-width column.
+- **Phone-shaped on big screens:** the app never grows beyond an iPad mini (768 x 1024) and stays centred.
+- **Install:** Settings has an Install app button at the top and Home shows a dismissible card under the logo (it comes back after 5 days). It is a PWA: `manifest.webmanifest`, `sw.js` and the icons make it installable and available offline once loaded.
+- **Icons and fun:** buttons carry small icons in Airplane and Modern (Minimalist keeps plain words). Modern adds floating stickers on Home, a pop when you tick an item, moving stripes in the progress bar and confetti when a list is finished; all of it stops under Effects: Reduced or the system's reduced-motion setting.
 - **Progress bar:** a bar fills smoothly as items are ticked during a run (Settings > Progress bar to turn it off).
 - **Manifesto:** the link under the logo explains where checklists come from (pilots, then doctors) and why they help.
 - **Cues:** Attention tone and Confirmation cue can be toggled from Settings (default for new lists) and per checklist while editing (Cues button).
