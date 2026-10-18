@@ -484,11 +484,20 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   :root[data-design="modern"] .logo-mark { animation: wiggle 4s ease-in-out infinite; transform-origin: 50% 60%; }
   @keyframes wiggle { 0%, 82%, 100% { transform: rotate(0); } 88% { transform: rotate(-9deg); } 94% { transform: rotate(7deg); } }
   :root[data-design="modern"] .confetti { display: block; position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
-  :root[data-design="modern"] .confetti i { position: absolute; top: -20px; width: 10px; height: 14px; border: 2px solid var(--line); background: var(--accent); animation: fall 2s cubic-bezier(.3, .1, .6, 1) forwards; }
+  /* Confetti is shot up from the bottom edge and falls back down under gravity. Each piece gets its own random values from the
+     Confetti component: --x start, --h apex height, --dx sideways drift, --rot spin, --t time, --d delay, --w/--ht size. The vertical
+     motion is two quadratic eases (slowing on the way up, speeding up on the way down); the sideways drift eases out like air drag. */
+  :root[data-design="modern"] .confetti i { position: absolute; left: var(--x); bottom: -24px; width: var(--w); height: var(--ht); border: 2px solid var(--line); background: var(--accent); box-sizing: border-box; opacity: 0;
+    animation: confetti-y var(--t) linear var(--d) forwards, confetti-x var(--t) cubic-bezier(.2, .55, .45, 1) var(--d) forwards; }
   :root[data-design="modern"] .confetti i:nth-child(4n+2) { background: var(--err-fill); border-radius: 50%; }
   :root[data-design="modern"] .confetti i:nth-child(4n+3) { background: var(--ok-fill); }
   :root[data-design="modern"] .confetti i:nth-child(4n) { background: var(--warn-fill); border-radius: 50%; }
-  @keyframes fall { from { transform: translateY(0) rotate(0); opacity: 1; } 80% { opacity: 1; } to { transform: translateY(110vh) rotate(540deg); opacity: 0; } }
+  @keyframes confetti-y {
+    0% { translate: 0 0; opacity: 1; animation-timing-function: cubic-bezier(.5, 1, .89, 1); }
+    42% { translate: 0 calc(var(--h) * -1vh); opacity: 1; animation-timing-function: cubic-bezier(.11, 0, .5, 0); }
+    100% { translate: 0 40px; opacity: 1; }
+  }
+  @keyframes confetti-x { from { transform: translateX(0) rotate(0); } to { transform: translateX(var(--dx)) rotate(var(--rot)); } }
   /* Colours row: pulses after switching to Modern until it is tapped, to show there is more to choose here. */
   :root[data-design="modern"] .srow.nudge { animation: nudge 1.8s ease-in-out infinite; outline: 3px dashed var(--accent); outline-offset: 3px; }
   @keyframes nudge { 0%, 55%, 100% { transform: scale(1) rotate(0); } 12% { transform: scale(1.06) rotate(-1deg); } 24% { transform: scale(.98) rotate(.8deg); } 36% { transform: scale(1.04) rotate(-.6deg); } }
@@ -505,7 +514,7 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script>
-const { useState, useEffect, useLayoutEffect, useRef, createElement: h0 } = React;
+const { useState, useEffect, useLayoutEffect, useRef, useMemo, createElement: h0 } = React;
 // Button icons. A button whose label is one of these words gets a small icon in front of it. Minimalist hides them (CSS).
 const ICONS = {
   Settings: ['M4 7h9M17 7h3M4 17h3M11 17h9M15 7m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M9 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0'],
@@ -1425,6 +1434,18 @@ function Run({ list, tone, progress, onClose }) {
 // Run: first item at the bottom, working upward. Checkmarks on the right.
 // A ticked item stays where it is (dimmed with a tick), so nothing moves under the finger.
 // The checklist's own settings decide whether ticking plays a sound and/or says the item out loud.
+// Modern confetti: random launch points along the bottom edge, heights, drifts, spins and timings, so no two bursts look alike.
+function Confetti() {
+  const pieces = useMemo(() => {
+    const r = (a, b) => a + Math.random() * (b - a);
+    return Array.from({ length: 44 }, () => ({
+      '--x': r(3, 94).toFixed(1) + '%', '--h': r(32, 86).toFixed(1), '--dx': r(-130, 130).toFixed(0) + 'px',
+      '--rot': (r(1, 3) * 360 * (Math.random() < .5 ? -1 : 1)).toFixed(0) + 'deg', '--t': r(2.1, 3.3).toFixed(2) + 's',
+      '--d': r(0, .45).toFixed(2) + 's', '--w': r(8, 13).toFixed(0) + 'px', '--ht': r(10, 19).toFixed(0) + 'px',
+    }));
+  }, []);
+  return h('div', { className: 'confetti', 'aria-hidden': 'true' }, pieces.map((st, i) => h('i', { key: i, style: st })));
+}
 function RunList({ title, items, sound, voice, tone, progress, onClose }) {
   const [done, setDone] = useState([]); // ticked item indexes
   const nextOpen = items.findIndex((_, k) => !done.includes(k)); // the first open item gets a quiet marker (no motion)
@@ -1456,7 +1477,7 @@ function RunList({ title, items, sound, voice, tone, progress, onClose }) {
       h('div', { className: 'progress-track' },
         h('div', { className: 'progress-fill', style: { width: (items.length ? done.length / items.length * 100 : 0) + '%' } })),
       h('span', { className: 'progress-label' }, done.length + ' / ' + items.length))),
-    done.length === items.length && items.length > 0 && h('div', { className: 'confetti', 'aria-hidden': 'true' }, Array.from({ length: 18 }, (_, i) => h('i', { key: i, style: { left: (i * 5.4 + 3) + '%', animationDelay: ((i % 6) * 0.12) + 's' } }))),
+    done.length === items.length && items.length > 0 && h(Confetti),
     h('div', { className: 'stack' },
       items.map((it, i) => h('button', {
         key: i, className: 'item' + (done.includes(i) ? ' done' : '') + (i === nextOpen ? ' next' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
