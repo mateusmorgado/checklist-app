@@ -4,6 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ChecklistPro</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<script>
+/* Install prompt: the browser fires this once, early, so it is kept here until the app asks for it. */
+window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.__installPrompt = e; try { window.dispatchEvent(new Event('installready')); } catch (x) {} });
+window.addEventListener('appinstalled', function () { window.__installPrompt = null; try { window.dispatchEvent(new Event('installready')); } catch (x) {} });
+try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); }); } catch (x) {}
+</script>
 <script>
 /* Applies the saved design before first paint so there is no flash of the wrong look.
    Also used by the app when the design changes. Everything is wrapped: storage may be blocked. */
@@ -72,17 +83,19 @@
   html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
   body { background: var(--bg); color: var(--fg); font: 18px/1.3 var(--font); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   /* Built for a phone held in one hand: on wide screens the app stays a centred phone-width column instead of stretching. */
-  #root { height: 100%; max-width: 480px; margin: 0 auto; position: relative; }
+  body { display: flex; justify-content: center; align-items: center; }
+  #root { width: 100%; height: 100%; max-width: 768px; max-height: 1024px; position: relative; }
+  @media (min-width: 769px), (min-height: 1025px) { #root { border-radius: 22px; overflow: hidden; box-shadow: 0 0 0 1px var(--line-strong); } }
   .screen { height: 100%; box-sizing: border-box; padding: 16px 20px 20px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 8px; }
   h1 { font-family: var(--font-display); font-size: 22px; font-weight: 500; margin: 0 0 12px; text-align: right; }
   /* Item stack: first item sits at the bottom, later items stack upward. Rows shrink instead of scrolling. */
-  .stack { flex: 0 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column-reverse; align-items: flex-end; justify-content: flex-start; overflow: hidden; }
-  .stack > * { flex: 0 1 var(--row-h); min-height: 0; max-width: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; }
+  .stack { flex: 0 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column-reverse; align-items: flex-end; justify-content: flex-start; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+  .stack > * { flex: 0 0 auto; min-height: var(--row-h); max-width: 100%; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; }
   .stack > button, .stack > div.item { width: 100%; box-sizing: border-box; }
   /* Top to bottom (Settings > List direction): list screens read from the top; the buttons stay at the bottom. */
   :root[data-direction="down"] .screen:has(.stack) { justify-content: flex-start; }
   :root[data-direction="down"] .stack { flex-direction: column; align-items: flex-end; flex: 1 1 auto; }
-  :root[data-direction="down"] .stack > * { flex: 0 1 var(--row-h); }
+  :root[data-direction="down"] .stack > * { flex: 0 0 auto; }
   :root[data-direction="down"] .edit > .points { justify-content: flex-start; align-self: stretch; }
   :root[data-direction="down"] .edit > .points > .stack { flex: 0 1 auto; }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
@@ -111,15 +124,17 @@
   .entry-if input { flex: 1 1 auto; min-width: 0; width: auto; text-align: left; }
   .edit > .actions { grid-area: actions; }
   /* Explanatory text sits at the top of the screen; the controls stay at the bottom. */
-  .screen.edit.has-tools { grid-template-rows: minmax(0, 1fr) auto auto auto auto; grid-template-areas: "points" "hint" "entry" "tools" "actions"; }
-  .edit > .actions.tools { grid-area: tools; margin-right: -8px; }
+  .screen.edit.has-tools { grid-template-rows: auto minmax(0, 1fr) auto auto auto; grid-template-areas: "intro" "points" "entry" "tools" "actions"; }
+  .edit.has-tools > .hint { grid-area: intro; align-self: start; justify-self: end; }
+  .edit > .actions.tools { grid-area: tools; margin-right: -8px; gap: 0; }
+  :root .edit > .actions.tools button { padding-left: 10px; padding-right: 10px; min-width: 0; }
   .edit > .actions.final { grid-area: actions; width: 100%; justify-content: space-between; margin-right: 0; }
   .edit > .actions.final button { padding-left: 12px; padding-right: 12px; }
   .actions button.cancel, .bar button.cancel { background: var(--cancel-bg); color: var(--cancel-fg); border-radius: var(--radius); }
   :root[data-design] .actions button.muted.cancel { background: var(--cancel-bg); color: var(--cancel-fg); text-decoration: none; }
   :root[data-design="airplane"] .actions button.muted.cancel { border: 1px solid var(--cancel-fg); }
   .screen.edit.intro { grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "intro" "reflink" "points" "actions"; row-gap: 0; }
-  .edit > .intro-text { grid-area: intro; align-self: start; font-size: 15px; line-height: 1.4; }
+  .edit > .intro-text { grid-area: intro; align-self: start; font-size: 16px; line-height: 1.4; }
   /* Button rows: 48px hit areas. The negative margin and small gap keep the text exactly where it was. */
   .actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px; min-height: var(--row-h); margin-right: -8px; }
   .bar { display: flex; flex-direction: row-reverse; align-items: center; gap: 12px; height: var(--row-h); flex: none; margin-right: -8px; }
@@ -141,7 +156,7 @@
   @media (max-height: 520px) { .logo { display: none; } }
   input { font: inherit; color: inherit; background: none; border: 0; border-bottom: var(--border) solid var(--line-strong); border-radius: 0; padding: 10px 0; width: 100%; box-sizing: border-box; text-align: right; flex: none; min-height: var(--hit-min); }
   input::placeholder { color: var(--placeholder); }
-  .hint { font-size: 14px; flex: none; text-align: right; }
+  .hint { font-size: 16px; line-height: 1.4; flex: none; text-align: right; }
   .err { color: var(--err); }
   /* @@REFS-CSS-START */
   .edit > .refs { grid-area: points; align-self: stretch; width: 100%; min-height: 0; overflow-y: auto; touch-action: pan-y; }
@@ -175,13 +190,21 @@
   .screen > .actions.final { width: 100%; margin-right: 0; }
   .bolt { display: inline-flex; align-items: center; justify-content: center; min-width: var(--hit-min); }
   .bolt-path { fill: currentColor; }
+  .plus-path { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+  .add-item { display: inline-flex; align-items: center; justify-content: center; min-width: var(--hit-min); }
   .screen.quick > * { max-width: 100%; }
   .screen.quick h1 { margin-bottom: 12px; }
-  .quick-text { width: 100%; text-align: right; font-size: 17px; line-height: 1.45; margin-bottom: 8px; }
+  .quick-text { width: 100%; text-align: right; font-size: 18px; line-height: 1.45; margin-bottom: 8px; }
   .quick-text p { margin: 0 0 10px; }
   .screen.quick input, textarea.ta { width: 100%; box-sizing: border-box; text-align: left; }
   textarea.ta { font: inherit; color: inherit; background: var(--surface); border: var(--border) solid var(--line-strong); border-radius: var(--radius); padding: 10px 12px; min-height: 96px; flex: 0 1 150px; resize: none; }
   textarea.ta:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .install-banner { align-self: stretch; margin-top: 10px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); text-align: left; }
+  .install-text { display: flex; flex-direction: column; gap: 2px; font-size: 14.5px; line-height: 1.3; min-width: 0; }
+  .install-text strong { font-size: 15px; font-weight: 600; }
+  .install-actions { display: flex; flex: none; align-items: center; gap: 2px; }
+  .install-actions button { min-height: var(--hit-min); padding: 0 10px; font-size: 15px; }
+  @media (max-height: 560px) { .install-banner { display: none; } }
   .refs-link { grid-area: reflink; align-self: start; justify-self: end; }
   .manifesto-link { align-self: flex-end; min-height: var(--hit-min); min-width: var(--hit-min); padding: 0 4px; font-size: 14px; }
   /* @@REFS-CSS-END */
@@ -208,7 +231,7 @@
   .bar #mute[aria-pressed="true"] { text-decoration: underline; text-underline-offset: 4px; }
   /* Settings > Attention tone: the explanation sits under the title like the rest of the settings text. */
   .tone-choices .choice { min-height: var(--hit-min); } /* six rows: 48px each so more of them fit */
-  .settings-in .tone-note { margin: 0 0 4px; font-size: 14px; line-height: 1.4; color: var(--muted); text-align: right; overflow-wrap: anywhere; }
+  .settings-in .tone-note { margin: 0 0 4px; font-size: 15.5px; line-height: 1.4; color: var(--muted); text-align: right; overflow-wrap: anywhere; }
   /* @@SOUND-CSS-END */
   /* @@QUICK-CSS-START */
   /* @@QUICK-CSS-END */
@@ -222,7 +245,7 @@
   /* @@DESIGN-CLASSIC-START  (Minimalist: system sans, white, no borders or decoration, space and weight do the work) */
   :root[data-design="classic"] body { font-size: 18px; line-height: 1.35; font-weight: 400; }
   :root[data-design="classic"] h1 { font-size: 24px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 16px; }
-  :root[data-design="classic"] .hint { font-size: 14px; }
+  :root[data-design="classic"] .hint { font-size: 16px; }
   :root[data-design="classic"] .detail { font-size: 13px; }
   :root[data-design="classic"] .stack > .item { border: 0; }
   :root[data-design="classic"] .home-item .open { font-size: 20px; font-weight: 500; }
@@ -274,7 +297,7 @@
   :root[data-design="airplane"] #answer, :root[data-design="airplane"] #field { font-family: var(--font-mono); }
   :root[data-design="airplane"] input:focus { border-color: var(--accent); }
   :root[data-design="airplane"] button:focus-visible, :root[data-design="airplane"] input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-  :root[data-design="airplane"] .hint { font-size: 12.5px; letter-spacing: .02em; }
+  :root[data-design="airplane"] .hint { font-size: 14px; letter-spacing: .02em; }
   :root[data-design="airplane"] .logo-box { stroke: var(--accent); stroke-width: 2.4; rx: 0; }
   :root[data-design="airplane"] .logo-tick { stroke: var(--accent); stroke-width: 3.2; stroke-linecap: square; stroke-linejoin: miter; }
   :root[data-design="airplane"] .logo-word { font-size: 15px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; display: flex; align-items: center; }
@@ -930,7 +953,8 @@ function Logo() {
 function Home({ lists, onRun, onEdit, onSettings, onQuick, onManifesto }) {
   return h('div', { className: 'screen' },
     h('div', { className: 'home-top' }, h(Logo),
-      h('button', { id: 'manifesto-link', className: 'muted manifesto-link', onClick: onManifesto }, 'Manifesto')),
+      h('button', { id: 'manifesto-link', className: 'muted manifesto-link', onClick: onManifesto }, 'Manifesto'),
+      h(InstallBanner)),
     h('div', { className: 'stack' },
       lists.map(c => h('div', { key: c.id, className: 'item home-item' },
         h('button', { className: 'muted hint edit-link', onClick: () => onEdit(c) }, 'edit'),
@@ -951,6 +975,49 @@ const DESIGN_OPTIONS = [
   ['modern', 'Modern', 'Bold borders and grain'],
 ];
 const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+// Install the app (PWA). Chrome, Edge and Android give an install prompt; iPhone and iPad need the Share menu.
+const INSTALL_KEY = 'installPrompt';
+const INSTALL_AGAIN_DAYS = 5;
+const isStandalone = () => { try { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; } catch (e) { return false; } };
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function useInstall() {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const f = () => tick(n => n + 1);
+    window.addEventListener('installready', f);
+    return () => window.removeEventListener('installready', f);
+  }, []);
+  const prompt = window.__installPrompt || null;
+  const standalone = isStandalone();
+  return {
+    standalone, canPrompt: !!prompt, ios: isIOS() && !standalone,
+    available: !standalone && (!!prompt || isIOS()),
+    install: async () => {
+      const e = window.__installPrompt;
+      if (!e) return null;
+      try { e.prompt(); const r = await e.userChoice; window.__installPrompt = null; tick(n => n + 1); return r && r.outcome; } catch (x) { return null; }
+    },
+  };
+}
+const installDismissedAt = () => { try { return Number(localStorage.getItem(INSTALL_KEY)) || 0; } catch (e) { return 0; } };
+const installDue = () => Date.now() - installDismissedAt() >= INSTALL_AGAIN_DAYS * 24 * 60 * 60 * 1000;
+const IOS_STEPS = 'Tap the Share button, then "Add to Home Screen".';
+// Home: a small card under the logo. Dismissing it hides it for 5 days.
+function InstallBanner() {
+  const inst = useInstall();
+  const [hidden, setHidden] = useState(() => !installDue());
+  const [help, setHelp] = useState(false);
+  if (hidden || !inst.available) return null;
+  const dismiss = () => { try { localStorage.setItem(INSTALL_KEY, String(Date.now())); } catch (e) {} setHidden(true); };
+  return h('div', { className: 'install-banner', id: 'install-banner', role: 'region', 'aria-label': 'Install the app' },
+    h('div', { className: 'install-text' },
+      h('strong', null, 'Install ChecklistPro'),
+      h('span', null, help ? IOS_STEPS : 'Add it to your home screen for one-tap access, even offline.')),
+    h('div', { className: 'install-actions' },
+      h('button', { id: 'install-yes', onClick: () => { if (inst.canPrompt) inst.install(); else setHelp(true); } }, 'Install'),
+      h('button', { id: 'install-no', className: 'muted', 'aria-label': 'Not now', onClick: dismiss }, 'Not now')));
+}
+
 const AIRFRAME_NAMES = { airbus: 'Airbus', boeing: 'Boeing', embraer: 'Embraer' };
 const AIRFRAME_NOTES = {
   airbus: 'Inspired by Airbus: the B612 typeface was designed with Airbus for cockpit screens, with ECAM-style colours (green normal, amber caution, cyan information).',
@@ -958,6 +1025,19 @@ const AIRFRAME_NOTES = {
   embraer: 'Inspired by Embraer: the E-Jets use Honeywell Primus Epic screens. Softer graphite panels with rounded corners, cyan and green on a dark grey.',
 };
 const PALETTE_NAMES = { mint: 'Mint & coral', blue: 'Electric blue', cream: 'Cream & mint', red: 'Bold red' };
+function InstallRow() {
+  const inst = useInstall();
+  const [help, setHelp] = useState(false);
+  if (inst.standalone) return h('div', { className: 'rows' }, h('div', { className: 'srow', id: 'set-install', role: 'status' }, h('span', { className: 'name' }, 'App installed'), h('span', { className: 'value' }, '✓')));
+  const note = help || (inst.ios && !inst.canPrompt) ? IOS_STEPS
+    : inst.canPrompt ? 'Adds ChecklistPro to your home screen. It then opens full screen and works offline.'
+    : 'Open your browser menu and choose "Install app" or "Add to Home screen".';
+  return h('div', null,
+    h('div', { className: 'rows' },
+      h('button', { id: 'set-install', className: 'srow install-row', onClick: () => { if (inst.canPrompt) inst.install(); else setHelp(true); } },
+        h('span', { className: 'name' }, 'Install app'), h('span', { className: 'value' }, '↓'))),
+    h('p', { className: 'tone-note', id: 'install-note' }, note));
+}
 function SettingsHome({ settings, onChange, onNav, onBack }) {
   useEffect(() => { window.APPEARANCE.DESIGNS.forEach(window.ensureDesignFonts); }, []);
   const cycle = (key, list) => onChange({ [key]: list[(list.indexOf(settings[key]) + 1) % list.length] });
@@ -968,6 +1048,7 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
     h('div', { className: 'settings-scroll' },
       h('div', { className: 'settings-in' },
         h('h1', null, 'Settings'),
+        h(InstallRow),
         h('div', { className: 'sec' }, 'Design'),
         h('div', { className: 'choices', role: 'radiogroup', 'aria-label': 'Design' },
           DESIGN_OPTIONS.map(([id, name, note]) => h('button', {
@@ -1656,12 +1737,15 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
         onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); add(); } },
       })),
     h('div', { className: 'actions tools' },
+      list && !isDraft && h('button', { id: 'delete', className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
       h('button', { id: 'questions', className: 'muted', onClick: () => { setError(''); setQstage('list'); setStep('questions'); } }, 'Questions'),
       h('button', { id: 'cues', className: 'muted', onClick: () => { setError(''); setFbFrom('points'); setStep('feedback'); } }, 'Cues')),
     h('div', { className: 'actions final' },
-      h('button', { className: 'muted cancel', onClick: onCancel }, 'Cancel'),
-      list && !isDraft && h('button', { className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
-      h('button', { onClick: submit }, 'Save')));
+      h('div', { className: 'grp' },
+        h('button', { id: 'cancel', className: 'muted cancel', onClick: onCancel }, 'Cancel'),
+        h('button', { id: 'save', onClick: submit }, 'Save')),
+      h('button', { id: 'add-item', className: 'muted add-item', 'aria-label': 'Add item', onMouseDown: e => e.preventDefault(), onClick: () => { add(); if (draftRef.current) draftRef.current.focus(); } },
+        h('svg', { viewBox: '0 0 24 24', width: 22, height: 22, 'aria-hidden': 'true', focusable: 'false' }, h('path', { className: 'plus-path', d: 'M12 5v14M5 12h14' })))));
 }
 
 function App() {
