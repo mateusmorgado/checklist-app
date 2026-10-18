@@ -206,6 +206,17 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   .add-item { display: inline-flex; align-items: center; justify-content: center; min-width: var(--hit-min); }
   .screen.quick > * { max-width: 100%; }
   .screen.quick h1 { margin-bottom: 12px; }
+  /* Quick list: a big microphone instead of a progress bar. It pulses with rings while recording and bobs while the list is made. */
+  .mic { align-self: center; position: relative; width: 112px; height: 112px; margin: 6px 0 10px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-fg); border: var(--border) solid var(--line-strong); box-shadow: var(--shadow); flex: none; }
+  .mic:disabled { opacity: .75; cursor: default; }
+  .mic.live::before, .mic.live::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 3px solid var(--accent); animation: mic-ring 1.5s ease-out infinite; pointer-events: none; }
+  .mic.live::after { animation-delay: .75s; }
+  .mic.live svg { animation: mic-beat .75s ease-in-out infinite alternate; }
+  .mic.busy svg { animation: mic-bob .9s ease-in-out infinite alternate; }
+  @keyframes mic-ring { from { transform: scale(1); opacity: .9; } to { transform: scale(1.7); opacity: 0; } }
+  @keyframes mic-beat { from { transform: scale(1); } to { transform: scale(1.14); } }
+  @keyframes mic-bob { from { transform: translateY(-3px); } to { transform: translateY(3px); } }
+  @media (prefers-reduced-motion: reduce) { .mic.live::before, .mic.live::after, .mic.live svg, .mic.busy svg { animation: none; } .mic.live { outline: 4px solid var(--err); outline-offset: 4px; } }
   .quick-text { width: 100%; text-align: right; font-size: 18px; line-height: 1.45; margin-bottom: 8px; }
   .quick-text p { margin: 0 0 10px; }
   .screen.quick input, textarea.ta { width: 100%; box-sizing: border-box; text-align: left; }
@@ -540,8 +551,8 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   :root[data-design="airplane"] .install-cta { animation: cta-ring 2s ease-out infinite; }
   @media (prefers-reduced-motion: reduce) { .install-dialog, .install-cta, .install-cta .cta-ico, .install-os.flash, :root[data-design] .srow.install-row, :root[data-design] .install-banner #install-yes { animation: none !important; } }
   :root[data-effects="reduced"] .install-cta, :root[data-effects="reduced"] .install-cta .cta-ico, :root[data-effects="reduced"] .srow.install-row, :root[data-effects="reduced"] .install-banner #install-yes { animation: none !important; }
-  /* Colours row: pulses after switching to Modern until it is tapped, to show there is more to choose here. */
-  :root[data-design="modern"] .srow.nudge { animation: nudge 1.8s ease-in-out infinite; outline: 3px dashed var(--accent); outline-offset: 3px; }
+  /* Colours row: wiggles once after switching to Modern, then keeps a dashed outline until it is tapped, to show there is more to choose here. */
+  :root[data-design="modern"] .srow.nudge { animation: nudge 1.8s ease-in-out 1 both; outline: 3px dashed var(--accent); outline-offset: 3px; }
   @keyframes nudge { 0%, 55%, 100% { transform: scale(1) rotate(0); } 12% { transform: scale(1.06) rotate(-1deg); } 24% { transform: scale(.98) rotate(.8deg); } 36% { transform: scale(1.04) rotate(-.6deg); } }
   :root[data-design="modern"] .srow.nudge .value::after { content: " ›"; }
   @media (prefers-reduced-motion: reduce) { :root[data-design="modern"] .srow.nudge { animation: none; } }
@@ -1381,8 +1392,14 @@ function QuickIntro({ onBack, onStart }) {
       h('button', { id: 'quick-back', className: 'muted', onClick: onBack }, 'Back'),
       h('button', { id: 'quick-start', onClick: onStart }, 'Start')));
 }
-function QuickMake({ voiceDefault, onCancel, onSave }) {
-  const [title, setTitle] = useState('');
+// Quick lists are named "Quick list", then "Quick list 2", "Quick list 3"... counting from the ones already saved.
+function quickTitle(lists) {
+  let max = 0;
+  lists.forEach(l => { const m = /^Quick list(?: (\d+))?$/.exec(l.title || ''); if (m) max = Math.max(max, m[1] ? Number(m[1]) : 1); });
+  return max ? 'Quick list ' + (max + 1) : 'Quick list';
+}
+const MIC_PATH = 'M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z';
+function QuickMake({ lists, voiceDefault, onCancel, onSave }) {
   const [text, setText] = useState('');
   const [phase, setPhase] = useState('idle'); // idle | recording | working
   const [secs, setSecs] = useState(0);
@@ -1434,14 +1451,17 @@ function QuickMake({ voiceDefault, onCancel, onSave }) {
       if (r.gone) return;
       if (res.status === 429) { setStatus('You have used your 3 quick lists for today. You can still type your items in the box.'); }
       else if (res.status === 503 || res.status === 404 || res.status === 405) { setStatus('Quick list is not available right now. You can type your items in the box.'); }
-      else if (!res.ok) { setStatus('That did not work. Try recording again.'); }
+      else if (!res.ok) {
+        let why = '';
+        try { const e = await res.json(); if (e && e.error === 'upstream') why = ' (' + (e.status ? 'Google ' + e.status + (e.detail ? ': ' + e.detail : '') : 'Google did not answer') + ')'; } catch (x) {}
+        setStatus('That did not work' + why + '. Try recording again, or type your items in the box.');
+      }
       else {
         const data = await res.json();
         const items = Array.isArray(data.items) ? data.items.filter(x => typeof x === 'string' && x.trim()) : [];
         if (!items.length) setStatus('I could not hear a list. Try again and say the items one after another.');
         else {
           setText(prev => parseQuickItems((prev.trim() ? prev.replace(/\s+$/, '') + '\n' : '') + items.join('\n')).join('\n'));
-          setTitle(prev => prev || (typeof data.title === 'string' ? data.title.slice(0, 60) : ''));
           setStatus(typeof data.left === 'number' ? 'Check the list, then save. ' + data.left + ' left today.' : 'Check the list, then save.');
         }
       }
@@ -1453,21 +1473,19 @@ function QuickMake({ voiceDefault, onCancel, onSave }) {
   const items = parseQuickItems(text);
   // Leaving the box rewrites plain sentences as one point per line, so what you see is what gets saved.
   const tidy = () => { const t = items.join('\n'); if (t !== text.trim()) setText(t); };
-  const ready = title.trim() && items.length > 0;
+  const ready = items.length > 0;
   const save = () => {
-    if (!ready) { setStatus(title.trim() ? 'Add at least one item first.' : 'Give the list a name first.'); return; }
-    onSave({ id: String(Date.now()), title: title.trim().slice(0, 100), sound: false, voice: !!voiceDefault, questions: [],
+    if (!ready) { setStatus('Add at least one item first.'); return; }
+    onSave({ id: String(Date.now()), title: quickTitle(lists), sound: false, voice: !!voiceDefault, questions: [],
       items: items.map(t => ({ text: t, detail: '', qty: '', required: false })) });
   };
   const recording = phase === 'recording', working = phase === 'working';
   return h('div', { className: 'screen quick' },
     h('h1', null, 'New quick list'),
     h('div', { className: 'muted hint', id: 'quick-hint' }, 'Good for groceries: just say what you need.'),
-    recording && h('div', { className: 'progress', role: 'progressbar', 'aria-label': 'Recording time', 'aria-valuemin': 0, 'aria-valuemax': QUICK_SECONDS, 'aria-valuenow': Math.round(secs), id: 'quick-time' },
-      h('div', { className: 'progress-track' }, h('div', { className: 'progress-fill', style: { width: (secs / QUICK_SECONDS * 100) + '%', transition: 'none' } })),
-      h('span', { className: 'progress-label' }, Math.floor(secs) + ' / ' + QUICK_SECONDS + ' s')),
+    h('button', { id: 'quick-mic', className: 'mic' + (recording ? ' live' : '') + (working ? ' busy' : ''), disabled: working, 'aria-label': recording ? 'Stop recording' : 'Record', onClick: recording ? stop : start },
+      h('svg', { viewBox: '0 0 24 24', width: 54, height: 54, 'aria-hidden': 'true', focusable: 'false' }, h('path', { d: MIC_PATH, fill: 'currentColor' }))),
     h('div', { className: 'muted hint', id: 'quick-status', role: 'status', 'aria-live': 'polite' }, recording ? 'Listening… tap Stop when you are done.' : status),
-    h('input', { id: 'quick-title', value: title, placeholder: 'Name', maxLength: 100, onChange: e => setTitle(e.target.value) }),
     h('textarea', { id: 'quick-items', ref: textRef, className: 'ta', value: text, rows: 5, placeholder: 'Your list appears here. Type or say it in plain words, like “milk, eggs and bread”.', onChange: e => setText(e.target.value), onBlur: tidy }),
     items.length > 0 && h('div', { className: 'muted hint', id: 'quick-count' }, items.length === 1 ? '1 point' : items.length + ' points'),
     h('div', { className: 'actions final' },
@@ -2081,7 +2099,7 @@ function App() {
   if (screen.name === 'references') return h(ReferencesPage, { onBack: toSettings });
   if (screen.name === 'manifesto') return h(ManifestoPage, { onBack: home });
   if (screen.name === 'quick') return h(QuickIntro, { onBack: home, onStart: () => setScreen({ name: 'quick-make' }) });
-  if (screen.name === 'quick-make') return h(QuickMake, { voiceDefault: settings.voiceDefault, onCancel: home, onSave: list => update([...lists, list]) });
+  if (screen.name === 'quick-make') return h(QuickMake, { lists, voiceDefault: settings.voiceDefault, onCancel: home, onSave: list => update([...lists, list]) });
   return h(Home, {
     lists, onSettings: toSettings, onQuick: () => setScreen({ name: 'quick' }),
     onRun: list => setScreen({ name: 'run', list }), onEdit: list => setScreen({ name: 'edit', list }), onManifesto: () => setScreen({ name: 'manifesto' }),
