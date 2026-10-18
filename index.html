@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>ChecklistPro</title>
 <meta name="description" content="Checklists you run on demand, built for one hand. A free web app for Android, iPhone and Windows.">
 <!-- Link previews (WhatsApp, Telegram, iMessage, Slack, social): needs absolute URLs. Change the host here if the app moves to another domain. -->
@@ -79,6 +79,18 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
     if (design === 'airplane' && airframe === 'boeing') window.ensureDesignFonts('boeing');
   };
   // ?design=modern&palette=red&mode=light&direction=up lets a page embed the app in a chosen look (used by the promo site).
+  // The phone keyboard must not cover the buttons: the app is sized to the visible part of the screen (the visual viewport). Newer
+  // Android Chrome does this itself (interactive-widget=resizes-content in the viewport tag); this covers the browsers that
+  // slide the keyboard over the page instead, by tracking the visible height and offset.
+  (function () {
+    var v = window.visualViewport, r = document.documentElement;
+    if (!v) return;
+    function fit() {
+      r.style.setProperty('--app-h', Math.round(v.height) + 'px');
+      r.style.setProperty('--app-top', Math.round(v.offsetTop) + 'px');
+    }
+    v.addEventListener('resize', fit); v.addEventListener('scroll', fit); fit();
+  })();
   window.__qs = {};
   try { var q = new URLSearchParams(location.search); ['design', 'mode', 'effects', 'direction', 'airframe', 'palette'].forEach(function (k) { if (q.get(k)) window.__qs[k] = q.get(k); }); } catch (e) {}
   // Settings used to be written on the very first visit, which pinned the old default look (Minimalist, Mint & coral) for
@@ -120,7 +132,8 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
     --lift: #161616; --accent: #eeeeee; --accent-fg: #0b0b0b; --ok: #6bd68a; --warn: #f0b24a; --err: #ff8a80;
     --focus: #8bb7ff; --placeholder: #8a8a8a; --cancel-bg: #3a1614; --cancel-fg: #ffb4ab; color-scheme: dark;
   }
-  html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
+  html { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
+  body { height: var(--app-h, 100%); margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; transform: translateY(var(--app-top, 0px)); }
   body { background: var(--bg); color: var(--fg); font: 18px/1.3 var(--font); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   /* Built for a phone held in one hand: on wide screens the app stays a centred phone-width column instead of stretching. */
   body { display: flex; justify-content: center; align-items: center; }
@@ -146,6 +159,13 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   .muted { color: var(--muted); }
   .done { color: var(--muted); }
   .row { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: grab; position: relative; }
+  .row { scroll-margin-block: 10px; }
+  .row.fresh { animation: item-in .5s cubic-bezier(.2, 1.3, .4, 1); }
+  .row.fresh::after { content: ""; position: absolute; inset: -3px; border: 3px solid var(--accent); border-radius: inherit; pointer-events: none; animation: item-ring 1s ease-out forwards; }
+  @keyframes item-in { from { transform: scale(.86); opacity: 0; } 60% { transform: scale(1.04); } to { transform: none; opacity: 1; } }
+  @keyframes item-ring { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.04); } }
+  @media (prefers-reduced-motion: reduce) { .row.fresh { animation: none; } .row.fresh::after { animation-duration: .01s; } }
+  :root[data-effects="reduced"] .row.fresh { animation: none; }
   .row.lifted { z-index: 1; background: var(--lift); font-weight: 500; cursor: grabbing; }
   .x { margin-right: auto; width: var(--hit-min); height: var(--hit-min); font-size: 22px; line-height: 1; color: var(--muted); flex: none; }
   .label { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; text-align: right; }
@@ -169,8 +189,23 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   /* Explanatory text sits at the top of the screen; the controls stay at the bottom. */
   .screen.edit.has-tools { grid-template-rows: auto minmax(0, 1fr) auto auto auto; grid-template-areas: "intro" "points" "entry" "tools" "actions"; }
   .edit.has-tools > .hint { grid-area: intro; align-self: start; justify-self: end; }
-  .edit > .actions.tools { grid-area: tools; margin-right: -8px; gap: 0; }
-  :root .edit > .actions.tools button { padding-left: 10px; padding-right: 10px; min-width: 0; }
+  /* Short screens (the phone keyboard is open): the editor gives its room to the list. Hints and spacing shrink first, and on a
+     very short screen the tools row waits until the keyboard is closed, so the newest item is never squeezed out of sight. */
+  @media (max-height: 470px) {
+    .screen.edit { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: 8px; gap: 6px; }
+    .screen.edit h1 { font-size: 20px; margin-bottom: 2px; }
+    :root[data-design="modern"] .screen.edit h1 { font-size: 22px; }
+    .screen.edit .hint:not(.err) { display: none; }
+    :root .edit > .actions.tools { padding-top: 0; }
+    .screen.edit .actions, .screen.edit .actions button { min-height: 44px; }
+  }
+  @media (max-height: 380px) { .screen.edit.has-tools > .actions.tools { display: none !important; } }
+  /* Delete, + Question and Cues share one row and split the width evenly, so they fit on a narrow phone. */
+  .edit > .actions.tools { grid-area: tools; }
+  :root .edit > .actions.tools { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; margin-right: 0; padding: 4px 0 0 4px; width: 100%; box-sizing: border-box; }
+  :root .edit > .actions.tools button { min-width: 0; padding: 0 4px; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; justify-content: center; }
+  :root[data-design="airplane"] .edit > .actions.tools button { font-size: 12.5px; letter-spacing: .02em; }
+  @media (max-width: 420px) { .edit > .actions.tools .ico { display: none; } }
   .edit > .actions.final { grid-area: actions; width: 100%; justify-content: space-between; margin-right: 0; }
   .edit > .actions.final button { padding-left: 12px; padding-right: 12px; }
   .actions button.cancel, .bar button.cancel { background: var(--cancel-bg); color: var(--cancel-fg); border-radius: var(--radius); }
@@ -190,6 +225,7 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   .choice .mark[data-done="1"]::after { content: ''; position: absolute; inset: 6px; border-radius: 50%; background: var(--fg); }
   .item.next { font-weight: 500; }
   /* Logo (top of Home): mark + wordmark, restyled by each design. */
+  .logo, .logo * { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; }
   .logo { align-self: flex-start; margin-bottom: auto; display: flex; align-items: center; gap: 10px; }
   .logo-mark { width: 32px; height: 32px; flex: none; overflow: visible; }
   .logo-box { fill: none; stroke: var(--fg); stroke-width: 2; }
@@ -1861,6 +1897,7 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
   const [error, setError] = useState('');
   const [itemId, setItemId] = useState(null); // item being edited on the item step
   const [dragId, setDragId] = useState(null);
+  const [freshId, setFreshId] = useState(null); // the item just added: it animates in and is scrolled into view
   const [offset, setOffset] = useState(0);
   // New checklists start by asking for the name; existing ones open straight on their points.
   const [step, setStep] = useState(list ? 'points' : 'name');
@@ -1879,6 +1916,16 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
   }, [step, qstage]);
   useEffect(() => () => press.current && clearTimeout(press.current.timer), []);
 
+  // A new item is added at the far end of the list, which can be out of sight (more so with the keyboard open): scroll it
+  // into view and let a short pop and ring show where it landed.
+  useLayoutEffect(() => {
+    if (freshId == null) return;
+    const el = rowEls.current[freshId];
+    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (el && el.scrollIntoView) { try { el.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' }); } catch (e) { el.scrollIntoView(); } }
+    const t = setTimeout(() => setFreshId(null), 1100);
+    return () => clearTimeout(t);
+  }, [freshId]);
   const focusDraft = () => { if (draftRef.current) draftRef.current.focus(); };
   const cur = items.find(i => i.id === itemId);
   const names = questions.map(q => q.name);
@@ -1891,7 +1938,9 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
   const add = () => {
     const t = draft.trim();
     if (!t) return;
-    setItems(prev => [...prev, mk(t)]);
+    const it = mk(t);
+    setItems(prev => [...prev, it]);
+    setFreshId(it.id);
     setDraft('');
     setError('');
     focusDraft();
@@ -2146,8 +2195,8 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
       h('div', { className: 'muted hint' },
         questions.length ? 'Each question is asked once, before you start. A Yes adds its items.' : 'Questions are asked once before you start, and a Yes adds extra items. Example: "I go to the sauna" adds "Towel".'),
       h('div', { className: 'actions final' },
-        h('button', { className: 'muted', onClick: () => setStep('points') }, 'Back'),
-        h('button', { id: 'add-question', className: 'muted', onClick: () => { setQdraft(''); setQstage('cond'); } }, '+ Question')));
+        h('button', { id: 'add-question', className: 'muted', onClick: () => { setQdraft(''); setQstage('cond'); } }, '+ Question'),
+        h('button', { id: 'questions-back', onClick: () => setStep('points') }, 'Back')));
   }
 
   return h('div', { className: 'screen edit has-tools' },
@@ -2160,7 +2209,7 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
         const note = [item.required ? 'required' : null, item.detail || null].filter(Boolean).join(' · ');
         return h('div', {
           key: item.id,
-          className: 'row' + (dragId === item.id ? ' lifted' : ''),
+          className: 'row' + (dragId === item.id ? ' lifted' : '') + (freshId === item.id ? ' fresh' : ''),
           ref: el => { if (el) rowEls.current[item.id] = el; else delete rowEls.current[item.id]; },
           style: {
             order: items.indexOf(item),
@@ -2191,13 +2240,13 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
       })),
     h('div', { className: 'actions tools' },
       list && !isDraft && h('button', { id: 'delete', className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
-      h('button', { id: 'questions', className: 'muted', onClick: () => { setError(''); setQstage('list'); setStep('questions'); } }, 'Questions'),
+      h('button', { id: 'questions', className: 'muted', onClick: () => { setError(''); setQstage('list'); setStep('questions'); } }, '+ Question'),
       h('button', { id: 'cues', className: 'muted', onClick: () => { setError(''); setFbFrom('points'); setStep('feedback'); } }, 'Cues')),
     h('div', { className: 'actions final' },
       h('div', { className: 'grp' },
         h('button', { id: 'cancel', className: 'muted cancel', onClick: onCancel }, 'Cancel'),
         h('button', { id: 'save', onClick: submit }, 'Save')),
-      h('button', { id: 'add-item', className: 'muted add-item', 'aria-label': 'Add item', onMouseDown: e => e.preventDefault(), onClick: () => { add(); if (draftRef.current) draftRef.current.focus(); } },
+      h('button', { id: 'add-item', className: 'add-item', 'aria-label': 'Add item', onMouseDown: e => e.preventDefault(), onClick: () => { add(); if (draftRef.current) draftRef.current.focus(); } },
         h('svg', { viewBox: '0 0 24 24', width: 22, height: 22, 'aria-hidden': 'true', focusable: 'false' }, h('path', { className: 'plus-path', d: 'M12 5v14M5 12h14' })))));
 }
 
