@@ -6,9 +6,10 @@
 <title>ChecklistPro</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#111111">
+<meta name="theme-color" content="#ff4a4a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script>
 /* Install prompt: the browser fires this once, early, so it is kept here until the app asks for it. */
 window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.__installPrompt = e; try { window.dispatchEvent(new Event('installready')); } catch (x) {} });
@@ -97,7 +98,7 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   body { display: flex; justify-content: center; align-items: center; }
   #root { width: 100%; height: 100%; max-width: 768px; max-height: 1024px; position: relative; }
   @media (min-width: 769px), (min-height: 1025px) { #root { border-radius: 22px; overflow: hidden; box-shadow: 0 0 0 1px var(--line-strong); } }
-  .screen { height: 100%; box-sizing: border-box; padding: 16px 20px 20px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 8px; }
+  .screen { height: 100%; box-sizing: border-box; padding: max(16px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 8px; }
   h1 { font-family: var(--font-display); font-size: 22px; font-weight: 500; margin: 0 0 12px; text-align: right; }
   /* Item stack: first item sits at the bottom, later items stack upward. Rows shrink instead of scrolling. */
   .stack { flex: 0 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column-reverse; align-items: flex-end; justify-content: flex-start; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
@@ -232,7 +233,9 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   .prop.selected { background: var(--lift); }
   /* Settings: a list that scrolls inside itself only when it is taller than the screen. */
   .screen.settings { justify-content: flex-end; }
-  .settings-scroll { flex: 0 1 auto; min-height: 0; width: 100%; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; }
+  /* The scrollbar sits in the screen's side padding (14px gutter pulled back with a negative margin), so it never covers text. */
+  .settings-scroll, .stack { box-sizing: border-box; width: calc(100% + 14px); margin-right: -14px; padding-right: 14px; }
+  .settings-scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; }
   .settings-in { text-align: right; }
   .settings-in h1 { margin-bottom: 4px; }
   .sec { font-family: var(--font-display); font-size: 13px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px; }
@@ -411,7 +414,7 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   :root[data-design="modern"] .refs-in h1 { display: inline-block; }
   :root[data-design="modern"][data-mode="dark"] h1, :root[data-design="modern"][data-mode="system"][data-theme="dark"] h1 { background: var(--accent); color: var(--accent-fg); }
   :root[data-design="modern"] .sec { display: table; margin: 18px 0 10px auto; padding: 2px 9px; background: var(--fg); color: var(--bg); font-size: 12px; font-weight: 700; letter-spacing: .06em; border-radius: var(--radius); }
-  :root[data-design="modern"] .stack { gap: 14px; padding: 5px 0 0 5px; }
+  :root[data-design="modern"] .stack { gap: 14px; padding: 5px 14px 0 5px; }
   :root[data-design="modern"] .choices, :root[data-design="modern"] .rows { gap: 14px; padding: 5px 0 0 5px; }
   :root[data-design="modern"] .stack > button.item, :root[data-design="modern"] .stack > div.item, :root[data-design="modern"] .row, :root[data-design="modern"] .prop, :root[data-design="modern"] .choice, :root[data-design="modern"] .srow { background: var(--surface); border: var(--border) solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0 12px; }
   :root[data-design="modern"] .stack > button.item, :root[data-design="modern"] .stack > div.item { width: calc(100% - 5px); }
@@ -769,6 +772,35 @@ function toneTickNow(volume) {
   osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch (e) {} };
 }
 function playTick() { try { toneTickNow(toneSavedVolume()); } catch (e) {} } // editor preview when the toggle is switched on
+// Modern: a soft click on every button press (Settings > Click sound turns it off). Its own quiet audio context, so it never
+// touches the Attention tone. The listener is capture-phase so buttons that leave the screen on tap still click.
+let clickCtx = null;
+function playClick(force) {
+  try {
+    if (!force && !(window.__clicksOn)) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!clickCtx || clickCtx.state === 'closed') clickCtx = new AC();
+    const c = clickCtx;
+    if (c.state !== 'running' && c.resume) { const p = c.resume(); if (p && p.catch) p.catch(() => {}); }
+    const t = c.currentTime + 0.005;
+    const osc = c.createOscillator(), gain = c.createGain(), lp = c.createBiquadFilter();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(520, t);
+    osc.frequency.exponentialRampToValueAtTime(190, t + 0.045);
+    lp.type = 'lowpass'; lp.frequency.value = 1400;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.16, t + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+    osc.connect(lp); lp.connect(gain); gain.connect(c.destination);
+    osc.start(t); osc.stop(t + 0.08);
+    osc.onended = () => { try { osc.disconnect(); lp.disconnect(); gain.disconnect(); } catch (e) {} };
+  } catch (e) {}
+}
+document.addEventListener('click', e => {
+  const b = e.target && e.target.closest ? e.target.closest('button, [role="radio"]') : null;
+  if (b && !b.disabled && b.id !== 'set-clicks') playClick();
+}, true);
 function speak(text) {
   try {
     if (!window.speechSynthesis) return;
@@ -929,6 +961,7 @@ function sanitizeSettings(raw) {
     direction: pick(r.direction, window.APPEARANCE.DIRECTIONS, 'up'),
     voiceDefault: r.voiceDefault === true,
     progress: r.progress !== false,
+    clicks: r.clicks !== false,
     airframe: pick(r.airframe, window.APPEARANCE.AIRFRAMES, 'airbus'),
     palette: pick(r.palette, window.APPEARANCE.PALETTES, 'red'),
     tone: { choice: pick(tone.choice, TONE_CHOICES, 'tick'), volume: pick(tone.volume, TONE_VOLUMES, 'medium') },
@@ -1147,6 +1180,7 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
         h('div', { className: 'sec' }, 'Appearance'),
         h('div', { className: 'rows' },
           row('set-mode', 'Mode', cap(settings.mode) + (settings.design === 'airplane' ? ' (Airplane is always dark)' : ''), () => cycle('mode', window.APPEARANCE.MODES)),
+          settings.design === 'modern' && row('set-clicks', 'Click sound', settings.clicks ? 'On' : 'Off', () => { if (!settings.clicks) playClick(true); onChange({ clicks: !settings.clicks }); }),
           row('set-progress', 'Progress bar', settings.progress ? 'On' : 'Off', () => onChange({ progress: !settings.progress })),
           row('set-effects', 'Effects', settings.effects === 'full' ? 'Full' : 'Reduced', () => cycle('effects', window.APPEARANCE.EFFECTS))),
         h('div', { className: 'sec' }, 'List direction'),
@@ -1866,7 +1900,7 @@ function App() {
   const [settings, setSettings] = useState(loadSettings);
   const [screen, setScreen] = useState({ name: 'home' });
   useEffect(() => save(lists), [lists]);
-  useEffect(() => { saveSettings(settings); window.applyAppearance(settings); }, [settings]);
+  useEffect(() => { saveSettings(settings); window.applyAppearance(settings); window.__clicksOn = settings.design === 'modern' && settings.clicks; }, [settings]);
   const home = () => setScreen({ name: 'home' });
   const update = next => { setLists(next); home(); };
   const change = patch => setSettings(prev => sanitizeSettings({
