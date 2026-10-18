@@ -52,8 +52,15 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   // ?design=modern&palette=red&mode=light&direction=up lets a page embed the app in a chosen look (used by the promo site).
   window.__qs = {};
   try { var q = new URLSearchParams(location.search); ['design', 'mode', 'effects', 'direction', 'airframe', 'palette'].forEach(function (k) { if (q.get(k)) window.__qs[k] = q.get(k); }); } catch (e) {}
+  // Settings used to be written on the very first visit, which pinned the old default look (Minimalist, Mint & coral) for
+  // everyone. Settings saved before version 2 that still show those defaults are treated as never chosen.
+  window.SETTINGS_VERSION = 2;
+  window.migrateSettings = function (s) {
+    if (s && typeof s === 'object' && s.v !== 2 && s.design === 'classic') { delete s.design; if (s.palette === 'mint') delete s.palette; }
+    return s;
+  };
   var saved = {};
-  try { saved = JSON.parse(localStorage.getItem('settings') || '{}') || {}; } catch (e) {}
+  try { saved = window.migrateSettings(JSON.parse(localStorage.getItem('settings') || '{}') || {}); } catch (e) {}
   for (var k in window.__qs) saved[k] = window.__qs[k];
   window.applyAppearance(saved);
 })();
@@ -915,6 +922,7 @@ function sanitizeSettings(raw) {
   const tone = r.tone && typeof r.tone === 'object' ? r.tone : {};
   const ai = r.ai && typeof r.ai === 'object' ? r.ai : {};
   return {
+    v: window.SETTINGS_VERSION,
     design: pick(r.design, window.APPEARANCE.DESIGNS, 'modern'),
     mode: pick(r.mode, window.APPEARANCE.MODES, 'system'),
     effects: pick(r.effects, window.APPEARANCE.EFFECTS, 'full'),
@@ -934,7 +942,7 @@ function sanitizeSettings(raw) {
 function loadSettings() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') || {}; } catch (e) {}
-  return sanitizeSettings({ ...saved, ...(window.__qs || {}) });
+  return sanitizeSettings({ ...window.migrateSettings(saved), ...(window.__qs || {}) });
 }
 function saveSettings(s) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) {}

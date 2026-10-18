@@ -1,6 +1,6 @@
 // ChecklistPro service worker: lets the app open offline once it has been loaded.
 // index.html is network-first, so a new deploy shows up right away; the copy in the cache is only used when offline.
-const CACHE = 'checklistpro-v1';
+const CACHE = 'checklistpro-v2';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
