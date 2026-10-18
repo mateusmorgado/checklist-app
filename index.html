@@ -226,6 +226,32 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   .install-actions { display: flex; flex: none; align-items: center; gap: 2px; }
   .install-actions button { min-height: var(--hit-min); padding: 0 10px; font-size: 15px; }
   @media (max-height: 560px) { .install-banner { display: none; } }
+  /* Install pop-up: a sheet that rises from the bottom (near the thumb) over any screen. */
+  .install-scrim { position: absolute; inset: 0; z-index: 40; display: flex; align-items: flex-end; background: rgba(0, 0, 0, .55); }
+  .install-dialog { width: 100%; max-height: 100%; overflow-y: auto; box-sizing: border-box; background: var(--surface); color: var(--fg); border-top: var(--border) solid var(--line-strong); border-radius: calc(var(--radius) * 3) calc(var(--radius) * 3) 0 0; padding: 18px 20px max(20px, env(safe-area-inset-bottom)); text-align: left; display: flex; flex-direction: column; gap: 12px; animation: sheet-up .28s cubic-bezier(.2, .9, .3, 1); }
+  @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .install-dialog h2 { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 600; line-height: 1.15; }
+  .install-lead { margin: 0; font-size: 16px; line-height: 1.4; color: var(--muted); }
+  .install-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .install-chips li { font-size: 13.5px; padding: 4px 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--lift); }
+  .install-chips li span { color: var(--ok); font-weight: 700; }
+  .install-oses { display: flex; flex-direction: column; gap: 8px; }
+  .install-os { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--lift); }
+  .install-os.mine { border-color: var(--accent); border-width: 2px; padding: 9px 11px; }
+  .os-ico { width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-fg); }
+  .os-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14.5px; line-height: 1.35; }
+  .os-text strong { font-size: 16.5px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .os-mine { font-style: normal; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--accent); color: var(--accent-fg); white-space: nowrap; }
+  .os-where { color: var(--muted); font-size: 13px; }
+  .install-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 4px; }
+  #install-close { min-height: var(--hit-min); padding: 0 8px; }
+  .install-cta { flex: 1 1 auto; min-height: 56px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-size: 19px; font-weight: 700; background: var(--accent); color: var(--accent-fg); border: var(--border) solid var(--line-strong); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .install-cta:disabled { opacity: .6; cursor: default; }
+  .install-os.flash { animation: os-flash .9s ease-in-out 3; }
+  @keyframes os-flash { 50% { background: var(--accent); color: var(--accent-fg); } }
+  .install-os.flash .os-where, .install-os.flash .os-steps { color: inherit; }
+  :root[data-design="classic"] .cta-ico { display: none; }
+  :root[data-design="classic"] .install-dialog { border-top-color: var(--line-strong); }
   .refs-link { grid-area: reflink; align-self: start; justify-self: end; }
   .manifesto-link { align-self: flex-end; min-height: var(--hit-min); min-width: var(--hit-min); padding: 0 4px; font-size: 14px; }
   /* @@REFS-CSS-END */
@@ -498,6 +524,22 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
     100% { translate: 0 40px; opacity: 1; }
   }
   @keyframes confetti-x { from { transform: translateX(0) rotate(0); } to { transform: translateX(var(--dx)) rotate(var(--rot)); } }
+  /* Install: in Modern the Install row and the pop-up button wiggle, pulse and send out a ring to catch the eye. */
+  :root[data-design="modern"] .srow.install-row { background: var(--accent); color: var(--accent-fg); animation: cta-wiggle 3s ease-in-out infinite; }
+  :root[data-design="modern"] .srow.install-row .value { color: var(--accent-fg); font-weight: 700; }
+  :root[data-design="modern"] .install-banner #install-yes { background: var(--accent); color: var(--accent-fg); border: var(--border) solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); font-weight: 700; padding: 0 14px; animation: cta-wiggle 3s ease-in-out infinite; }
+  :root[data-design="modern"] .install-dialog { border: var(--border) solid var(--line); border-bottom: 0; box-shadow: var(--shadow); }
+  :root[data-design="modern"] .install-dialog h2 { font-weight: 800; }
+  :root[data-design="modern"] .install-cta { font-family: var(--font-display); font-size: 21px; animation: cta-pulse 1.6s ease-in-out infinite, cta-ring 1.6s ease-out infinite; }
+  :root[data-design="modern"] .install-cta .cta-ico { animation: cta-bob .8s ease-in-out infinite alternate; }
+  :root[data-design="modern"] .install-cta:active { transform: translate(-4px, -4px); box-shadow: none; animation: none; }
+  @keyframes cta-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
+  @keyframes cta-ring { 0% { box-shadow: var(--shadow), 0 0 0 0 var(--accent); } 80%, 100% { box-shadow: var(--shadow), 0 0 0 16px transparent; } }
+  @keyframes cta-bob { from { translate: 0 -2px; } to { translate: 0 3px; } }
+  @keyframes cta-wiggle { 0%, 62%, 100% { transform: rotate(0) scale(1); } 68% { transform: rotate(-2.2deg) scale(1.04); } 74% { transform: rotate(2deg) scale(1.04); } 80% { transform: rotate(-1.4deg) scale(1.03); } 86% { transform: rotate(1deg) scale(1.02); } }
+  :root[data-design="airplane"] .install-cta { animation: cta-ring 2s ease-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .install-dialog, .install-cta, .install-cta .cta-ico, .install-os.flash, :root[data-design] .srow.install-row, :root[data-design] .install-banner #install-yes { animation: none !important; } }
+  :root[data-effects="reduced"] .install-cta, :root[data-effects="reduced"] .install-cta .cta-ico, :root[data-effects="reduced"] .srow.install-row, :root[data-effects="reduced"] .install-banner #install-yes { animation: none !important; }
   /* Colours row: pulses after switching to Modern until it is tapped, to show there is more to choose here. */
   :root[data-design="modern"] .srow.nudge { animation: nudge 1.8s ease-in-out infinite; outline: 3px dashed var(--accent); outline-offset: 3px; }
   @keyframes nudge { 0%, 55%, 100% { transform: scale(1) rotate(0); } 12% { transform: scale(1.06) rotate(-1deg); } 24% { transform: scale(.98) rotate(.8deg); } 36% { transform: scale(1.04) rotate(-.6deg); } }
@@ -1123,21 +1165,89 @@ function useInstall() {
 }
 const installDismissedAt = () => { try { return Number(localStorage.getItem(INSTALL_KEY)) || 0; } catch (e) { return 0; } };
 const installDue = () => Date.now() - installDismissedAt() >= INSTALL_AGAIN_DAYS * 24 * 60 * 60 * 1000;
-const IOS_STEPS = 'Tap the Share button, then "Add to Home Screen".';
 // Home: a small card under the logo. Dismissing it hides it for 5 days.
 function InstallBanner() {
   const inst = useInstall();
   const [hidden, setHidden] = useState(() => !installDue());
-  const [help, setHelp] = useState(false);
   if (hidden || !inst.available) return null;
   const dismiss = () => { try { localStorage.setItem(INSTALL_KEY, String(Date.now())); } catch (e) {} setHidden(true); };
   return h('div', { className: 'install-banner', id: 'install-banner', role: 'region', 'aria-label': 'Install the app' },
     h('div', { className: 'install-text' },
       h('strong', null, 'Install ChecklistPro'),
-      h('span', null, help ? IOS_STEPS : 'Add it to your home screen for one-tap access, even offline.')),
+      h('span', null, 'Add it to your home screen for one-tap access, even offline.')),
     h('div', { className: 'install-actions' },
-      h('button', { id: 'install-yes', onClick: () => { if (inst.canPrompt) inst.install(); else setHelp(true); } }, 'Install'),
+      h('button', { id: 'install-yes', className: 'install-cta-mini', onClick: openInstall }, 'Install'),
       h('button', { id: 'install-no', className: 'muted', 'aria-label': 'Not now', onClick: dismiss }, 'Not now')));
+}
+
+// Install pop-up: what a web app is, how to add it on each system, and one button that grabs the eye.
+// Opened from Settings and the Home card through window event "open-install"; InstallHost is mounted next to the App.
+const openInstall = () => { try { window.dispatchEvent(new Event('open-install')); } catch (e) {} };
+const OS_ICONS = {
+  android: 'M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85a.637.637 0 0 0-.83.22l-1.88 3.24a11.463 11.463 0 0 0-8.94 0L5.65 5.67a.643.643 0 0 0-.87-.2c-.28.18-.37.54-.22.83L6.4 9.48A10.78 10.78 0 0 0 1 18h22a10.78 10.78 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z',
+  apple: 'M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.15-2.8.85-3.5.85-.75 0-1.85-.8-3.05-.8-1.55.02-3 .9-3.8 2.3-1.65 2.85-.42 7 1.15 9.3.8 1.1 1.7 2.35 2.9 2.3 1.15-.05 1.6-.75 3-.75 1.4 0 1.8.75 3.05.72 1.25-.02 2.05-1.1 2.8-2.25.9-1.3 1.25-2.55 1.27-2.6-.03-.02-2.45-.95-2.5-3.7zM14.15 5.9c.65-.8 1.1-1.9.95-3-.95.04-2.1.65-2.8 1.45-.6.7-1.15 1.85-1 2.9 1.05.08 2.15-.55 2.85-1.35z',
+  windows: 'M3 4.6l7.5-1v7.3H3zM11.6 3.45L21 2v8.9h-9.4zM3 12.1h7.5v7.3L3 18.4zM11.6 12.1H21V21l-9.4-1.45z',
+};
+const OS_LIST = [
+  { id: 'android', name: 'Android', where: 'Chrome or Samsung Internet', steps: 'Tap Install below, or open the ⋮ menu and choose Install app (or Add to Home screen).' },
+  { id: 'apple', name: 'iPhone, iPad and Mac', where: 'Safari', steps: 'iPhone and iPad: tap Share, then Add to Home Screen. Mac: File, then Add to Dock.' },
+  { id: 'windows', name: 'Windows and desktop', where: 'Chrome or Edge', steps: 'Click the install icon at the right end of the address bar, or open the ⋯ menu and choose Install ChecklistPro.' },
+];
+const myOS = () => {
+  const ua = (navigator.userAgent || '');
+  if (/android/i.test(ua)) return 'android';
+  if (isIOS() || /Macintosh|Mac OS X/i.test(ua)) return 'apple';
+  if (/windows/i.test(ua)) return 'windows';
+  return '';
+};
+function OsIcon({ id }) {
+  return h('svg', { viewBox: '0 0 24 24', width: 26, height: 26, 'aria-hidden': 'true', focusable: 'false' }, h('path', { d: OS_ICONS[id], fill: 'currentColor' }));
+}
+function InstallDialog({ onClose }) {
+  const inst = useInstall();
+  const mine = useMemo(myOS, []);
+  const [shown, setShown] = useState(false);
+  const ctaRef = useRef(null);
+  useEffect(() => {
+    const prev = document.activeElement;
+    if (ctaRef.current) ctaRef.current.focus();
+    const key = e => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', key);
+    return () => { document.removeEventListener('keydown', key); try { if (prev && prev.focus) prev.focus(); } catch (e) {} };
+  }, []);
+  const order = [...OS_LIST].sort((a, b) => (b.id === mine) - (a.id === mine));
+  const go = async () => {
+    if (inst.canPrompt) { const r = await inst.install(); if (r === 'accepted') onClose(); }
+    else setShown(true);
+  };
+  const label = inst.standalone ? 'Installed' : inst.canPrompt ? 'Install now' : 'Show me how';
+  return h('div', { className: 'install-scrim', id: 'install-dialog-scrim', onClick: e => { if (e.target === e.currentTarget) onClose(); } },
+    h('div', { className: 'install-dialog', id: 'install-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'install-title' },
+      h('h2', { id: 'install-title' }, 'Install ChecklistPro'),
+      h('p', { className: 'install-lead' }, 'This is a web app. It installs straight from your browser, with no app store, and opens like any other app.'),
+      h('ul', { className: 'install-chips', 'aria-label': 'Why a web app' },
+        ['No app store', 'Works offline', 'Opens full screen', 'Updates itself'].map(t => h('li', { key: t }, h('span', { 'aria-hidden': 'true' }, '✓ '), t))),
+      h('div', { className: 'install-oses' },
+        order.map(o => h('div', { key: o.id, className: 'install-os' + (o.id === mine ? ' mine' : '') + (shown && o.id === mine ? ' flash' : ''), 'data-os': o.id },
+          h('span', { className: 'os-ico' }, h(OsIcon, { id: o.id })),
+          h('div', { className: 'os-text' },
+            h('strong', null, o.name, o.id === mine ? h('em', { className: 'os-mine' }, 'This device') : null),
+            h('span', { className: 'os-where' }, o.where),
+            h('span', { className: 'os-steps' }, o.steps))))),
+      h('div', { className: 'install-foot' },
+        h('button', { id: 'install-close', className: 'muted', onClick: onClose }, 'Not now'),
+        h('button', { id: 'install-go', ref: ctaRef, className: 'install-cta', disabled: inst.standalone, onClick: go },
+          h('svg', { className: 'cta-ico', viewBox: '0 0 24 24', width: 22, height: 22, 'aria-hidden': 'true', focusable: 'false' }, h('path', { d: 'M12 3v11m0 0l-4.5-4.5M12 14l4.5-4.5M5 19h14', fill: 'none', stroke: 'currentColor', strokeWidth: 2.6, strokeLinecap: 'round', strokeLinejoin: 'round' })),
+          label))));
+}
+function InstallHost() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const f = () => setOpen(true);
+    window.addEventListener('open-install', f);
+    return () => window.removeEventListener('open-install', f);
+  }, []);
+  return open ? h(InstallDialog, { onClose: () => setOpen(false) }) : null;
 }
 
 const AIRFRAME_NAMES = { airbus: 'Airbus', boeing: 'Boeing', embraer: 'Embraer' };
@@ -1149,16 +1259,12 @@ const AIRFRAME_NOTES = {
 const PALETTE_NAMES = { mint: 'Mint & coral', blue: 'Electric blue', cream: 'Cream & mint', red: 'Bold red' };
 function InstallRow() {
   const inst = useInstall();
-  const [help, setHelp] = useState(false);
   if (inst.standalone) return h('div', { className: 'rows' }, h('div', { className: 'srow', id: 'set-install', role: 'status' }, h('span', { className: 'name' }, 'App installed'), h('span', { className: 'value' }, '✓')));
-  const note = help || (inst.ios && !inst.canPrompt) ? IOS_STEPS
-    : inst.canPrompt ? 'Adds ChecklistPro to your home screen. It then opens full screen and works offline.'
-    : 'Open your browser menu and choose "Install app" or "Add to Home screen".';
   return h('div', null,
     h('div', { className: 'rows' },
-      h('button', { id: 'set-install', className: 'srow install-row', onClick: () => { if (inst.canPrompt) inst.install(); else setHelp(true); } },
+      h('button', { id: 'set-install', className: 'srow install-row', onClick: openInstall },
         h('span', { className: 'name' }, 'Install app'), h('span', { className: 'value' }, '↓'))),
-    h('p', { className: 'tone-note', id: 'install-note' }, note));
+    h('p', { className: 'tone-note', id: 'install-note' }, 'It is a web app: add it to Android, iPhone, iPad, Windows or Mac. Tap for the steps.'));
 }
 function SettingsHome({ settings, onChange, onNav, onBack }) {
   useEffect(() => { window.APPEARANCE.DESIGNS.forEach(window.ensureDesignFonts); }, []);
@@ -1982,7 +2088,7 @@ function App() {
   });
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(App), h(InstallHost)));
 </script>
 </body>
 </html>
