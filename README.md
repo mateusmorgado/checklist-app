@@ -17,7 +17,9 @@ Checklists are saved in the browser's `localStorage`.
 - **Questions:** yes/no only for now, asked once before a run: "If [I go to the sauna], then add Towel". A Yes adds the linked items. Number questions and quantity formulas ("5 nights, 7 socks") are parked until the workflow is designed; saved ones still run.
 - **List direction** (Settings): lists grow bottom to top by default so the first item and the buttons are close to the thumb, or top to bottom.
 - **Style options:** with Airplane selected, Settings offers a cockpit style: Airbus (the original look), Boeing or Embraer. With Modern selected it offers four colour sets: Mint & coral, Electric blue, Cream & mint, Bold red. The cockpit styles are inspired by each maker's display conventions, not copies.
-- **Quick list (bolt button on Home):** an explanation screen, then a name and one item per line. This is the plain version; the AI-written version is planned and will need a server function that holds the API key.
+- **Quick list (bolt button on Home):** say a list out loud (up to 17 seconds, tap Stop when done). The recording goes to `api/quick.js`, a Vercel function that asks Google Gemini to turn it into a checklist, and the text lands in an editable box. Good for groceries. Limit: 3 per IP per day.
+  - **Setup in Vercel:** add the environment variable `GOOGLE_API_KEY` (a Google AI Studio key; optional `GEMINI_MODEL`, default `gemini-2.5-flash`). For a daily limit that holds across servers, connect an Upstash Redis store from the Vercel Marketplace (it adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`). Without a store the limit is kept in memory and is only approximate.
+  - Opening `index.html` on its own (no `/api`) shows "Quick list is not available" and you can still type the items.
 - **Phone-width column:** on a wide screen the app stays a centred, phone-width column.
 - **Progress bar:** a bar fills smoothly as items are ticked during a run (Settings > Progress bar to turn it off).
 - **Manifesto:** the link under the logo explains where checklists come from (pilots, then doctors) and why they help.

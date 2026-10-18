@@ -1002,19 +1002,41 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
     h('div', { className: 'actions' }, h('button', { id: 'settings-back', onClick: onBack }, 'Back')));
 }
 
-// Quick list: a fast way to make a checklist. The bolt button on Home opens an explanation, then a name plus one item per line.
+// Quick list: say a list out loud (up to 17 seconds), a server function turns it into text, and the text lands in the white box.
+// The box stays editable, so typing works too. The key never touches this page: it lives in /api/quick (see api/quick.js).
+const QUICK_SECONDS = 17;
 function parseQuickItems(text) {
   return String(text).split(/\r?\n/)
     .map(l => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s+/, '').trim())
     .filter(Boolean).slice(0, 200).map(t => t.slice(0, 200));
 }
+// Recording (any browser format) -> 16 kHz mono WAV as base64, which every speech model accepts.
+async function recordingToWavBase64(blob) {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AC();
+  let decoded;
+  try { decoded = await ctx.decodeAudioData(await blob.arrayBuffer()); } finally { try { ctx.close(); } catch (e) {} }
+  const rate = 16000, frames = Math.max(1, Math.ceil(Math.min(decoded.duration, QUICK_SECONDS + 1) * rate));
+  const off = new OfflineAudioContext(1, frames, rate);
+  const src = off.createBufferSource(); src.buffer = decoded; src.connect(off.destination); src.start();
+  const pcm = (await off.startRendering()).getChannelData(0);
+  const buf = new ArrayBuffer(44 + pcm.length * 2), v = new DataView(buf);
+  const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + pcm.length * 2, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, 'data'); v.setUint32(40, pcm.length * 2, true);
+  for (let i = 0; i < pcm.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, pcm[i])) * 0x7fff, true);
+  const bytes = new Uint8Array(buf); let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
 function QuickIntro({ onBack, onStart }) {
   return h('div', { className: 'screen quick' },
     h('h1', null, 'Quick list'),
     h('div', { className: 'quick-text' },
-      h('p', null, 'Make a checklist in seconds.'),
-      h('p', null, 'Give it a name, then type or paste your items, one per line. You can polish the list later in the editor.'),
-      h('p', { className: 'muted' }, 'Later, this will also be able to write the list for you.')),
+      h('p', null, 'Say your list out loud and it appears as a checklist.'),
+      h('p', null, 'Good for groceries: just say what you need.'),
+      h('p', { className: 'muted' }, 'You have ' + QUICK_SECONDS + ' seconds, and you stop when you are done. Your voice is sent to Google to turn it into text and is not kept by the app. 3 quick lists per day.')),
     h('div', { className: 'actions final' },
       h('button', { id: 'quick-back', className: 'muted', onClick: onBack }, 'Back'),
       h('button', { id: 'quick-start', onClick: onStart }, 'Start')));
@@ -1022,25 +1044,96 @@ function QuickIntro({ onBack, onStart }) {
 function QuickMake({ voiceDefault, onCancel, onSave }) {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
-  const titleRef = useRef(null);
-  useLayoutEffect(() => { if (titleRef.current) titleRef.current.focus(); }, []);
+  const [phase, setPhase] = useState('idle'); // idle | recording | working
+  const [secs, setSecs] = useState(0);
+  const [status, setStatus] = useState('');
+  const rec = useRef({ stream: null, mr: null, timer: 0, t0: 0, abort: null, gone: false, chunks: [] });
+  const textRef = useRef(null);
+  const release = () => {
+    const r = rec.current;
+    clearInterval(r.timer); r.timer = 0;
+    try { if (r.mr && r.mr.state !== 'inactive') r.mr.stop(); } catch (e) {}
+    try { if (r.stream) r.stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+    r.stream = null;
+  };
+  const stop = () => { const r = rec.current; clearInterval(r.timer); r.timer = 0; try { if (r.mr && r.mr.state === 'recording') r.mr.stop(); } catch (e) {} };
+  const start = async () => {
+    const r = rec.current;
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) || typeof MediaRecorder === 'undefined') {
+      setStatus('Voice is not available in this browser. You can type your items in the box.'); return;
+    }
+    setStatus(''); setSecs(0);
+    try { r.stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch (e) { setStatus('The microphone is blocked. Allow it in the browser, or type your items in the box.'); return; }
+    if (r.gone) { release(); return; }
+    r.chunks = [];
+    r.mr = new MediaRecorder(r.stream);
+    r.mr.ondataavailable = e => { if (e.data && e.data.size) r.chunks.push(e.data); };
+    r.mr.onstop = () => {
+      const blob = new Blob(r.chunks, { type: (r.mr && r.mr.mimeType) || 'audio/webm' });
+      try { r.stream && r.stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+      r.stream = null;
+      if (!r.gone) transcribe(blob);
+    };
+    r.mr.start();
+    r.t0 = Date.now();
+    setPhase('recording');
+    r.timer = setInterval(() => {
+      const e = (Date.now() - r.t0) / 1000;
+      setSecs(Math.min(e, QUICK_SECONDS));
+      if (e >= QUICK_SECONDS) stop();
+    }, 100);
+  };
+  const transcribe = async blob => {
+    const r = rec.current;
+    setPhase('working'); setStatus('Turning your voice into a list…');
+    r.abort = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    try {
+      const audio = await recordingToWavBase64(blob);
+      const res = await fetch('/api/quick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ audio, mime: 'audio/wav' }), signal: r.abort ? r.abort.signal : undefined });
+      if (r.gone) return;
+      if (res.status === 429) { setStatus('You have used your 3 quick lists for today. You can still type your items in the box.'); }
+      else if (res.status === 503 || res.status === 404 || res.status === 405) { setStatus('Quick list is not available right now. You can type your items in the box.'); }
+      else if (!res.ok) { setStatus('That did not work. Try recording again.'); }
+      else {
+        const data = await res.json();
+        const items = Array.isArray(data.items) ? data.items.filter(x => typeof x === 'string' && x.trim()) : [];
+        if (!items.length) setStatus('I could not hear a list. Try again and say the items one after another.');
+        else {
+          setText(prev => (prev.trim() ? prev.replace(/\s+$/, '') + '\n' : '') + items.join('\n'));
+          setTitle(prev => prev || (typeof data.title === 'string' ? data.title.slice(0, 60) : ''));
+          setStatus(typeof data.left === 'number' ? 'Check the list, then save. ' + data.left + ' left today.' : 'Check the list, then save.');
+        }
+      }
+    } catch (e) { if (!r.gone) setStatus('That did not work. Try recording again, or type your items in the box.'); }
+    if (!r.gone) setPhase('idle');
+  };
+  useLayoutEffect(() => { start(); return () => { const r = rec.current; r.gone = true; if (r.abort) try { r.abort.abort(); } catch (e) {} release(); }; }, []);
+
   const items = parseQuickItems(text);
   const ready = title.trim() && items.length > 0;
   const save = () => {
-    if (!ready) { if (!title.trim() && titleRef.current) titleRef.current.focus(); return; }
+    if (!ready) { setStatus(title.trim() ? 'Add at least one item first.' : 'Give the list a name first.'); return; }
     onSave({ id: String(Date.now()), title: title.trim().slice(0, 100), sound: false, voice: !!voiceDefault, questions: [],
       items: items.map(t => ({ text: t, detail: '', qty: '', required: false })) });
   };
+  const recording = phase === 'recording', working = phase === 'working';
   return h('div', { className: 'screen quick' },
     h('h1', null, 'New quick list'),
-    h('div', { className: 'muted hint' }, 'One item per line. A dash or number at the start of a line is ignored.'),
-    h('input', { id: 'quick-title', ref: titleRef, value: title, placeholder: 'Name', maxLength: 100, enterKeyHint: 'next',
-      onChange: e => setTitle(e.target.value) }),
-    h('textarea', { id: 'quick-items', className: 'ta', value: text, placeholder: 'Towel\nWater bottle\nShoes', rows: 5, onChange: e => setText(e.target.value) }),
-    h('div', { className: 'muted hint', id: 'quick-count' }, items.length + (items.length === 1 ? ' item' : ' items')),
+    h('div', { className: 'muted hint', id: 'quick-hint' }, 'Good for groceries: just say what you need.'),
+    recording && h('div', { className: 'progress', role: 'progressbar', 'aria-label': 'Recording time', 'aria-valuemin': 0, 'aria-valuemax': QUICK_SECONDS, 'aria-valuenow': Math.round(secs), id: 'quick-time' },
+      h('div', { className: 'progress-track' }, h('div', { className: 'progress-fill', style: { width: (secs / QUICK_SECONDS * 100) + '%', transition: 'none' } })),
+      h('span', { className: 'progress-label' }, Math.floor(secs) + ' / ' + QUICK_SECONDS + ' s')),
+    h('div', { className: 'muted hint', id: 'quick-status', role: 'status', 'aria-live': 'polite' }, recording ? 'Listening… tap Stop when you are done.' : status),
+    h('input', { id: 'quick-title', value: title, placeholder: 'Name', maxLength: 100, onChange: e => setTitle(e.target.value) }),
+    h('textarea', { id: 'quick-items', ref: textRef, className: 'ta', value: text, rows: 5, placeholder: 'Your list appears here. You can edit it.', onChange: e => setText(e.target.value) }),
     h('div', { className: 'actions final' },
       h('button', { id: 'quick-cancel', className: 'muted cancel', onClick: onCancel }, 'Cancel'),
-      h('button', { id: 'quick-save', className: ready ? '' : 'muted', onClick: save }, 'Save')));
+      h('div', { className: 'grp' },
+        recording
+          ? h('button', { id: 'quick-stop', onClick: stop }, 'Stop')
+          : h('button', { id: 'quick-record', className: working || ready ? 'muted' : '', disabled: working, onClick: start }, working ? 'Working…' : (text.trim() ? 'Record more' : 'Record')),
+        h('button', { id: 'quick-save', className: ready && !recording && !working ? '' : 'muted', disabled: recording || working, onClick: save }, 'Save'))));
 }
 
 // Ask: one question per screen before a run. Numbers are typed, yes/no is one tap (yes = 1, no = 0).
