@@ -1194,7 +1194,8 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
           row('set-tone', 'Attention tone', toneLabel, () => onNav('settings-tone')),
           row('set-voice', 'Confirmation cue', settings.voiceDefault ? 'On for new lists' : 'Off for new lists', () => onChange({ voiceDefault: !settings.voiceDefault })),
           QUICK_LIST_ENABLED && row('set-ai', 'Quick list (AI)', settings.ai.key ? 'Key saved' : 'No key', () => onNav('settings-ai')),
-          row('set-refs', 'References', '', () => onNav('references'))),
+          row('set-refs', 'References', '', () => onNav('references')),
+          row('set-reset', 'Reset app', '', () => onNav('reset'))),
         h('p', { className: 'tone-note', id: 'voice-note' }, 'Confirmation cue repeats each item out loud when you tick it. This sets the starting choice for new checklists; each checklist can change it under Cues.'))),
     h('div', { className: 'actions' }, h('button', { id: 'settings-back', onClick: onBack }, 'Back')));
 }
@@ -1472,6 +1473,38 @@ function RunList({ title, items, sound, voice, tone, progress, onClose }) {
 
 /* @@REFSPAGE-START */
 // References page: the research behind the feedback settings. Used by the editor and by Settings.
+// Reset: back to the standard app. "Reset settings" keeps the checklists; "Erase everything" also removes them, clears the
+// offline copy and the service worker, and reloads. Each needs a second tap so it cannot happen by accident.
+function ResetPage({ onResetSettings, onBack }) {
+  const [armed, setArmed] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const tap = which => {
+    if (armed !== which) { setArmed(which); return; }
+    if (which === 'settings') { onResetSettings(); return; }
+    setBusy(true);
+    const done = () => { try { location.replace(location.pathname); } catch (e) { location.reload(); } };
+    try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+    const work = [];
+    try { if (window.caches) work.push(caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k))))); } catch (e) {}
+    try { if (navigator.serviceWorker) work.push(navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister())))); } catch (e) {}
+    Promise.all(work.map(w => w.catch(() => {}))).then(done, done);
+  };
+  return h('div', { className: 'screen settings' },
+    h('div', { className: 'settings-scroll' },
+      h('div', { className: 'settings-in' },
+        h('h1', null, 'Reset app'),
+        h('div', { className: 'rows' },
+          h('button', { id: 'reset-settings', className: 'srow', disabled: busy, onClick: () => tap('settings') },
+            h('span', { className: 'name' }, armed === 'settings' ? 'Tap again to confirm' : 'Reset settings')),
+          h('button', { id: 'reset-all', className: 'srow', disabled: busy, onClick: () => tap('all') },
+            h('span', { className: 'name' }, busy ? 'Erasing…' : armed === 'all' ? 'Tap again to erase everything' : 'Erase everything'))),
+        h('p', { className: 'tone-note', id: 'reset-note' }, armed === 'all'
+          ? 'This deletes all your checklists and settings, clears the offline copy and reloads the app as new, with the four example lists.'
+          : armed === 'settings'
+            ? 'Design, colours, mode, effects, sounds and list direction go back to the standard (Modern, Bold red). Your checklists stay.'
+            : 'Reset settings puts the look and sounds back to the standard and keeps your checklists. Erase everything also deletes your checklists and starts the app as new, with the four example lists.'))),
+    h('div', { className: 'actions' }, h('button', { id: 'reset-back', onClick: onBack }, 'Back')));
+}
 function ReferencesPage({ onBack }) {
   return h('div', { className: 'screen edit' },
       h('div', { className: 'refs' },
@@ -1917,6 +1950,7 @@ function App() {
   if (screen.name === 'settings') return h(SettingsHome, { settings, onChange: change, onNav: name => setScreen({ name }), onBack: home });
   if (screen.name === 'settings-tone') return h(ToneSettings, { settings, onChange: change, onBack: toSettings });
   if (screen.name === 'settings-ai') return h(QuickSettings, { settings, onChange: change, onBack: toSettings });
+  if (screen.name === 'reset') return h(ResetPage, { onResetSettings: () => { setSettings(sanitizeSettings({})); toSettings(); }, onBack: toSettings });
   if (screen.name === 'references') return h(ReferencesPage, { onBack: toSettings });
   if (screen.name === 'manifesto') return h(ManifestoPage, { onBack: home });
   if (screen.name === 'quick') return h(QuickIntro, { onBack: home, onStart: () => setScreen({ name: 'quick-make' }) });
