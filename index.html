@@ -71,7 +71,8 @@
   }
   html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; overscroll-behavior: none; }
   body { background: var(--bg); color: var(--fg); font: 18px/1.3 var(--font); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-  #root { height: 100%; }
+  /* Built for a phone held in one hand: on wide screens the app stays a centred phone-width column instead of stretching. */
+  #root { height: 100%; max-width: 480px; margin: 0 auto; position: relative; }
   .screen { height: 100%; box-sizing: border-box; padding: 16px 20px 20px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 8px; }
   h1 { font-family: var(--font-display); font-size: 22px; font-weight: 500; margin: 0 0 12px; text-align: right; }
   /* Item stack: first item sits at the bottom, later items stack upward. Rows shrink instead of scrolling. */
@@ -169,6 +170,18 @@
   /* Home: right-aligned link under the logo (the logo is on the left).  */
   .home-top { align-self: stretch; margin-bottom: auto; display: flex; flex-direction: column; }
   :root[data-design] .home-top .logo { margin-bottom: 0; }
+  .actions .grp { display: flex; align-items: center; }
+  .edit > .actions.ask-actions, .screen > .actions.final { justify-content: space-between; }
+  .screen > .actions.final { width: 100%; margin-right: 0; }
+  .bolt { display: inline-flex; align-items: center; justify-content: center; min-width: var(--hit-min); }
+  .bolt-path { fill: currentColor; }
+  .screen.quick > * { max-width: 100%; }
+  .screen.quick h1 { margin-bottom: 12px; }
+  .quick-text { width: 100%; text-align: right; font-size: 17px; line-height: 1.45; margin-bottom: 8px; }
+  .quick-text p { margin: 0 0 10px; }
+  .screen.quick input, textarea.ta { width: 100%; box-sizing: border-box; text-align: left; }
+  textarea.ta { font: inherit; color: inherit; background: var(--surface); border: var(--border) solid var(--line-strong); border-radius: var(--radius); padding: 10px 12px; min-height: 96px; flex: 0 1 150px; resize: none; }
+  textarea.ta:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
   .refs-link { grid-area: reflink; align-self: start; justify-self: end; }
   .manifesto-link { align-self: flex-end; min-height: var(--hit-min); min-width: var(--hit-min); padding: 0 4px; font-size: 14px; }
   /* @@REFS-CSS-END */
@@ -925,8 +938,10 @@ function Home({ lists, onRun, onEdit, onSettings, onQuick, onManifesto }) {
     lists.length === 0 && h('div', { className: 'muted' }, 'No checklists'),
     h('div', { className: 'bar' },
       h('button', { id: 'new', onClick: () => onEdit(null) }, '+ New'),
-      QUICK_LIST_ENABLED && h('button', { id: 'quick', className: 'muted', onClick: onQuick }, 'Quick list'),
-      h('button', { id: 'settings', className: 'muted', onClick: onSettings }, 'Settings')));
+      h('button', { id: 'settings', className: 'muted', onClick: onSettings }, 'Settings'),
+      h('button', { id: 'quick', className: 'muted bolt', 'aria-label': 'Quick list', onClick: onQuick },
+        h('svg', { viewBox: '0 0 24 24', width: 22, height: 22, 'aria-hidden': 'true', focusable: 'false' },
+          h('path', { className: 'bolt-path', d: 'M13.5 2 5 13.5h5.5L9.5 22 19 9.5h-5.8L13.5 2Z' })))));
 }
 
 // Settings: design, mode and effects up front, then the sub-screens. Changes apply immediately.
@@ -987,6 +1002,47 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
     h('div', { className: 'actions' }, h('button', { id: 'settings-back', onClick: onBack }, 'Back')));
 }
 
+// Quick list: a fast way to make a checklist. The bolt button on Home opens an explanation, then a name plus one item per line.
+function parseQuickItems(text) {
+  return String(text).split(/\r?\n/)
+    .map(l => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s+/, '').trim())
+    .filter(Boolean).slice(0, 200).map(t => t.slice(0, 200));
+}
+function QuickIntro({ onBack, onStart }) {
+  return h('div', { className: 'screen quick' },
+    h('h1', null, 'Quick list'),
+    h('div', { className: 'quick-text' },
+      h('p', null, 'Make a checklist in seconds.'),
+      h('p', null, 'Give it a name, then type or paste your items, one per line. You can polish the list later in the editor.'),
+      h('p', { className: 'muted' }, 'Later, this will also be able to write the list for you.')),
+    h('div', { className: 'actions final' },
+      h('button', { id: 'quick-back', className: 'muted', onClick: onBack }, 'Back'),
+      h('button', { id: 'quick-start', onClick: onStart }, 'Start')));
+}
+function QuickMake({ voiceDefault, onCancel, onSave }) {
+  const [title, setTitle] = useState('');
+  const [text, setText] = useState('');
+  const titleRef = useRef(null);
+  useLayoutEffect(() => { if (titleRef.current) titleRef.current.focus(); }, []);
+  const items = parseQuickItems(text);
+  const ready = title.trim() && items.length > 0;
+  const save = () => {
+    if (!ready) { if (!title.trim() && titleRef.current) titleRef.current.focus(); return; }
+    onSave({ id: String(Date.now()), title: title.trim().slice(0, 100), sound: false, voice: !!voiceDefault, questions: [],
+      items: items.map(t => ({ text: t, detail: '', qty: '', required: false })) });
+  };
+  return h('div', { className: 'screen quick' },
+    h('h1', null, 'New quick list'),
+    h('div', { className: 'muted hint' }, 'One item per line. A dash or number at the start of a line is ignored.'),
+    h('input', { id: 'quick-title', ref: titleRef, value: title, placeholder: 'Name', maxLength: 100, enterKeyHint: 'next',
+      onChange: e => setTitle(e.target.value) }),
+    h('textarea', { id: 'quick-items', className: 'ta', value: text, placeholder: 'Towel\nWater bottle\nShoes', rows: 5, onChange: e => setText(e.target.value) }),
+    h('div', { className: 'muted hint', id: 'quick-count' }, items.length + (items.length === 1 ? ' item' : ' items')),
+    h('div', { className: 'actions final' },
+      h('button', { id: 'quick-cancel', className: 'muted cancel', onClick: onCancel }, 'Cancel'),
+      h('button', { id: 'quick-save', className: ready ? '' : 'muted', onClick: save }, 'Save')));
+}
+
 // Ask: one question per screen before a run. Numbers are typed, yes/no is one tap (yes = 1, no = 0).
 // The answers feed the quantity formulas.
 function Ask({ list, onDone, onCancel }) {
@@ -1021,13 +1077,15 @@ function Ask({ list, onDone, onCancel }) {
         onChange: e => setVals(v => v.map((x, k) => (k === i ? e.target.value : x))),
         onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); next(); } },
       })),
-    h('div', { className: 'actions' },
-      h('button', { className: 'muted cancel', onClick: onCancel }, 'Cancel'),
-      i > 0 && h('button', { className: 'muted', onClick: () => setI(i - 1) }, 'Back'),
-      q.type === 'yesno'
-        ? [h('button', { key: 'no', id: 'no', onClick: () => answerYesNo(false) }, 'No'),
-           h('button', { key: 'yes', id: 'yes', onClick: () => answerYesNo(true) }, 'Yes')]
-        : h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next')));
+    h('div', { className: 'actions final ask-actions' },
+      h('div', { className: 'grp' },
+        h('button', { className: 'muted cancel', onClick: onCancel }, 'Cancel'),
+        i > 0 && h('button', { className: 'muted', onClick: () => setI(i - 1) }, 'Back')),
+      h('div', { className: 'grp' },
+        q.type === 'yesno'
+          ? [h('button', { key: 'no', id: 'no', className: 'muted', onClick: () => answerYesNo(false) }, 'No'),
+             h('button', { key: 'yes', id: 'yes', onClick: () => answerYesNo(true) }, 'Yes')]
+          : h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next'))));
 }
 
 function Run({ list, tone, progress, onClose }) {
@@ -1460,9 +1518,9 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
           }))),
       h('div', { className: 'muted hint' },
         questions.length ? 'Each question is asked once, before you start. A Yes adds its items.' : 'Questions are asked once before you start, and a Yes adds extra items. Example: "I go to the sauna" adds "Towel".'),
-      h('div', { className: 'actions' },
-        h('button', { id: 'add-question', onClick: () => { setQdraft(''); setQstage('cond'); } }, '+ Question'),
-        h('button', { onClick: () => setStep('points') }, 'Back')));
+      h('div', { className: 'actions final' },
+        h('button', { className: 'muted', onClick: () => setStep('points') }, 'Back'),
+        h('button', { id: 'add-question', className: 'muted', onClick: () => { setQdraft(''); setQstage('cond'); } }, '+ Question')));
   }
 
   return h('div', { className: 'screen edit has-tools' },
@@ -1537,10 +1595,8 @@ function App() {
   if (screen.name === 'settings-ai') return h(QuickSettings, { settings, onChange: change, onBack: toSettings });
   if (screen.name === 'references') return h(ReferencesPage, { onBack: toSettings });
   if (screen.name === 'manifesto') return h(ManifestoPage, { onBack: home });
-  if (screen.name === 'quick') return h(QuickScreen, {
-    settings, onCancel: home, onOpenSettings: () => setScreen({ name: 'settings-ai' }),
-    onDraft: list => setScreen({ name: 'edit', list: { ...list, id: String(Date.now()) }, draft: true }),
-  });
+  if (screen.name === 'quick') return h(QuickIntro, { onBack: home, onStart: () => setScreen({ name: 'quick-make' }) });
+  if (screen.name === 'quick-make') return h(QuickMake, { voiceDefault: settings.voiceDefault, onCancel: home, onSave: list => update([...lists, list]) });
   return h(Home, {
     lists, onSettings: toSettings, onQuick: () => setScreen({ name: 'quick' }),
     onRun: list => setScreen({ name: 'run', list }), onEdit: list => setScreen({ name: 'edit', list }), onManifesto: () => setScreen({ name: 'manifesto' }),
