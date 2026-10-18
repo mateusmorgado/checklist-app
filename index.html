@@ -459,10 +459,9 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   :root[data-design="modern"] .home-top, :root[data-design="modern"] .stack, :root[data-design="modern"] .bar { position: relative; z-index: 1; }
   :root[data-design="modern"] .sticker { position: absolute; width: 52px; height: 52px; fill: var(--accent); stroke: var(--line); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; animation: floaty 6s ease-in-out infinite alternate; }
   :root[data-design="modern"] .s1 { top: 21%; left: 8%; width: 58px; height: 58px; transform: rotate(-12deg); }
-  :root[data-design="modern"] .s2 { top: 36%; right: 14%; fill: var(--ok-fill); width: 62px; height: 62px; animation-delay: -2s; transform: rotate(8deg); }
-  :root[data-design="modern"] .sticker .st-check { fill: none; stroke-width: 5; }
-  :root[data-design="modern"] .sticker .st-eye { fill: none; stroke-width: 3.4; }
-  :root[data-design="modern"] .sticker .st-blush { fill: var(--err-fill); stroke: none; }
+  :root[data-design="modern"] .s2 { top: 36%; right: 14%; width: 66px; height: 66px; animation-delay: -2s; transform: rotate(8deg); }
+  :root[data-design="modern"] .sticker .st-check-out { fill: none; stroke: var(--line); stroke-width: 13; }
+  :root[data-design="modern"] .sticker .st-check-in { fill: none; stroke: var(--ok-fill); stroke-width: 6.5; }
   @keyframes floaty { from { translate: 0 0; rotate: 0deg; } to { translate: 0 -10px; rotate: 7deg; } }
   :root[data-design="modern"] .item .mark[data-done="1"] { animation: pop .45s cubic-bezier(.3, 1.7, .5, 1); }
   @keyframes pop { from { transform: scale(.35) rotate(-25deg); } to { transform: scale(1) rotate(0); } }
@@ -1002,16 +1001,14 @@ function Logo() {
 }
 
 // Home: the list of checklists, first one at the bottom. "+ New" is the lowest control.
-// Modern Home stickers: a sparkle and a cute checkmark badge.
+// Modern Home stickers: a sparkle and a chunky checkmark.
 function Stickers() {
   return h('div', { className: 'stickers', 'aria-hidden': 'true' },
     h('svg', { className: 'sticker s1', viewBox: '0 0 48 48', focusable: 'false' },
       h('path', { d: 'M24 3C26 16 32 22 45 24C32 26 26 32 24 45C22 32 16 26 3 24C16 22 22 16 24 3Z' })),
     h('svg', { className: 'sticker s2', viewBox: '0 0 48 48', focusable: 'false' },
-      h('path', { d: 'M24 4a20 20 0 1 0 0 40a20 20 0 1 0 0-40Z' }),
-      h('path', { className: 'st-eye', d: 'M17 13.5v3M31 13.5v3' }),
-      h('path', { className: 'st-blush', d: 'M10 27a3 2 0 1 0 6 0a3 2 0 1 0-6 0M32 27a3 2 0 1 0 6 0a3 2 0 1 0-6 0' }),
-      h('path', { className: 'st-check', d: 'M16 27.5l5.5 5.5 10.5-11' })));
+      h('path', { className: 'st-check-out', d: 'M8 26l11 11L40 11' }),
+      h('path', { className: 'st-check-in', d: 'M8 26l11 11L40 11' })));
 }
 function Home({ lists, onRun, onEdit, onSettings, onQuick, onManifesto }) {
   return h('div', { className: 'screen' },
