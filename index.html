@@ -458,14 +458,11 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   :root[data-design="modern"] .stickers { display: block; position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
   :root[data-design="modern"] .home-top, :root[data-design="modern"] .stack, :root[data-design="modern"] .bar { position: relative; z-index: 1; }
   :root[data-design="modern"] .sticker { position: absolute; width: 52px; height: 52px; fill: var(--accent); stroke: var(--line); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; animation: floaty 6s ease-in-out infinite alternate; }
-  :root[data-design="modern"] .sticker .st-line { fill: none; stroke-width: 4.5; }
-  :root[data-design="modern"] .sticker .st-dot { fill: var(--surface); }
   :root[data-design="modern"] .s1 { top: 21%; left: 8%; width: 58px; height: 58px; transform: rotate(-12deg); }
-  :root[data-design="modern"] .s2 { top: 30%; right: 12%; fill: var(--err-fill); width: 46px; height: 46px; animation-delay: -1.5s; transform: rotate(10deg); }
-  :root[data-design="modern"] .s3 { top: 41%; left: 30%; fill: var(--ok-fill); width: 64px; height: 64px; animation-delay: -3s; transform: rotate(8deg); }
-  :root[data-design="modern"] .s4 { top: 25%; left: 52%; fill: var(--surface); width: 40px; height: 40px; animation-delay: -4s; transform: rotate(-8deg); }
-  :root[data-design="modern"] .s5 { top: 46%; right: 8%; width: 70px; height: 70px; animation-delay: -2s; }
-  :root[data-design="modern"] .s6 { top: 19%; right: 30%; fill: var(--warn-fill); width: 34px; height: 34px; animation-delay: -5s; transform: rotate(14deg); }
+  :root[data-design="modern"] .s2 { top: 36%; right: 14%; fill: var(--ok-fill); width: 62px; height: 62px; animation-delay: -2s; transform: rotate(8deg); }
+  :root[data-design="modern"] .sticker .st-check { fill: none; stroke-width: 5; }
+  :root[data-design="modern"] .sticker .st-eye { fill: none; stroke-width: 3.4; }
+  :root[data-design="modern"] .sticker .st-blush { fill: var(--err-fill); stroke: none; }
   @keyframes floaty { from { translate: 0 0; rotate: 0deg; } to { translate: 0 -10px; rotate: 7deg; } }
   :root[data-design="modern"] .item .mark[data-done="1"] { animation: pop .45s cubic-bezier(.3, 1.7, .5, 1); }
   @keyframes pop { from { transform: scale(.35) rotate(-25deg); } to { transform: scale(1) rotate(0); } }
@@ -1005,18 +1002,16 @@ function Logo() {
 }
 
 // Home: the list of checklists, first one at the bottom. "+ New" is the lowest control.
-const STICKERS = [
-  ['M24 3C26 16 32 22 45 24C32 26 26 32 24 45C22 32 16 26 3 24C16 22 22 16 24 3Z'],                                  // sparkle
-  ['M24 42C8 30 4 20 9 13C14 7 21 9 24 15C27 9 34 7 39 13C44 20 40 30 24 42Z'],                                       // heart
-  ['M24 4l4 6 7-3 1 7 7 1-3 7 6 4-6 4 3 7-7 1-1 7-7-3-4 6-4-6-7 3-1-7-7-1 3-7-6-4 6-4-3-7 7-1 1-7 7 3z', 'M24 24m-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0'], // flower
-  ['M8 6L40 22L26 26L22 40Z'],                                                                                         // cursor
-  ['M4 24q5-12 10 0t10 0t10 0t10 0', 'line'],                                                                          // squiggle
-  ['M24 3C26 16 32 22 45 24C32 26 26 32 24 45C22 32 16 26 3 24C16 22 22 16 24 3Z'],                                  // second sparkle
-];
+// Modern Home stickers: a sparkle and a cute checkmark badge.
 function Stickers() {
   return h('div', { className: 'stickers', 'aria-hidden': 'true' },
-    STICKERS.map(([d, extra], k) => h('svg', { key: k, className: 'sticker s' + (k + 1), viewBox: '0 0 48 48', focusable: 'false' },
-      h('path', { d, className: extra === 'line' ? 'st-line' : '' }), extra && extra !== 'line' ? h('path', { d: extra, className: 'st-dot' }) : null)));
+    h('svg', { className: 'sticker s1', viewBox: '0 0 48 48', focusable: 'false' },
+      h('path', { d: 'M24 3C26 16 32 22 45 24C32 26 26 32 24 45C22 32 16 26 3 24C16 22 22 16 24 3Z' })),
+    h('svg', { className: 'sticker s2', viewBox: '0 0 48 48', focusable: 'false' },
+      h('path', { d: 'M24 4a20 20 0 1 0 0 40a20 20 0 1 0 0-40Z' }),
+      h('path', { className: 'st-eye', d: 'M17 13.5v3M31 13.5v3' }),
+      h('path', { className: 'st-blush', d: 'M10 27a3 2 0 1 0 6 0a3 2 0 1 0-6 0M32 27a3 2 0 1 0 6 0a3 2 0 1 0-6 0' }),
+      h('path', { className: 'st-check', d: 'M16 27.5l5.5 5.5 10.5-11' })));
 }
 function Home({ lists, onRun, onEdit, onSettings, onQuick, onManifesto }) {
   return h('div', { className: 'screen' },
