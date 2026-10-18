@@ -49,8 +49,12 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
     window.ensureDesignFonts(design);
     if (design === 'airplane' && airframe === 'boeing') window.ensureDesignFonts('boeing');
   };
+  // ?design=modern&palette=red&mode=light&direction=up lets a page embed the app in a chosen look (used by the promo site).
+  window.__qs = {};
+  try { var q = new URLSearchParams(location.search); ['design', 'mode', 'effects', 'direction', 'airframe', 'palette'].forEach(function (k) { if (q.get(k)) window.__qs[k] = q.get(k); }); } catch (e) {}
   var saved = {};
   try { saved = JSON.parse(localStorage.getItem('settings') || '{}') || {}; } catch (e) {}
+  for (var k in window.__qs) saved[k] = window.__qs[k];
   window.applyAppearance(saved);
 })();
 </script>
@@ -922,8 +926,9 @@ function sanitizeSettings(raw) {
   };
 }
 function loadSettings() {
-  try { return sanitizeSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); }
-  catch (e) { return sanitizeSettings({}); }
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') || {}; } catch (e) {}
+  return sanitizeSettings({ ...saved, ...(window.__qs || {}) });
 }
 function saveSettings(s) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) {}
