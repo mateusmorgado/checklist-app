@@ -38,14 +38,14 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   };
   window.applyAppearance = function (s) {
     s = s || {};
-    var root = document.documentElement, design = pick(s.design, DESIGNS, 'classic');
+    var root = document.documentElement, design = pick(s.design, DESIGNS, 'modern');
     root.setAttribute('data-design', design);
     root.setAttribute('data-mode', pick(s.mode, MODES, 'system'));
     root.setAttribute('data-effects', pick(s.effects, EFFECTS, 'full'));
     root.setAttribute('data-direction', pick(s.direction, DIRECTIONS, 'up'));
     var airframe = pick(s.airframe, AIRFRAMES, 'airbus');
     root.setAttribute('data-airframe', airframe);
-    root.setAttribute('data-palette', pick(s.palette, PALETTES, 'mint'));
+    root.setAttribute('data-palette', pick(s.palette, PALETTES, 'red'));
     window.ensureDesignFonts(design);
     if (design === 'airplane' && airframe === 'boeing') window.ensureDesignFonts('boeing');
   };
@@ -479,6 +479,12 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   :root[data-design="modern"] .confetti i:nth-child(4n+3) { background: var(--ok-fill); }
   :root[data-design="modern"] .confetti i:nth-child(4n) { background: var(--warn-fill); border-radius: 50%; }
   @keyframes fall { from { transform: translateY(0) rotate(0); opacity: 1; } 80% { opacity: 1; } to { transform: translateY(110vh) rotate(540deg); opacity: 0; } }
+  /* Colours row: pulses after switching to Modern until it is tapped, to show there is more to choose here. */
+  :root[data-design="modern"] .srow.nudge { animation: nudge 1.8s ease-in-out infinite; outline: 3px dashed var(--accent); outline-offset: 3px; }
+  @keyframes nudge { 0%, 55%, 100% { transform: scale(1) rotate(0); } 12% { transform: scale(1.06) rotate(-1deg); } 24% { transform: scale(.98) rotate(.8deg); } 36% { transform: scale(1.04) rotate(-.6deg); } }
+  :root[data-design="modern"] .srow.nudge .value::after { content: " ›"; }
+  @media (prefers-reduced-motion: reduce) { :root[data-design="modern"] .srow.nudge { animation: none; } }
+  :root[data-design="modern"][data-effects="reduced"] .srow.nudge { animation: none; }
   @media (prefers-reduced-motion: reduce) { :root[data-design="modern"] .sticker, :root[data-design="modern"] .progress-fill, :root[data-design="modern"] .logo-mark, :root[data-design="modern"] .item .mark[data-done="1"] { animation: none; } :root[data-design="modern"] .confetti { display: none; } }
   :root[data-design="modern"][data-effects="reduced"] .confetti { display: none; }
   /* @@DESIGN-MODERN-END */
@@ -909,14 +915,14 @@ function sanitizeSettings(raw) {
   const tone = r.tone && typeof r.tone === 'object' ? r.tone : {};
   const ai = r.ai && typeof r.ai === 'object' ? r.ai : {};
   return {
-    design: pick(r.design, window.APPEARANCE.DESIGNS, 'classic'),
+    design: pick(r.design, window.APPEARANCE.DESIGNS, 'modern'),
     mode: pick(r.mode, window.APPEARANCE.MODES, 'system'),
     effects: pick(r.effects, window.APPEARANCE.EFFECTS, 'full'),
     direction: pick(r.direction, window.APPEARANCE.DIRECTIONS, 'up'),
     voiceDefault: r.voiceDefault === true,
     progress: r.progress !== false,
     airframe: pick(r.airframe, window.APPEARANCE.AIRFRAMES, 'airbus'),
-    palette: pick(r.palette, window.APPEARANCE.PALETTES, 'mint'),
+    palette: pick(r.palette, window.APPEARANCE.PALETTES, 'red'),
     tone: { choice: pick(tone.choice, TONE_CHOICES, 'tick'), volume: pick(tone.volume, TONE_VOLUMES, 'medium') },
     ai: {
       key: typeof ai.key === 'string' ? ai.key.slice(0, 300) : '',
@@ -1106,9 +1112,11 @@ function InstallRow() {
 }
 function SettingsHome({ settings, onChange, onNav, onBack }) {
   useEffect(() => { window.APPEARANCE.DESIGNS.forEach(window.ensureDesignFonts); }, []);
+  const [nudge, setNudge] = useState(false); // pulse the Colours row after switching to Modern, until it is tapped
   const cycle = (key, list) => onChange({ [key]: list[(list.indexOf(settings[key]) + 1) % list.length] });
+  const chooseDesign = id => { setNudge(id === 'modern' && settings.design !== 'modern'); onChange({ design: id }); };
   const toneLabel = settings.tone.choice === 'tick' ? 'Tick' : cap(settings.tone.choice);
-  const row = (id, name, value, onClick) => h('button', { key: id, id, className: 'srow', onClick },
+  const row = (id, name, value, onClick, extra) => h('button', { key: id, id, className: 'srow' + (extra ? ' ' + extra : ''), onClick },
     h('span', { className: 'name' }, name), value ? h('span', { className: 'value' }, value) : null);
   return h('div', { className: 'screen settings' },
     h('div', { className: 'settings-scroll' },
@@ -1119,7 +1127,7 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
         h('div', { className: 'choices', role: 'radiogroup', 'aria-label': 'Design' },
           DESIGN_OPTIONS.map(([id, name, note]) => h('button', {
             key: id, id: 'design-' + id, role: 'radio', 'aria-checked': settings.design === id ? 'true' : 'false',
-            className: 'choice' + (settings.design === id ? ' selected' : ''), 'data-d': id, onClick: () => onChange({ design: id }),
+            className: 'choice' + (settings.design === id ? ' selected' : ''), 'data-d': id, onClick: () => chooseDesign(id),
           },
             h('span', { className: 'label' }, h('span', null, name), h('span', { className: 'detail' }, note)),
             h('span', { className: 'mark', 'data-done': settings.design === id ? '1' : '0', 'aria-hidden': 'true' }, settings.design === id ? '●' : '○')))),
@@ -1127,7 +1135,7 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
           row('set-airframe', 'Cockpit style', AIRFRAME_NAMES[settings.airframe], () => cycle('airframe', window.APPEARANCE.AIRFRAMES))),
         settings.design === 'airplane' && h('p', { className: 'tone-note', id: 'airframe-note' }, AIRFRAME_NOTES[settings.airframe]),
         settings.design === 'modern' && h('div', { className: 'rows' },
-          row('set-palette', 'Colours', PALETTE_NAMES[settings.palette], () => cycle('palette', window.APPEARANCE.PALETTES))),
+          row('set-palette', 'Colours', PALETTE_NAMES[settings.palette], () => { setNudge(false); cycle('palette', window.APPEARANCE.PALETTES); }, nudge ? 'nudge' : '')),
         h('div', { className: 'sec' }, 'Appearance'),
         h('div', { className: 'rows' },
           row('set-mode', 'Mode', cap(settings.mode) + (settings.design === 'airplane' ? ' (Airplane is always dark)' : ''), () => cycle('mode', window.APPEARANCE.MODES)),
@@ -1152,10 +1160,37 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
 // Quick list: say a list out loud (up to 17 seconds), a server function turns it into text, and the text lands in the white box.
 // The box stays editable, so typing works too. The key never touches this page: it lives in /api/quick (see api/quick.js).
 const QUICK_SECONDS = 17;
+// Turns notes written or spoken in plain language into checklist points, one per line:
+//   "I need to buy milk, eggs and bread. Also call mum" -> Milk / Eggs / Bread / Call mum
+// It splits on line breaks, bullets, numbers, commas, semicolons, sentence ends and "and / then / also / plus" (English,
+// Portuguese, Spanish, French, German), drops carrier phrases ("I need to", "don't forget", "please"), and tidies each point.
+// Commas inside numbers ("1,5 kg") are kept. Anything it gets wrong can be fixed in the box, which shows the result.
+const QUICK_JOINERS = '(?:and|then|also|plus|as well as|e|depois|também|y|luego|además|et|puis|aussi|und|dann|auch)';
+const QUICK_LEAD = new RegExp('^(?:(?:' + [
+  "(?:i|we)(?:'ll| will| would like to| want to| need to| have to| must| should| gotta| got to| need| want| have got to)",
+  "(?:don'?t|do not) forget(?: to)?", 'remember(?: to)?', 'remind me to', 'make sure(?: to| i| we)?',
+  'please', 'ok(?:ay)?', 'um+', 'uh+', 'er+', 'like', 'so', 'well', 'first(?:ly)?', 'next', 'finally', 'lastly', QUICK_JOINERS,
+  'preciso(?: de)?', 'tenho que', 'n[ãa]o esquecer(?: de)?', 'necesito', 'no olvides', "j'ai besoin d[e']", 'ich brauche',
+  'a', 'an', 'some', 'to', 'buy', 'purchase', 'grab', 'comprar', 'comprá',
+].join('|') + ')(?:[\\s,:;-]+|$))+', 'i');
 function parseQuickItems(text) {
-  return String(text).split(/\r?\n/)
-    .map(l => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s+/, '').trim())
-    .filter(Boolean).slice(0, 200).map(t => t.slice(0, 200));
+  const out = [], seen = new Set();
+  const add = raw => {
+    let t = String(raw).replace(/\s+/g, ' ').trim();
+    t = t.replace(QUICK_LEAD, '').replace(/^["'“”‘’(\[]+|["'“”‘’)\]]+$/g, '').replace(/[\s.,;:!?…-]+$/, '').trim();
+    if (!t) return;
+    t = t.charAt(0).toUpperCase() + t.slice(1, 200);
+    const k = t.toLowerCase();
+    if (seen.has(k) || out.length >= 200) return;
+    seen.add(k); out.push(t);
+  };
+  const separators = new RegExp('\\s*(?:;|,(?=\\s|$)|[.!?…]+(?=\\s|$)|\\s+' + QUICK_JOINERS + '[\\s,]+|\\s+&\\s+)\\s*', 'i');
+  String(text).split(/\r?\n/).forEach(line => {
+    let l = line.replace(/^\s*(?:[-*•–—·▪◦☐☑✓✔]|\[[ xX]?\]|\d+[.)])\s+/, '');
+    if ((l.match(/(?:^|\s)\d+[.)]\s/g) || []).length > 1) l = l.replace(/(?:^|\s)\d+[.)]\s+/g, ';'); // "1) milk 2) eggs"
+    l.split(separators).forEach(add);
+  });
+  return out;
 }
 // Recording (any browser format) -> 16 kHz mono WAV as base64, which every speech model accepts.
 async function recordingToWavBase64(blob) {
@@ -1247,7 +1282,7 @@ function QuickMake({ voiceDefault, onCancel, onSave }) {
         const items = Array.isArray(data.items) ? data.items.filter(x => typeof x === 'string' && x.trim()) : [];
         if (!items.length) setStatus('I could not hear a list. Try again and say the items one after another.');
         else {
-          setText(prev => (prev.trim() ? prev.replace(/\s+$/, '') + '\n' : '') + items.join('\n'));
+          setText(prev => parseQuickItems((prev.trim() ? prev.replace(/\s+$/, '') + '\n' : '') + items.join('\n')).join('\n'));
           setTitle(prev => prev || (typeof data.title === 'string' ? data.title.slice(0, 60) : ''));
           setStatus(typeof data.left === 'number' ? 'Check the list, then save. ' + data.left + ' left today.' : 'Check the list, then save.');
         }
@@ -1258,6 +1293,8 @@ function QuickMake({ voiceDefault, onCancel, onSave }) {
   useLayoutEffect(() => { start(); return () => { const r = rec.current; r.gone = true; if (r.abort) try { r.abort.abort(); } catch (e) {} release(); }; }, []);
 
   const items = parseQuickItems(text);
+  // Leaving the box rewrites plain sentences as one point per line, so what you see is what gets saved.
+  const tidy = () => { const t = items.join('\n'); if (t !== text.trim()) setText(t); };
   const ready = title.trim() && items.length > 0;
   const save = () => {
     if (!ready) { setStatus(title.trim() ? 'Add at least one item first.' : 'Give the list a name first.'); return; }
@@ -1273,7 +1310,8 @@ function QuickMake({ voiceDefault, onCancel, onSave }) {
       h('span', { className: 'progress-label' }, Math.floor(secs) + ' / ' + QUICK_SECONDS + ' s')),
     h('div', { className: 'muted hint', id: 'quick-status', role: 'status', 'aria-live': 'polite' }, recording ? 'Listening… tap Stop when you are done.' : status),
     h('input', { id: 'quick-title', value: title, placeholder: 'Name', maxLength: 100, onChange: e => setTitle(e.target.value) }),
-    h('textarea', { id: 'quick-items', ref: textRef, className: 'ta', value: text, rows: 5, placeholder: 'Your list appears here. You can edit it.', onChange: e => setText(e.target.value) }),
+    h('textarea', { id: 'quick-items', ref: textRef, className: 'ta', value: text, rows: 5, placeholder: 'Your list appears here. Type or say it in plain words, like “milk, eggs and bread”.', onChange: e => setText(e.target.value), onBlur: tidy }),
+    items.length > 0 && h('div', { className: 'muted hint', id: 'quick-count' }, items.length === 1 ? '1 point' : items.length + ' points'),
     h('div', { className: 'actions final' },
       h('button', { id: 'quick-cancel', className: 'muted cancel', onClick: onCancel }, 'Cancel'),
       h('div', { className: 'grp' },
