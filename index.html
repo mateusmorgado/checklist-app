@@ -504,6 +504,7 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   :root[data-design="modern"] .stickers { display: block; position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
   :root[data-design="modern"] .home-top, :root[data-design="modern"] .stack, :root[data-design="modern"] .bar { position: relative; z-index: 1; }
   :root[data-design="modern"] .sticker { position: absolute; width: 52px; height: 52px; fill: var(--accent); stroke: var(--line); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; animation: floaty 6s ease-in-out infinite alternate; }
+  :root[data-design="modern"] .sticker { pointer-events: auto; cursor: pointer; -webkit-user-select: none; user-select: none; }
   :root[data-design="modern"] .s1 { top: 21%; left: 8%; width: 58px; height: 58px; transform: rotate(-12deg); }
   :root[data-design="modern"] .s2 { top: 36%; right: 14%; width: 66px; height: 66px; animation-delay: -2s; transform: rotate(8deg); }
   :root[data-design="modern"] .sticker .st-check-out { fill: none; stroke: var(--line); stroke-width: 13; }
@@ -1138,11 +1139,36 @@ function Logo() {
 
 // Home: the list of checklists, first one at the bottom. "+ New" is the lowest control.
 // Modern Home stickers: a sparkle and a chunky checkmark.
+// Easter egg (Modern): tap a sticker on Home and it spins like a disk, then slowly coasts to a stop. Tap again while it spins to
+// speed it up. Spin speed (deg/s) decays exponentially; each sticker keeps its own angle on top of its resting tilt.
+const STICKER_TILT = [-12, 8];
 function Stickers() {
+  const els = useRef([null, null]);
+  const spin = useRef([{ a: 0, v: 0 }, { a: 0, v: 0 }]);
+  const raf = useRef({ id: 0, t: 0 });
+  const frame = now => {
+    const r = raf.current, dt = Math.min(0.05, (now - r.t) / 1000 || 0.016);
+    r.t = now;
+    let live = false;
+    spin.current.forEach((st, i) => {
+      if (Math.abs(st.v) < 6) { st.v = 0; return; }
+      st.a += st.v * dt; st.v *= Math.exp(-dt / 0.62); live = true;
+      if (els.current[i]) els.current[i].style.transform = 'rotate(' + (STICKER_TILT[i] + st.a).toFixed(1) + 'deg)';
+    });
+    r.id = live ? requestAnimationFrame(frame) : 0;
+  };
+  const kick = i => {
+    const calm = document.documentElement.getAttribute('data-effects') === 'reduced' || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (calm) return;
+    const st = spin.current[i];
+    st.v = Math.min(2600, Math.max(st.v, 0) + 760 + Math.random() * 360);
+    if (!raf.current.id) { raf.current.t = performance.now(); raf.current.id = requestAnimationFrame(frame); }
+  };
+  useEffect(() => () => { if (raf.current.id) cancelAnimationFrame(raf.current.id); }, []);
   return h('div', { className: 'stickers', 'aria-hidden': 'true' },
-    h('svg', { className: 'sticker s1', viewBox: '0 0 48 48', focusable: 'false' },
+    h('svg', { className: 'sticker s1', viewBox: '0 0 48 48', focusable: 'false', ref: el => { els.current[0] = el; }, onClick: () => kick(0) },
       h('path', { d: 'M24 3C26 16 32 22 45 24C32 26 26 32 24 45C22 32 16 26 3 24C16 22 22 16 24 3Z' })),
-    h('svg', { className: 'sticker s2', viewBox: '0 0 48 48', focusable: 'false' },
+    h('svg', { className: 'sticker s2', viewBox: '0 0 48 48', focusable: 'false', ref: el => { els.current[1] = el; }, onClick: () => kick(1) },
       h('path', { className: 'st-check-out', d: 'M8 26l11 11L40 11' }),
       h('path', { className: 'st-check-in', d: 'M8 26l11 11L40 11' })));
 }
