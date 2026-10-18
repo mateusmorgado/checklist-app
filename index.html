@@ -347,7 +347,8 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   .choice, .srow { width: 100%; box-sizing: border-box; min-height: var(--row-h); padding: 0 8px; display: flex; align-items: center; justify-content: flex-end; gap: 14px; text-align: right; border-radius: var(--radius); }
   .choice.selected { background: var(--lift); }
   .srow .value { color: var(--muted); font-size: 15px; }
-  .srow .name { margin-right: auto; }
+  .srow .name { margin-right: auto; display: inline-flex; align-items: center; }
+  .srow .name .ico { width: 1.3em; height: 1.3em; margin-right: 12px; vertical-align: 0; flex: none; }
   /* Each design's name is shown in its own typeface. */
   .choice[data-d="classic"] .label > span:first-child { font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 400; }
   .choice[data-d="airplane"] .label > span:first-child { font-family: 'B612', 'Arial Narrow', sans-serif; letter-spacing: .04em; text-transform: uppercase; }
@@ -1363,6 +1364,25 @@ function InstallHost() {
   return open ? h(InstallDialog, { onClose: () => setOpen(false) }) : null;
 }
 
+// Small icons for the Settings rows (by row id). Like the button icons they are hidden in Minimalist.
+const SET_ICONS = {
+  'set-install': 'M12 4v11M7 11l5 5 5-5M5 20h14',
+  'set-airframe': 'M21 15v-1.5L13.5 9V4.5a1.5 1.5 0 0 0-3 0V9L3 13.5V15l7.5-2v4.5L8.5 19v1.5l3.5-.8 3.5.8V19l-2-1.5V13l7.5 2z',
+  'set-palette': 'M12 3a9 9 0 1 0 0 18c1.2 0 1.7-.9 1.3-1.8-.4-1 .1-2.2 1.4-2.2H17a4 4 0 0 0 4-4c0-5-4-10-9-10zM7.5 11.5h.01M9.5 7.5h.01M14.5 7.5h.01',
+  'set-mode': 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM12 3v18',
+  'set-haptics': 'M9 4h6a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM4 9v6M20 9v6',
+  'set-clicks': 'M4 10v4h4l5 4V6L8 10H4zM16.5 9.5a3.5 3.5 0 0 1 0 5M19 7a7 7 0 0 1 0 10',
+  'set-progress': 'M3 9h18v6H3zM3 9h9v6H3z',
+  'set-effects': 'M12 3c.6 4.5 2.5 6.4 7 7-4.5.6-6.4 2.5-7 7-.6-4.5-2.5-6.4-7-7 4.5-.6 6.4-2.5 7-7zM19 16.5l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6z',
+  'set-direction': 'M8 20V5M4 9l4-4 4 4M16 4v15M12 15l4 4 4-4',
+  'set-tone': 'M3 12h3l3-7 4 14 3-7h5',
+  'set-voice': 'M4 5h16v11h-8l-4 4v-4H4V5zM8 9.5h8M8 12.5h5',
+  'set-ai': 'M13.5 2 5 13.5h5.5L9.5 22 19 9.5h-5.8L13.5 2Z',
+  'set-refs': 'M4 5a2 2 0 0 1 2-2h12v15H6a2 2 0 0 0-2 2V5zM4 20a2 2 0 0 1 2-2h12M9 7h6',
+  'set-report': 'M9 7a3 3 0 0 1 6 0M8 10h8v6a4 4 0 0 1-8 0v-6zM4 12h4M16 12h4M5.5 18.5L8 16.5M18.5 18.5L16 16.5M12 10v10',
+  'set-reset': 'M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5',
+};
+const settingIcon = id => SET_ICONS[id] ? h0('svg', { key: 'si', className: 'ico', viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' }, h0('path', { d: SET_ICONS[id] })) : null;
 const AIRFRAME_NAMES = { airbus: 'Airbus', boeing: 'Boeing', embraer: 'Embraer' };
 const AIRFRAME_NOTES = {
   airbus: 'Inspired by Airbus: the B612 typeface was designed with Airbus for cockpit screens, with ECAM-style colours (green normal, amber caution, cyan information).',
@@ -1376,7 +1396,7 @@ function InstallRow() {
   return h('div', null,
     h('div', { className: 'rows' },
       h('button', { id: 'set-install', className: 'srow install-row', onClick: openInstall },
-        h('span', { className: 'name' }, 'Install app'), h('span', { className: 'value' }, '↓'))),
+        h('span', { className: 'name' }, settingIcon('set-install'), 'Install app'), h('span', { className: 'value' }, '↓'))),
     h('p', { className: 'tone-note', id: 'install-note' }, 'It is a web app: add it to Android, iPhone, iPad, Windows or Mac. Tap for the steps.'));
 }
 function SettingsHome({ settings, onChange, onNav, onBack }) {
@@ -1386,7 +1406,7 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
   const chooseDesign = id => { setNudge(id === 'modern' && settings.design !== 'modern'); onChange({ design: id }); };
   const toneLabel = settings.tone.choice === 'tick' ? 'Tick' : cap(settings.tone.choice);
   const row = (id, name, value, onClick, extra) => h('button', { key: id, id, className: 'srow' + (extra ? ' ' + extra : ''), onClick },
-    h('span', { className: 'name' }, name), value ? h('span', { className: 'value' }, value) : null);
+    h('span', { className: 'name' }, settingIcon(id), name), value ? h('span', { className: 'value' }, value) : null);
   return h('div', { className: 'screen settings' },
     h('div', { className: 'settings-scroll' },
       h('div', { className: 'settings-in' },
