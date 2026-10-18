@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ChecklistPro</title>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="theme-color" content="#ff4a4a">
+<link rel="manifest" id="app-manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" id="app-apple-icon" href="apple-touch-icon.png">
+<link rel="icon" id="app-favicon" type="image/png" href="icon-192.png">
+<meta name="theme-color" id="app-theme" content="#ff4a4a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -26,6 +27,11 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
     boeing: 'family=Barlow+Semi+Condensed:wght@400;500;600;700',
     modern: 'family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Space+Grotesk:wght@400..700'
   };
+  var ICONS = {
+    modern: { manifest: 'manifest.webmanifest', apple: 'apple-touch-icon.png', fav: 'icon-192.png', color: '#ff4a4a' },
+    airplane: { manifest: 'manifest-airplane.webmanifest', apple: 'icons/airplane-apple-touch-icon.png', fav: 'icons/airplane-192.png', color: '#04080b' },
+    classic: { manifest: 'manifest-classic.webmanifest', apple: 'icons/classic-apple-touch-icon.png', fav: 'icons/classic-192.png', color: '#f2f2f2' }
+  };
   function pick(v, list, d) { return list.indexOf(v) >= 0 ? v : d; }
   window.APPEARANCE = { DESIGNS: DESIGNS, MODES: MODES, EFFECTS: EFFECTS, DIRECTIONS: DIRECTIONS, AIRFRAMES: AIRFRAMES, PALETTES: PALETTES };
   // Each design loads only its own fonts; Settings preloads all of them so every choice shows in its own typeface.
@@ -41,12 +47,18 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
     s = s || {};
     var root = document.documentElement, design = pick(s.design, DESIGNS, 'modern');
     root.setAttribute('data-design', design);
-    root.setAttribute('data-mode', pick(s.mode, MODES, 'system'));
+    root.setAttribute('data-mode', design === 'modern' ? 'light' : pick(s.mode, MODES, 'system')); // Modern has no dark mode
     root.setAttribute('data-effects', pick(s.effects, EFFECTS, 'full'));
     root.setAttribute('data-direction', pick(s.direction, DIRECTIONS, 'up'));
     var airframe = pick(s.airframe, AIRFRAMES, 'airbus');
     root.setAttribute('data-airframe', airframe);
     root.setAttribute('data-palette', pick(s.palette, PALETTES, 'red'));
+    // The installed app takes the look of the design it is installed from: manifest, home-screen icon, tab icon and bar colour follow it.
+    var ID = ICONS[design] || ICONS.modern;
+    [['app-manifest', 'href', ID.manifest], ['app-apple-icon', 'href', ID.apple], ['app-favicon', 'href', ID.fav], ['app-theme', 'content', ID.color]].forEach(function (a) {
+      var el = document.getElementById(a[0]);
+      if (el && el.getAttribute(a[1]) !== a[2]) el.setAttribute(a[1], a[2]);
+    });
     window.ensureDesignFonts(design);
     if (design === 'airplane' && airframe === 'boeing') window.ensureDesignFonts('boeing');
   };
@@ -97,7 +109,14 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   /* Built for a phone held in one hand: on wide screens the app stays a centred phone-width column instead of stretching. */
   body { display: flex; justify-content: center; align-items: center; }
   #root { width: 100%; height: 100%; max-width: 768px; max-height: 1024px; position: relative; }
-  @media (min-width: 769px), (min-height: 1025px) { #root { border-radius: 22px; overflow: hidden; box-shadow: 0 0 0 1px var(--line-strong); } }
+  /* On big screens the app is a soft raised card (claymorphism): a slightly darker page, a barely-there rim, layered diffuse shadows
+     and a faint inner highlight, instead of a hard outline. The page behind it is a shade darker than the app. */
+  @media (min-width: 769px), (min-height: 1025px) {
+    body { background-color: color-mix(in srgb, var(--bg) 91%, #000); }
+    #root { background: var(--bg); border-radius: 28px; overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, .04), 0 2px 4px rgba(0, 0, 0, .05), 0 12px 24px -4px rgba(0, 0, 0, .10), 0 32px 64px -16px rgba(0, 0, 0, .16),
+        inset 0 2px 3px color-mix(in srgb, var(--surface) 70%, #fff), inset 0 -4px 10px rgba(0, 0, 0, .05); }
+  }
   .screen { height: 100%; box-sizing: border-box; padding: max(16px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-end; gap: 8px; }
   h1 { font-family: var(--font-display); font-size: 22px; font-weight: 500; margin: 0 0 12px; text-align: right; }
   /* Item stack: first item sits at the bottom, later items stack upward. Rows shrink instead of scrolling. */
@@ -420,6 +439,7 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
 
   /* @@DESIGN-MODERN-START  (neobrutalism + grain: cream page, opaque cards, thick borders, hard up-left shadows) */
   :root[data-design="modern"] {
+    color-scheme: light;
     --font: 'Space Grotesk', system-ui, 'Helvetica Neue', Arial, sans-serif;
     --font-display: 'Bricolage Grotesque', 'Arial Black', 'Helvetica Neue', system-ui, sans-serif;
     --bg: #d9f4e6; --surface: #ffffff; --fg: #111111; --muted: #3f4d46; --line: #111111; --line-strong: #111111;
@@ -429,27 +449,17 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
     --gradient: radial-gradient(60% 45% at 12% 8%, #b9e8ff 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #ffd9c9 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #aef0cf 0, transparent 70%), #d9f4e6;
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
   }
-  @media (prefers-color-scheme: dark) {
-    :root[data-design="modern"][data-mode="system"]:not([data-theme="light"]) {
-      --bg: #0e1a15; --surface: #15251d; --fg: #eafaf2; --muted: #a8c4b6; --line: #eafaf2; --line-strong: #eafaf2;
-      --lift: #1f3a2e; --accent: #ff8a6b; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a;
-      --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #86a395; --cancel-bg: #ff8fa0; --cancel-fg: #111111; color-scheme: dark;
-      --gradient: radial-gradient(60% 45% at 12% 8%, #1d3f66 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #6b3a2a 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0f5a40 0, transparent 70%), #0e1a15;
-    }
-  }
-  :root[data-design="modern"][data-mode="dark"], :root[data-design="modern"][data-mode="system"][data-theme="dark"] {
-    --bg: #0e1a15; --surface: #15251d; --fg: #eafaf2; --muted: #a8c4b6; --line: #eafaf2; --line-strong: #eafaf2;
-    --lift: #1f3a2e; --accent: #ff8a6b; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a;
-    --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #86a395; --cancel-bg: #ff8fa0; --cancel-fg: #111111; color-scheme: dark;
-    --gradient: radial-gradient(60% 45% at 12% 8%, #1d3f66 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #6b3a2a 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0f5a40 0, transparent 70%), #0e1a15;
-  }
   /* One static background layer: grain over a mesh gradient (soft-light blend on the body only, never on scrollers). */
   :root[data-design="modern"] body { background-color: var(--bg); background-image: var(--grain), var(--gradient); background-size: 180px 180px, auto; background-blend-mode: soft-light, normal; font-size: 17px; font-weight: 500; }
   :root[data-design="modern"][data-effects="reduced"] body { background-image: none; }
+  @media (min-width: 769px), (min-height: 1025px) {
+    :root[data-design="modern"] body { background-image: none; background-color: color-mix(in srgb, var(--bg) 86%, #000); }
+    :root[data-design="modern"] #root { background-color: var(--bg); background-image: var(--grain), var(--gradient); background-size: 180px 180px, auto; background-blend-mode: soft-light, normal; }
+    :root[data-design="modern"][data-effects="reduced"] #root { background-image: none; }
+  }
   @media (prefers-contrast: more), (forced-colors: active) { :root[data-design="modern"] body { background-image: none; } }
   :root[data-design="modern"] h1 { font-weight: 800; font-size: 30px; letter-spacing: -.02em; line-height: 1.05; display: inline-block; padding: 0 6px; background: linear-gradient(transparent 58%, var(--accent) 58% 92%, transparent 92%); color: var(--fg); margin-bottom: 12px; }
   :root[data-design="modern"] .refs-in h1 { display: inline-block; }
-  :root[data-design="modern"][data-mode="dark"] h1, :root[data-design="modern"][data-mode="system"][data-theme="dark"] h1 { background: var(--accent); color: var(--accent-fg); }
   :root[data-design="modern"] .sec { display: table; margin: 18px 0 10px auto; padding: 2px 9px; background: var(--fg); color: var(--bg); font-size: 12px; font-weight: 700; letter-spacing: .06em; border-radius: var(--radius); }
   :root[data-design="modern"] .stack { gap: 14px; padding: 5px 14px 0 5px; }
   :root[data-design="modern"] .choices, :root[data-design="modern"] .rows { gap: 14px; padding: 5px 0 0 5px; }
@@ -496,14 +506,8 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
 
   /* Modern palettes (Settings > Colours). Mint and coral is the base block above. */
   :root[data-design="modern"][data-palette="blue"] { --bg: #2f8bff; --surface: #ffffff; --fg: #111111; --muted: #14161f; --line: #111111; --line-strong: #111111; --lift: #fff1a6; --accent: #f6d800; --accent-fg: #111111; --ok: #0a6b3a; --warn: #8a4b00; --err: #b3122d; --ok-fill: #1de9c8; --warn-fill: #ffb347; --err-fill: #ff5c7a; --focus: #111111; --placeholder: #666666; --cancel-bg: #ff5c7a; --cancel-fg: #111111; --gradient: radial-gradient(60% 45% at 12% 8%, #7fc0ff 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #1d57e0 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #4fe3d2 0, transparent 70%), #2f8bff; }
-  @media (prefers-color-scheme: dark) { :root[data-design="modern"][data-palette="blue"][data-mode="system"]:not([data-theme="light"]) { --bg: #0b1633; --surface: #13224a; --fg: #eef3ff; --muted: #aebde0; --line: #eef3ff; --line-strong: #eef3ff; --lift: #1d3a7a; --accent: #f6d800; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a; --ok-fill: #136b5c; --warn-fill: #6b4313; --err-fill: #7a2238; --focus: #ffe44d; --placeholder: #8fa2cf; --cancel-bg: #ff5c7a; --cancel-fg: #111111; --gradient: radial-gradient(60% 45% at 12% 8%, #1b3f8a 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #3a1f6b 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0b4f5a 0, transparent 70%), #0b1633; color-scheme: dark; } }
-  :root[data-design="modern"][data-palette="blue"][data-mode="dark"], :root[data-design="modern"][data-palette="blue"][data-mode="system"][data-theme="dark"] { --bg: #0b1633; --surface: #13224a; --fg: #eef3ff; --muted: #aebde0; --line: #eef3ff; --line-strong: #eef3ff; --lift: #1d3a7a; --accent: #f6d800; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a; --ok-fill: #136b5c; --warn-fill: #6b4313; --err-fill: #7a2238; --focus: #ffe44d; --placeholder: #8fa2cf; --cancel-bg: #ff5c7a; --cancel-fg: #111111; --gradient: radial-gradient(60% 45% at 12% 8%, #1b3f8a 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #3a1f6b 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0b4f5a 0, transparent 70%), #0b1633; color-scheme: dark; }
   :root[data-design="modern"][data-palette="cream"] { --bg: #fdf0e9; --surface: #fffaf6; --fg: #0f1d21; --muted: #3b4a4e; --line: #0f1d21; --line-strong: #0f1d21; --lift: #c9fbe3; --accent: #6df5b9; --accent-fg: #0f1d21; --ok: #0a6b3a; --warn: #8a4b00; --err: #b3122d; --ok-fill: #6df5b9; --warn-fill: #ffc247; --err-fill: #ff9a8a; --focus: #1d3fe0; --placeholder: #66757a; --cancel-bg: #ffb4a6; --cancel-fg: #0f1d21; --gradient: radial-gradient(60% 45% at 12% 8%, #ffe1d3 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #d4fbe9 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #ffd9c4 0, transparent 70%), #fdf0e9; }
-  @media (prefers-color-scheme: dark) { :root[data-design="modern"][data-palette="cream"][data-mode="system"]:not([data-theme="light"]) { --bg: #0b1417; --surface: #112126; --fg: #f6ede7; --muted: #aebec2; --line: #f6ede7; --line-strong: #f6ede7; --lift: #17402f; --accent: #6df5b9; --accent-fg: #0f1d21; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a; --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #7f9296; --cancel-bg: #ffb4a6; --cancel-fg: #0f1d21; --gradient: radial-gradient(60% 45% at 12% 8%, #123c3a 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #3a2a24 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0f4a3a 0, transparent 70%), #0b1417; color-scheme: dark; } }
-  :root[data-design="modern"][data-palette="cream"][data-mode="dark"], :root[data-design="modern"][data-palette="cream"][data-mode="system"][data-theme="dark"] { --bg: #0b1417; --surface: #112126; --fg: #f6ede7; --muted: #aebec2; --line: #f6ede7; --line-strong: #f6ede7; --lift: #17402f; --accent: #6df5b9; --accent-fg: #0f1d21; --ok: #5ce08a; --warn: #ffb84d; --err: #ff7a8a; --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #6e2230; --focus: #8fb0ff; --placeholder: #7f9296; --cancel-bg: #ffb4a6; --cancel-fg: #0f1d21; --gradient: radial-gradient(60% 45% at 12% 8%, #123c3a 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #3a2a24 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #0f4a3a 0, transparent 70%), #0b1417; color-scheme: dark; }
   :root[data-design="modern"][data-palette="red"] { --bg: #ff4a4a; --surface: #ffffff; --fg: #111111; --muted: #1c0b0b; --line: #111111; --line-strong: #111111; --lift: #ffe0da; --accent: #ffe14d; --accent-fg: #111111; --ok: #0a6b3a; --warn: #8a4b00; --err: #9a0f22; --ok-fill: #6df5b9; --warn-fill: #ffb347; --err-fill: #ffc2c2; --focus: #111111; --placeholder: #666666; --cancel-bg: #ffc9c9; --cancel-fg: #7a0c0c; --gradient: radial-gradient(60% 45% at 12% 8%, #ff8a5c 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #d11a3a 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #ff7a7a 0, transparent 70%), #ff4a4a; }
-  @media (prefers-color-scheme: dark) { :root[data-design="modern"][data-palette="red"][data-mode="system"]:not([data-theme="light"]) { --bg: #1c0a0c; --surface: #2a1215; --fg: #fff0ee; --muted: #e0b8b4; --line: #fff0ee; --line-strong: #fff0ee; --lift: #4a1a1f; --accent: #ff5a5a; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff8a8a; --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #7a2430; --focus: #ffe14d; --placeholder: #b58f8c; --cancel-bg: #ffc9c9; --cancel-fg: #7a0c0c; --gradient: radial-gradient(60% 45% at 12% 8%, #5a1220 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #3a1a0a 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #4a0f1a 0, transparent 70%), #1c0a0c; color-scheme: dark; } }
-  :root[data-design="modern"][data-palette="red"][data-mode="dark"], :root[data-design="modern"][data-palette="red"][data-mode="system"][data-theme="dark"] { --bg: #1c0a0c; --surface: #2a1215; --fg: #fff0ee; --muted: #e0b8b4; --line: #fff0ee; --line-strong: #fff0ee; --lift: #4a1a1f; --accent: #ff5a5a; --accent-fg: #111111; --ok: #5ce08a; --warn: #ffb84d; --err: #ff8a8a; --ok-fill: #1f5a37; --warn-fill: #6b4313; --err-fill: #7a2430; --focus: #ffe14d; --placeholder: #b58f8c; --cancel-bg: #ffc9c9; --cancel-fg: #7a0c0c; --gradient: radial-gradient(60% 45% at 12% 8%, #5a1220 0, transparent 70%), radial-gradient(55% 45% at 92% 22%, #3a1a0a 0, transparent 70%), radial-gradient(70% 50% at 75% 100%, #4a0f1a 0, transparent 70%), #1c0a0c; color-scheme: dark; }
 
   /* Modern: fun. Floating stickers on Home, a pop when an item is ticked, moving stripes in the bar, confetti at the end. */
   :root[data-design="modern"] .stickers { display: block; position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
@@ -535,20 +539,18 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
     100% { translate: 0 40px; opacity: 1; }
   }
   @keyframes confetti-x { from { transform: translateX(0) rotate(0); } to { transform: translateX(var(--dx)) rotate(var(--rot)); } }
-  /* Install: in Modern the Install row and the pop-up button wiggle, pulse and send out a ring to catch the eye. */
-  :root[data-design="modern"] .srow.install-row { background: var(--accent); color: var(--accent-fg); animation: cta-wiggle 3s ease-in-out infinite; }
+  /* Install: in Modern the Install row and the pop-up button give a small wiggle or pop now and then to catch the eye. */
+  :root[data-design="modern"] .srow.install-row { background: var(--accent); color: var(--accent-fg); animation: cta-wiggle 12s ease-in-out 2s infinite; }
   :root[data-design="modern"] .srow.install-row .value { color: var(--accent-fg); font-weight: 700; }
-  :root[data-design="modern"] .install-banner #install-yes { background: var(--accent); color: var(--accent-fg); border: var(--border) solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); font-weight: 700; padding: 0 14px; animation: cta-wiggle 3s ease-in-out infinite; }
+  :root[data-design="modern"] .install-banner #install-yes { background: var(--accent); color: var(--accent-fg); border: var(--border) solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); font-weight: 700; padding: 0 14px; animation: cta-wiggle 14s ease-in-out 3s infinite; }
   :root[data-design="modern"] .install-dialog { border: var(--border) solid var(--line); border-bottom: 0; box-shadow: var(--shadow); }
   :root[data-design="modern"] .install-dialog h2 { font-weight: 800; }
-  :root[data-design="modern"] .install-cta { font-family: var(--font-display); font-size: 21px; animation: cta-pulse 1.6s ease-in-out infinite, cta-ring 1.6s ease-out infinite; }
-  :root[data-design="modern"] .install-cta .cta-ico { animation: cta-bob .8s ease-in-out infinite alternate; }
+  :root[data-design="modern"] .install-cta { font-family: var(--font-display); font-size: 21px; animation: cta-attn 9s ease-in-out 1s infinite; }
   :root[data-design="modern"] .install-cta:active { transform: translate(-4px, -4px); box-shadow: none; animation: none; }
-  @keyframes cta-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
-  @keyframes cta-ring { 0% { box-shadow: var(--shadow), 0 0 0 0 var(--accent); } 80%, 100% { box-shadow: var(--shadow), 0 0 0 16px transparent; } }
-  @keyframes cta-bob { from { translate: 0 -2px; } to { translate: 0 3px; } }
-  @keyframes cta-wiggle { 0%, 62%, 100% { transform: rotate(0) scale(1); } 68% { transform: rotate(-2.2deg) scale(1.04); } 74% { transform: rotate(2deg) scale(1.04); } 80% { transform: rotate(-1.4deg) scale(1.03); } 86% { transform: rotate(1deg) scale(1.02); } }
-  :root[data-design="airplane"] .install-cta { animation: cta-ring 2s ease-out infinite; }
+  /* Sporadic and gentle: one small pop and a single soft ring every few seconds, then still. */
+  @keyframes cta-attn { 0% { transform: scale(1); box-shadow: var(--shadow), 0 0 0 0 var(--accent); } 3% { transform: scale(1.022); } 8% { transform: scale(1); } 10%, 100% { transform: scale(1); box-shadow: var(--shadow), 0 0 0 11px transparent; } }
+  @keyframes cta-wiggle { 0%, 9%, 100% { transform: none; } 2% { transform: rotate(-1.1deg) scale(1.015); } 4% { transform: rotate(1.1deg) scale(1.015); } 6% { transform: rotate(-.5deg); } }
+  :root[data-design="airplane"] .install-cta { animation: cta-attn 10s ease-out 1s infinite; }
   @media (prefers-reduced-motion: reduce) { .install-dialog, .install-cta, .install-cta .cta-ico, .install-os.flash, :root[data-design] .srow.install-row, :root[data-design] .install-banner #install-yes { animation: none !important; } }
   :root[data-effects="reduced"] .install-cta, :root[data-effects="reduced"] .install-cta .cta-ico, :root[data-effects="reduced"] .srow.install-row, :root[data-effects="reduced"] .install-banner #install-yes { animation: none !important; }
   /* Colours row: wiggles once after switching to Modern, then keeps a dashed outline until it is tapped, to show there is more to choose here. */
@@ -834,34 +836,62 @@ function toneTickNow(volume) {
   osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch (e) {} };
 }
 function playTick() { try { toneTickNow(toneSavedVolume()); } catch (e) {} } // editor preview when the toggle is switched on
-// Modern: a soft click on every button press (Settings > Click sound turns it off). Its own quiet audio context, so it never
-// touches the Attention tone. The listener is capture-phase so buttons that leave the screen on tap still click.
-let clickCtx = null;
+// Modern: a quiet, physical button click plus a short buzz, on every button press (Settings > Click sound and Haptic feedback).
+// The click is built from three parts like a real switch: a sharp plastic snap, a soft low "thock" from the body, and a faint
+// release tick. Its own small audio context, so it never touches the Attention tone. The listener is capture-phase so buttons
+// that leave the screen on tap still click.
+let clickCtx = null, clickNoise = null, hapticEl = null;
 function playClick(force) {
   try {
     if (!force && !(window.__clicksOn)) return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    if (!clickCtx || clickCtx.state === 'closed') clickCtx = new AC();
+    if (!clickCtx || clickCtx.state === 'closed') { clickCtx = new AC(); clickNoise = null; }
     const c = clickCtx;
     if (c.state !== 'running' && c.resume) { const p = c.resume(); if (p && p.catch) p.catch(() => {}); }
-    const t = c.currentTime + 0.005;
-    const osc = c.createOscillator(), gain = c.createGain(), lp = c.createBiquadFilter();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(520, t);
-    osc.frequency.exponentialRampToValueAtTime(190, t + 0.045);
-    lp.type = 'lowpass'; lp.frequency.value = 1400;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.16, t + 0.004);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
-    osc.connect(lp); lp.connect(gain); gain.connect(c.destination);
-    osc.start(t); osc.stop(t + 0.08);
-    osc.onended = () => { try { osc.disconnect(); lp.disconnect(); gain.disconnect(); } catch (e) {} };
+    if (!clickNoise) { // 80 ms of white noise, shared by every click
+      clickNoise = c.createBuffer(1, Math.ceil(c.sampleRate * 0.08), c.sampleRate);
+      const d = clickNoise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const t = c.currentTime + 0.003;
+    const master = c.createGain(); master.gain.value = 0.085; master.connect(c.destination); // quiet: peaks near -22 dBFS
+    const nodes = [master];
+    const snap = (at, freq, q, peak, len) => {
+      const src = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain();
+      src.buffer = clickNoise; bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = q;
+      g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(peak, at + 0.0008); g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+      src.connect(bp); bp.connect(g); g.connect(master); src.start(at, 0, len + 0.01); nodes.push(src, bp, g);
+    };
+    snap(t, 2600, 1.4, 0.9, 0.012);           // press: sharp snap
+    snap(t + 0.052, 4000, 1.8, 0.28, 0.008);   // release: faint tick
+    const osc = c.createOscillator(), og = c.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(210, t); osc.frequency.exponentialRampToValueAtTime(95, t + 0.05);
+    og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.55, t + 0.002); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.055);
+    osc.connect(og); og.connect(master); osc.start(t); osc.stop(t + 0.07); nodes.push(osc, og);
+    osc.onended = () => { nodes.forEach(n => { try { n.disconnect(); } catch (e) {} }); };
   } catch (e) {}
 }
+// Android and most phones: the vibration API. iPhone Safari has none, but toggling a hidden "switch" checkbox inside a tap
+// makes iOS 17.4+ give its own light tick.
+function playHaptic(force) {
+  try {
+    if (!force && !(window.__hapticsOn)) return;
+    if (navigator.vibrate) { navigator.vibrate(10); return; }
+    if (isIOS()) {
+      if (!hapticEl) {
+        const l = document.createElement('label'), i = document.createElement('input');
+        l.setAttribute('aria-hidden', 'true'); l.style.cssText = 'position:fixed;left:-99px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+        i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1; l.appendChild(i); document.body.appendChild(l); hapticEl = l;
+      }
+      hapticEl.click();
+    }
+  } catch (e) {}
+}
+const hapticsSupported = () => !!(navigator.vibrate || isIOS());
 document.addEventListener('click', e => {
   const b = e.target && e.target.closest ? e.target.closest('button, [role="radio"]') : null;
-  if (b && !b.disabled && b.id !== 'set-clicks') playClick();
+  if (b && !b.disabled && b.id !== 'set-clicks' && b.id !== 'set-haptics') { playClick(); playHaptic(); }
 }, true);
 function speak(text) {
   try {
@@ -1024,6 +1054,7 @@ function sanitizeSettings(raw) {
     voiceDefault: r.voiceDefault === true,
     progress: r.progress !== false,
     clicks: r.clicks !== false,
+    haptics: r.haptics !== false,
     airframe: pick(r.airframe, window.APPEARANCE.AIRFRAMES, 'airbus'),
     palette: pick(r.palette, window.APPEARANCE.PALETTES, 'red'),
     tone: { choice: pick(tone.choice, TONE_CHOICES, 'tick'), volume: pick(tone.volume, TONE_VOLUMES, 'medium') },
@@ -1231,7 +1262,7 @@ function InstallDialog({ onClose }) {
     if (inst.canPrompt) { const r = await inst.install(); if (r === 'accepted') onClose(); }
     else setShown(true);
   };
-  const label = inst.standalone ? 'Installed' : inst.canPrompt ? 'Install now' : 'Show me how';
+  const label = inst.standalone ? 'Installed' : 'Install app'; // same word in every design; without a one-tap prompt it points to the steps
   return h('div', { className: 'install-scrim', id: 'install-dialog-scrim', onClick: e => { if (e.target === e.currentTarget) onClose(); } },
     h('div', { className: 'install-dialog', id: 'install-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'install-title' },
       h('h2', { id: 'install-title' }, 'Install ChecklistPro'),
@@ -1245,6 +1276,7 @@ function InstallDialog({ onClose }) {
             h('strong', null, o.name, o.id === mine ? h('em', { className: 'os-mine' }, 'This device') : null),
             h('span', { className: 'os-where' }, o.where),
             h('span', { className: 'os-steps' }, o.steps))))),
+      shown && !inst.canPrompt && h('p', { className: 'install-lead', id: 'install-howto' }, 'This browser has no one-tap install right now. Follow the steps for your device above.'),
       h('div', { className: 'install-foot' },
         h('button', { id: 'install-close', className: 'muted', onClick: onClose }, 'Not now'),
         h('button', { id: 'install-go', ref: ctaRef, className: 'install-cta', disabled: inst.standalone, onClick: go },
@@ -1305,7 +1337,8 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
           row('set-palette', 'Colours', PALETTE_NAMES[settings.palette], () => { setNudge(false); cycle('palette', window.APPEARANCE.PALETTES); }, nudge ? 'nudge' : '')),
         h('div', { className: 'sec' }, 'Appearance'),
         h('div', { className: 'rows' },
-          row('set-mode', 'Mode', cap(settings.mode) + (settings.design === 'airplane' ? ' (Airplane is always dark)' : ''), () => cycle('mode', window.APPEARANCE.MODES)),
+          settings.design !== 'modern' && row('set-mode', 'Mode', cap(settings.mode) + (settings.design === 'airplane' ? ' (Airplane is always dark)' : ''), () => cycle('mode', window.APPEARANCE.MODES)),
+          settings.design === 'modern' && hapticsSupported() && row('set-haptics', 'Haptic feedback', settings.haptics ? 'On' : 'Off', () => { if (!settings.haptics) playHaptic(true); onChange({ haptics: !settings.haptics }); }),
           settings.design === 'modern' && row('set-clicks', 'Click sound', settings.clicks ? 'On' : 'Off', () => { if (!settings.clicks) playClick(true); onChange({ clicks: !settings.clicks }); }),
           row('set-progress', 'Progress bar', settings.progress ? 'On' : 'Off', () => onChange({ progress: !settings.progress })),
           row('set-effects', 'Effects', settings.effects === 'full' ? 'Full' : 'Reduced', () => cycle('effects', window.APPEARANCE.EFFECTS))),
@@ -2078,7 +2111,7 @@ function App() {
   const [settings, setSettings] = useState(loadSettings);
   const [screen, setScreen] = useState({ name: 'home' });
   useEffect(() => save(lists), [lists]);
-  useEffect(() => { saveSettings(settings); window.applyAppearance(settings); window.__clicksOn = settings.design === 'modern' && settings.clicks; }, [settings]);
+  useEffect(() => { saveSettings(settings); window.applyAppearance(settings); window.__clicksOn = settings.design === 'modern' && settings.clicks; window.__hapticsOn = settings.design === 'modern' && settings.haptics; }, [settings]);
   const home = () => setScreen({ name: 'home' });
   const update = next => { setLists(next); home(); };
   const change = patch => setSettings(prev => sanitizeSettings({
