@@ -160,12 +160,13 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   .done { color: var(--muted); }
   .row { width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: grab; position: relative; }
   .row { scroll-margin-block: 10px; }
-  .row.fresh { animation: item-in .5s cubic-bezier(.2, 1.3, .4, 1); }
-  .row.fresh::after { content: ""; position: absolute; inset: -3px; border: 3px solid var(--accent); border-radius: inherit; pointer-events: none; animation: item-ring 1s ease-out forwards; }
+  .row.fresh, .item.fresh { animation: item-in .5s cubic-bezier(.2, 1.3, .4, 1); }
+  .item.fresh { position: relative; scroll-margin-block: 10px; }
+  .row.fresh::after, .item.fresh::after { content: ""; position: absolute; inset: -3px; border: 3px solid var(--accent); border-radius: inherit; pointer-events: none; animation: item-ring 1s ease-out forwards; }
   @keyframes item-in { from { transform: scale(.86); opacity: 0; } 60% { transform: scale(1.04); } to { transform: none; opacity: 1; } }
   @keyframes item-ring { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.04); } }
-  @media (prefers-reduced-motion: reduce) { .row.fresh { animation: none; } .row.fresh::after { animation-duration: .01s; } }
-  :root[data-effects="reduced"] .row.fresh { animation: none; }
+  @media (prefers-reduced-motion: reduce) { .row.fresh, .item.fresh { animation: none; } .row.fresh::after, .item.fresh::after { animation-duration: .01s; } }
+  :root[data-effects="reduced"] .row.fresh, :root[data-effects="reduced"] .item.fresh { animation: none; }
   .row.lifted { z-index: 1; background: var(--lift); font-weight: 500; cursor: grabbing; }
   .x { margin-right: auto; width: var(--hit-min); height: var(--hit-min); font-size: 22px; line-height: 1; color: var(--muted); flex: none; }
   .label { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; text-align: right; }
@@ -271,6 +272,10 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   .bolt-path { fill: currentColor; }
   .plus-path { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
   .add-item { display: inline-flex; align-items: center; justify-content: center; min-width: var(--hit-min); }
+  /* Run: + sits at the far left of the bar; its field opens just above the bar and adds to the end of the list. */
+  .bar.run-bar { align-self: stretch; }
+  :root .bar.run-bar .add-item { margin-right: auto; }
+  .run-entry { width: 100%; flex: none; }
   .screen.quick > * { max-width: 100%; }
   .screen.quick h1 { margin-bottom: 12px; }
   /* Quick list: a big microphone instead of a progress bar. It pulses with rings while recording and bobs while the list is made. */
@@ -1666,7 +1671,7 @@ function Ask({ list, onDone, onCancel }) {
           : h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next'))));
 }
 
-function Run({ list, tone, progress, onClose }) {
+function Run({ list, tone, progress, onClose, onAddItem }) {
   const [answers, setAnswers] = useState(null); // null while the questions are still being asked
   if (list.questions.length > 0 && !answers) return h(Ask, { list, onDone: setAnswers, onCancel: onClose });
   const items = list.items
@@ -1676,7 +1681,7 @@ function Run({ list, tone, progress, onClose }) {
       return { ...it, n };
     })
     .filter(it => it.n === null || it.n > 0); // a quantity of 0 leaves the item out of this run
-  return h(RunList, { title: list.title, items, sound: list.sound, voice: list.voice, tone, progress, onClose });
+  return h(RunList, { title: list.title, items, sound: list.sound, voice: list.voice, tone, progress, onClose, onAddItem });
 }
 
 // Run: first item at the bottom, working upward. Checkmarks on the right.
@@ -1694,11 +1699,38 @@ function Confetti() {
   }, []);
   return h('div', { className: 'confetti', 'aria-hidden': 'true' }, pieces.map((st, i) => h('i', { key: i, style: st })));
 }
-function RunList({ title, items, sound, voice, tone, progress, onClose }) {
+function RunList({ title, items, sound, voice, tone, progress, onClose, onAddItem }) {
   const [done, setDone] = useState([]); // ticked item indexes
+  const [adding, setAdding] = useState(false); // the + field is open
+  const [draft, setDraft] = useState('');
+  const [fresh, setFresh] = useState(-1); // index of the item just added: it animates in and is scrolled into view
+  const draftRef = useRef(null);
+  const itemEls = useRef([]);
   const nextOpen = items.findIndex((_, k) => !done.includes(k)); // the first open item gets a quiet marker (no motion)
   // Layout effects run inside the tap that started the run, which browsers require before audio may start.
   useLayoutEffect(() => { if (sound) toneStart(tone); return () => toneStop(); }, []);
+  // The same goes for the phone keyboard: the field is focused inside the tap that opened it.
+  useLayoutEffect(() => { if (adding && draftRef.current) draftRef.current.focus(); }, [adding]);
+  useLayoutEffect(() => {
+    if (fresh < 0) return;
+    const el = itemEls.current[fresh];
+    const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (el && el.scrollIntoView) { try { el.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' }); } catch (e) { el.scrollIntoView(); } }
+    const t = setTimeout(() => setFresh(-1), 1100);
+    return () => clearTimeout(t);
+  }, [fresh]);
+
+  // Something remembered mid-run goes to the end of the list, and is saved to the checklist for next time.
+  // An empty field closes it again.
+  const add = () => {
+    const t = draft.trim();
+    if (!t) { setAdding(false); return; }
+    if (sound && items.length > 0 && done.length === items.length) toneStart(tone); // the list was finished: the sound comes back
+    onAddItem(t);
+    setFresh(items.length);
+    setDraft('');
+    if (draftRef.current) draftRef.current.focus();
+  };
 
   const toggle = i => {
     if (done.includes(i)) {
@@ -1728,16 +1760,28 @@ function RunList({ title, items, sound, voice, tone, progress, onClose }) {
     done.length === items.length && items.length > 0 && h(Confetti),
     h('div', { className: 'stack' },
       items.map((it, i) => h('button', {
-        key: i, className: 'item' + (done.includes(i) ? ' done' : '') + (i === nextOpen ? ' next' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
+        key: i, ref: el => { itemEls.current[i] = el; },
+        className: 'item' + (done.includes(i) ? ' done' : '') + (i === nextOpen ? ' next' : '') + (i === fresh ? ' fresh' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
       },
         h('span', { className: 'label' },
           h('span', null, it.text + (it.n !== null && it.n !== 1 ? ' ×' + fmtQty(it.n) : '')),
           it.required && h('span', { className: 'detail' }, 'required'),
           it.detail && h('span', { className: 'detail' }, it.detail)),
         h('span', { className: 'mark', 'data-done': done.includes(i) ? '1' : '0', 'aria-hidden': 'true' }, done.includes(i) ? '☑' : '☐')))),
-    h('div', { className: 'bar' },
+    adding && h('div', { className: 'run-entry' },
+      h('input', {
+        id: 'run-draft', ref: draftRef, value: draft, placeholder: 'Add item', enterKeyHint: 'done', maxLength: 200,
+        onChange: e => setDraft(e.target.value),
+        onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); add(); } else if (e.key === 'Escape') { setDraft(''); setAdding(false); } },
+      })),
+    h('div', { className: 'bar run-bar' },
       h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close'),
-      h(ToneControls, { sound: sound && done.length < items.length, tone })));
+      h(ToneControls, { sound: sound && done.length < items.length, tone }),
+      onAddItem && h('button', {
+        id: 'run-add', className: 'add-item', 'aria-label': 'Add item', 'aria-expanded': adding ? 'true' : 'false',
+        onMouseDown: e => e.preventDefault(), onClick: () => (adding ? add() : setAdding(true)),
+      },
+        h('svg', { viewBox: '0 0 24 24', width: 22, height: 22, 'aria-hidden': 'true', focusable: 'false' }, h('path', { className: 'plus-path', d: 'M12 5v14M5 12h14' })))));
 }
 
 /* @@REFSPAGE-START */
@@ -2283,7 +2327,16 @@ function App() {
   }));
   const toSettings = () => setScreen({ name: 'settings' });
 
-  if (screen.name === 'run') return h(Run, { list: screen.list, tone: settings.tone, progress: settings.progress, onClose: home });
+  if (screen.name === 'run') return h(Run, {
+    list: screen.list, tone: settings.tone, progress: settings.progress, onClose: home,
+    // An item added mid-run is appended to the saved checklist too, and the run keeps going with the updated list.
+    onAddItem: text => {
+      const it = { text, detail: '', qty: '', required: false };
+      const next = { ...screen.list, items: [...screen.list.items, it] };
+      setLists(prev => prev.map(l => (l.id === next.id ? next : l)));
+      setScreen({ name: 'run', list: next });
+    },
+  });
   if (screen.name === 'edit') return h(Editor, {
     list: screen.list, draft: screen.draft, voiceDefault: settings.voiceDefault, onCancel: home,
     onDelete: id => update(lists.filter(l => l.id !== id)),

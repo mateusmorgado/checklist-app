@@ -13,6 +13,7 @@ Checklists are saved in the browser's `localStorage`.
 ## What it does
 
 - **Run:** items stack from the bottom up, checkmarks on the right. A ticked item stays where it is, dimmed with a tick, so nothing moves under the finger. Everything sits within reach of the right thumb.
+- **Add while running:** the + at the bottom left of a run opens an Add item field just above the buttons. Each item you add goes to the end of the list (the top, when lists grow upward), scrolls into view and is saved to the checklist for next time. Tap + with the field empty to close it.
 - **Create:** name first, then the feedback settings (an Attention tone when you tick an item, and/or a Confirmation cue that repeats the item out loud, with the research behind them on a References page), then the points, one at a time. Tap an item for details, a quantity formula and a "required" flag. Hold and drag to reorder.
 - **Questions:** yes/no only for now, asked once before a run: "If [I go to the sauna], then add Towel". A Yes adds the linked items. Number questions and quantity formulas ("5 nights, 7 socks") are parked until the workflow is designed; saved ones still run.
 - **List direction** (Settings): lists grow bottom to top by default so the first item and the buttons are close to the thumb, or top to bottom.
