@@ -993,6 +993,29 @@ function toneRender(ctx, choice, volume, seconds) {
 }
 try { document.addEventListener('visibilitychange', () => { if (document.hidden) { tonePrev = null; clearTimeout(tonePrevTimer); } toneSync(); }); } catch (e) {}
 
+// Screen wake lock: the phone stays awake while a run is open. The browser drops the lock whenever the page is hidden,
+// so it is asked for again when the page comes back. Unsupported browsers (iPhone before iOS 16.4, or 18.4 when installed) just lock as usual.
+let wakeWanted = false, wakeLock = null, wakePending = false;
+function wakeSync() {
+  try {
+    if (!('wakeLock' in navigator)) return;
+    if (wakeWanted && !wakeLock && !wakePending && !document.hidden) {
+      wakePending = true;
+      navigator.wakeLock.request('screen').then(l => {
+        wakePending = false;
+        if (!wakeWanted) { l.release().catch(() => {}); return; } // the run ended while the request was pending
+        wakeLock = l;
+        l.addEventListener('release', () => { if (wakeLock === l) wakeLock = null; });
+      }).catch(() => { wakePending = false; });
+    } else if (!wakeWanted && wakeLock) {
+      const l = wakeLock; wakeLock = null; l.release().catch(() => {});
+    }
+  } catch (e) {}
+}
+function wakeOn() { wakeWanted = true; wakeSync(); }   // a run starts
+function wakeOff() { wakeWanted = false; wakeSync(); } // a run ends; safe to call any time
+try { document.addEventListener('visibilitychange', wakeSync); } catch (e) {}
+
 const TONE_INFO = {
   tick: ['Tick', 'One short tick for each item'],
   heart: ['Heart monitor', 'Steady beep, 72 a minute'],
@@ -1699,6 +1722,7 @@ function RunList({ title, items, sound, voice, tone, progress, onClose }) {
   const nextOpen = items.findIndex((_, k) => !done.includes(k)); // the first open item gets a quiet marker (no motion)
   // Layout effects run inside the tap that started the run, which browsers require before audio may start.
   useLayoutEffect(() => { if (sound) toneStart(tone); return () => toneStop(); }, []);
+  useEffect(() => { wakeOn(); return () => wakeOff(); }, []); // keep the screen on while the run is open
 
   const toggle = i => {
     if (done.includes(i)) {
