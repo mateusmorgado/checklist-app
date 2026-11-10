@@ -174,7 +174,39 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   .row.selected { background: var(--lift); }
   /* Home rows: the whole row opens the checklist; "edit" sits at the far left like the remove cross in the editor. */
   .home-item > .edit-link { margin-right: auto; min-width: var(--hit-min); min-height: var(--hit-min); text-align: left; }
-  .home-item > .open { flex: 1; min-height: var(--hit-min); text-align: right; }
+  .home-item > .open { flex: 1; min-height: var(--hit-min); text-align: right; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; padding: 6px 0; }
+  .home-item .meta { font-family: var(--font); font-size: 13px; font-weight: 500; line-height: 1.25; color: var(--muted); }
+  /* Modern: edit is a square pencil button with its own colour, clearly apart from the part of the card that starts the list. */
+  :root[data-design="modern"] .home-item { padding-left: 8px; gap: 12px; }
+  :root[data-design="modern"] .home-item > .edit-link { width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 2.5px solid var(--line); border-radius: var(--radius); background: var(--lift); color: var(--fg); margin-right: 0; }
+  :root[data-design="modern"] .home-item > .edit-link .ico { margin: 0; width: 20px; height: 20px; }
+  :root[data-design="modern"] .home-item > .edit-link .edit-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  /* Editor rows: a six-dot grip says "hold and drag here". */
+  .grip { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: var(--hit-min); color: var(--muted); }
+  .grip svg { width: 14px; height: 20px; fill: currentColor; }
+  :root[data-design="modern"] .grip { color: var(--fg); }
+  /* Delete reads as different from its neighbours, and its first tap only arms it. */
+  :root[data-design] .edit > .actions.tools #delete { color: var(--err); }
+  :root[data-design="modern"] .edit > .actions.tools #delete { border-style: dashed; box-shadow: none; background: var(--surface); }
+  :root[data-design="airplane"] .edit > .actions.tools #delete { border-color: var(--err); }
+  :root[data-design] .edit > .actions.tools #delete.armed { background: var(--err); color: #fff; border-style: solid; text-decoration: none; }
+  /* Ask: what this question is about and what a Yes adds. */
+  .ask-adds { font-size: 15px; line-height: 1.4; text-align: right; }
+  .ask-adds b { font-weight: 700; }
+  /* Home: an unfinished run waits at the bottom with its progress. */
+  .resume { display: flex; align-items: stretch; gap: 8px; width: 100%; box-sizing: border-box; }
+  .resume-go { flex: 1; min-width: 0; min-height: var(--hit-min); display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; padding: 8px 0; text-align: right; }
+  .resume-go .r-title { font-family: var(--font-display); font-weight: 600; font-size: 18px; }
+  .resume-go .r-meta { font-size: 13px; color: var(--muted); }
+  .resume-bar { display: block; width: 100%; max-width: 220px; height: 6px; border-radius: 3px; background: var(--line); opacity: .9; overflow: hidden; }
+  .resume-bar > i { display: block; height: 100%; background: var(--fg); }
+  .resume-x { flex: none; min-width: var(--hit-min); min-height: var(--hit-min); font-size: 20px; color: var(--muted); }
+  :root[data-design="modern"] .resume { background: var(--accent); color: var(--accent-fg); border: var(--border) solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0 12px 0 4px; width: calc(100% - 5px); }
+  :root[data-design="modern"] .resume-go .r-title { font-weight: 800; font-size: 19px; }
+  :root[data-design="modern"] .resume-go .r-meta, :root[data-design="modern"] .resume-x { color: var(--accent-fg); font-weight: 700; }
+  :root[data-design="modern"] .resume-bar { background: var(--surface); border: 2px solid var(--line); height: 8px; }
+  :root[data-design="airplane"] .resume { border: 1px solid var(--accent); padding: 0 12px 0 4px; }
+  :root[data-design="airplane"] .resume-bar { background: var(--line); } :root[data-design="airplane"] .resume-bar > i { background: var(--accent); }
   /* Editor: grid with the points, then the entry field on its own line, then the buttons. */
   .screen.edit { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto;
     grid-template-areas: "points" "hint" "entry" "actions"; row-gap: 8px; justify-items: end; align-items: end; justify-content: stretch; }
@@ -515,8 +547,15 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   :root[data-design="modern"] .stack > button.item, :root[data-design="modern"] .stack > div.item, :root[data-design="modern"] .row, :root[data-design="modern"] .prop, :root[data-design="modern"] .choice, :root[data-design="modern"] .srow { background: var(--surface); border: var(--border) solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0 12px; }
   :root[data-design="modern"] .stack > button.item, :root[data-design="modern"] .stack > div.item { width: calc(100% - 5px); }
   :root[data-design="modern"] .item { font-family: var(--font-display); font-weight: 700; font-size: 19px; }
-  :root[data-design="modern"] .item.done { background: var(--ok-fill); color: var(--fg); }
-  :root[data-design="modern"] .item.next { background: var(--lift); }
+  /* Run: ticked items turn green and fade, the next open one is filled with the accent and tagged NEXT. The .stack > button
+     prefix is needed to win over the card rule above (it used to override these, so ticked and next items looked plain). */
+  :root[data-design="modern"] .stack > button.item.done { background: var(--ok-fill); color: var(--fg); }
+  :root[data-design="modern"] .stack > button.item.done .label { opacity: .6; }
+  :root[data-design="modern"] .stack > button.item.done .label > span:first-child { text-decoration: line-through; text-decoration-thickness: 2px; }
+  :root[data-design="modern"] .stack > button.item.next { background: var(--accent); color: var(--accent-fg); }
+  :root[data-design="modern"] .stack > button.item.next .detail { color: var(--accent-fg); }
+  .next-tag { display: none; }
+  :root[data-design="modern"] .item.next .next-tag { display: inline-block; margin-right: auto; flex: none; font-family: var(--font); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--fg); color: var(--accent); padding: 3px 8px; border-radius: 99px; }
   :root[data-design="modern"] .row.selected, :root[data-design="modern"] .prop.selected, :root[data-design="modern"] .choice.selected { background: var(--lift); }
   :root[data-design="modern"] .row.lifted { background: var(--lift); }
   :root[data-design="modern"] .detail { font-family: var(--font); font-weight: 500; font-size: 13px; color: var(--muted); }
@@ -539,6 +578,7 @@ try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || loc
   :root[data-design="modern"] button:focus-visible, :root[data-design="modern"] input:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
   :root[data-design="modern"] div.hint, :root[data-design="modern"] div.intro-text { background: var(--surface); border: 2px solid var(--line); border-radius: var(--radius); padding: 6px 10px; color: var(--muted); }
   :root[data-design="modern"] div.hint:empty { display: none; }
+  :root[data-design="modern"] .edit.has-tools > div.hint:not(.err) { background: none; border: 0; padding: 0 2px; color: var(--fg); font-size: 15px; }
   :root[data-design="modern"] .edit > .entry { padding-left: 0; }
   :root[data-design="modern"] .logo { background: var(--surface); border: 3px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 4px 12px 4px 8px; margin: 5px 0 auto 5px; }
   :root[data-design="modern"] .logo-box { fill: var(--accent); stroke: var(--line); stroke-width: 3; }
@@ -676,6 +716,34 @@ function load() {
 }
 function save(lists) {
   try { localStorage.setItem(KEY, JSON.stringify(lists)); } catch (e) {}
+}
+// An unfinished run (ticks so far) is kept for a while, so closing the app or a reload mid-run does not lose them.
+// Only one run is kept: starting a list fresh replaces it. `sig` is the run's item texts, so ticks are dropped if the list changed.
+const RUN_KEY = 'openRun';
+const RUN_KEEP_HOURS = 12;
+const runSig = items => items.map(i => i.text).join('\n');
+function loadRun() {
+  try {
+    const r = JSON.parse(localStorage.getItem(RUN_KEY) || 'null');
+    if (!r || typeof r !== 'object' || !Array.isArray(r.done) || Date.now() - (r.at || 0) > RUN_KEEP_HOURS * 3600 * 1000) return null;
+    return r;
+  } catch (e) { return null; }
+}
+function saveRun(r) { try { if (r) localStorage.setItem(RUN_KEY, JSON.stringify(r)); else localStorage.removeItem(RUN_KEY); } catch (e) {} }
+// Questions are stored as the "If ..." sentence. Shown before a run, "I go to the sauna" reads better as "Do you go to the sauna?".
+// Only simple English forms are rewritten; anything else, or a label the person wrote themselves, is shown as it is.
+function askLabel(q) {
+  const t = String(q.text || '').trim();
+  const auto = t.charAt(0).toUpperCase() + t.slice(1) + '?';
+  if (!t || (q.label && q.label !== auto)) return q.label || auto;
+  const you = x => x.replace(/\bmy\b/gi, 'your').replace(/\bmine\b/gi, 'yours').replace(/\bmyself\b/gi, 'yourself').replace(/\bme\b/gi, 'you');
+  const C = x => x.charAt(0).toUpperCase() + x.slice(1).toLowerCase();
+  let m;
+  if ((m = t.match(/^i\s*(?:am|'m|’m)\s+(.+)$/i))) return 'Are you ' + you(m[1]) + '?';
+  if ((m = t.match(/^i\s+(will|can|could|should|would|might|must)\s+(.+)$/i))) return C(m[1]) + ' you ' + you(m[2]) + '?';
+  if ((m = t.match(/^i\s+(?:have|need|want|go|take|bring|do|use|play|work|train|travel|fly|drive|ride|swim|run|visit|stay|sleep|eat|cook|wear|pack|carry|plan|expect|get|see|meet)\b(.*)$/i))) return 'Do you ' + you(t.slice(2).trim()) + '?';
+  if ((m = t.match(/^(it|we|they|there)\s+(will|might|may|can|could|should|is|are)\s+(.+)$/i))) return C(m[2]) + ' ' + m[1].toLowerCase() + ' ' + you(m[3]) + '?';
+  return auto;
 }
 
 /* @@SOUND-ENGINE-START
@@ -1125,6 +1193,7 @@ function sanitizeSettings(raw) {
     mode: pick(r.mode, window.APPEARANCE.MODES, 'system'),
     effects: pick(r.effects, window.APPEARANCE.EFFECTS, 'full'),
     direction: pick(r.direction, window.APPEARANCE.DIRECTIONS, 'up'),
+    homeOrder: pick(r.homeOrder, ['recent', 'created'], 'recent'),
     voiceDefault: r.voiceDefault === true,
     progress: r.progress !== false,
     clicks: r.clicks !== false,
@@ -1254,16 +1323,27 @@ function Stickers() {
       h('path', { className: 'st-check-out', d: 'M8 26l11 11L40 11' }),
       h('path', { className: 'st-check-in', d: 'M8 26l11 11L40 11' })));
 }
-function Home({ lists, onRun, onEdit, onSettings, onQuick, onManifesto }) {
+const plural = (n, one) => n + ' ' + one + (n === 1 ? '' : 's');
+function Home({ lists, openRun, onRun, onResume, onDiscard, onEdit, onSettings, onQuick, onManifesto }) {
+  const meta = c => [plural(c.items.length, 'item'), c.questions.length ? plural(c.questions.length, 'question') : null].filter(Boolean).join(' · ');
+  const resumeList = openRun && lists.find(l => l.id === openRun.id);
   return h('div', { className: 'screen' },
     h(Stickers),
     h('div', { className: 'home-top' }, h(Logo),
       h('button', { id: 'manifesto-link', className: 'muted manifesto-link', onClick: onManifesto }, 'Manifesto'),
       h(InstallBanner)),
     h('div', { className: 'stack' },
+      resumeList && h('div', { key: 'resume', className: 'resume', id: 'resume' },
+        h('button', { className: 'resume-x', 'aria-label': 'Forget this unfinished run', onClick: onDiscard }, '×'),
+        h('button', { className: 'resume-go', id: 'resume-go', onClick: () => onResume(resumeList, openRun) },
+          h('span', { className: 'r-meta' }, 'Continue · ' + openRun.done.length + ' of ' + openRun.total),
+          h('span', { className: 'r-title' }, resumeList.title),
+          h('span', { className: 'resume-bar', 'aria-hidden': 'true' }, h('i', { style: { width: (openRun.done.length / openRun.total * 100) + '%' } })))),
       lists.map(c => h('div', { key: c.id, className: 'item home-item' },
-        h('button', { className: 'muted hint edit-link', onClick: () => onEdit(c) }, 'edit'),
-        h('button', { className: 'open', onClick: () => onRun(c) }, c.title)))),
+        h('button', { className: 'muted hint edit-link', 'aria-label': 'Edit ' + c.title, onClick: () => onEdit(c) }, iconFor('edit'), h('span', { className: 'edit-word' }, 'edit')),
+        h('button', { className: 'open', onClick: () => onRun(c) },
+          h('span', { className: 'h-title' }, c.title),
+          h('span', { className: 'meta' }, meta(c)))))),
     lists.length === 0 && h('div', { className: 'muted' }, 'No checklists'),
     h('div', { className: 'bar' },
       h('button', { id: 'new', onClick: () => onEdit(null) }, '+ New'),
@@ -1403,6 +1483,7 @@ const SET_ICONS = {
   'set-progress': 'M3 9h18v6H3zM3 9h9v6H3z',
   'set-effects': 'M12 3c.6 4.5 2.5 6.4 7 7-4.5.6-6.4 2.5-7 7-.6-4.5-2.5-6.4-7-7 4.5-.6 6.4-2.5 7-7zM19 16.5l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6z',
   'set-direction': 'M8 20V5M4 9l4-4 4 4M16 4v15M12 15l4 4 4-4',
+  'set-order': 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v5l3 2',
   'set-tone': 'M3 12h3l3-7 4 14 3-7h5',
   'set-voice': 'M4 5h16v11h-8l-4 4v-4H4V5zM8 9.5h8M8 12.5h5',
   'set-ai': 'M13.5 2 5 13.5h5.5L9.5 22 19 9.5h-5.8L13.5 2Z',
@@ -1455,14 +1536,15 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
           row('set-palette', 'Colours', PALETTE_NAMES[settings.palette], () => { setNudge(false); cycle('palette', window.APPEARANCE.PALETTES); }, nudge ? 'nudge' : '')),
         h('div', { className: 'sec' }, 'Appearance'),
         h('div', { className: 'rows' },
-          settings.design !== 'modern' && row('set-mode', 'Mode', cap(settings.mode) + (settings.design === 'airplane' ? ' (Airplane is always dark)' : ''), () => cycle('mode', window.APPEARANCE.MODES)),
+          settings.design === 'classic' && row('set-mode', 'Mode', cap(settings.mode), () => cycle('mode', window.APPEARANCE.MODES)),
           (settings.design === 'modern' || settings.design === 'airplane') && hapticsSupported() && row('set-haptics', 'Haptic feedback', settings.haptics ? 'On' : 'Off', () => { if (!settings.haptics) playHaptic(true); onChange({ haptics: !settings.haptics }); }),
           (settings.design === 'modern' || settings.design === 'airplane') && row('set-clicks', 'Click sound', settings.clicks ? 'On' : 'Off', () => { if (!settings.clicks) playClick(true); onChange({ clicks: !settings.clicks }); }),
           row('set-progress', 'Progress bar', settings.progress ? 'On' : 'Off', () => onChange({ progress: !settings.progress })),
           row('set-effects', 'Effects', settings.effects === 'full' ? 'Full' : 'Reduced', () => cycle('effects', window.APPEARANCE.EFFECTS))),
         h('div', { className: 'sec' }, 'List direction'),
         h('div', { className: 'rows' },
-          row('set-direction', 'Lists grow', settings.direction === 'down' ? 'Top to bottom' : 'Bottom to top', () => cycle('direction', window.APPEARANCE.DIRECTIONS))),
+          row('set-direction', 'Lists grow', settings.direction === 'down' ? 'Top to bottom' : 'Bottom to top', () => cycle('direction', window.APPEARANCE.DIRECTIONS)),
+          row('set-order', 'Home order', settings.homeOrder === 'created' ? 'As created' : 'Last used first', () => onChange({ homeOrder: settings.homeOrder === 'created' ? 'recent' : 'created' }))),
         h('p', { className: 'tone-note', id: 'direction-note' }, settings.direction === 'down'
           ? 'Lists start at the top and read downwards, like a normal list. The buttons stay at the bottom.'
           : 'Default. The first item and the buttons sit at the bottom and the list grows upwards, so everything stays close to your thumb.'),
@@ -1660,6 +1742,8 @@ function Ask({ list, onDone, onCancel }) {
   useLayoutEffect(() => { if (ref.current) { ref.current.focus(); ref.current.select(); } }, [i]);
   const num = v => Number(String(v).replace(',', '.'));
   const last = i === qs.length - 1;
+  const esc = x => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const adds = list.items.filter(it => it.qty && new RegExp('(^|[^\\w])' + esc(q.name) + '($|[^\\w])').test(it.qty)).map(it => it.text);
   const go = all => {
     if (!last) { setI(i + 1); return; }
     onDone(Object.fromEntries(qs.map((x, k) => [x.name, num(all[k])])));
@@ -1675,8 +1759,9 @@ function Ask({ list, onDone, onCancel }) {
     go(vals);
   };
   return h('div', { className: 'screen edit' },
-    h('div', { className: 'points' }, h('h1', null, q.label)),
-    h('div', { className: 'muted hint' }, list.title + (qs.length > 1 ? ' · ' + (i + 1) + ' of ' + qs.length : '')),
+    h('div', { className: 'points' }, h('h1', null, askLabel(q)),
+      q.type === 'yesno' && adds.length > 0 && h('p', { className: 'ask-adds', id: 'ask-adds' }, 'Yes adds ', h('b', null, adds.join(', ')))),
+    h('div', { className: 'muted hint' }, list.title + ' · ' + (qs.length > 1 ? 'question ' + (i + 1) + ' of ' + qs.length : '1 question before you start')),
     q.type === 'yesno' ? null : h('div', { className: 'entry' },
       h('input', {
         id: 'answer', ref, inputMode: 'decimal', value: vals[i], enterKeyHint: last ? 'go' : 'next',
@@ -1694,9 +1779,9 @@ function Ask({ list, onDone, onCancel }) {
           : h('button', { className: valid ? '' : 'muted', onClick: next }, last ? 'Start' : 'Next'))));
 }
 
-function Run({ list, tone, progress, onClose, onAddItem }) {
-  const [answers, setAnswers] = useState(null); // null while the questions are still being asked
-  if (list.questions.length > 0 && !answers) return h(Ask, { list, onDone: setAnswers, onCancel: onClose });
+function Run({ list, tone, progress, resume, onClose, onAddItem, onProgress }) {
+  const [answers, setAnswers] = useState(() => (resume ? resume.answers || {} : null)); // null while the questions are still being asked
+  if (list.questions.length > 0 && !answers) return h(Ask, { list, onDone: setAnswers, onCancel: () => onClose(false) });
   const items = list.items
     .map(it => {
       let n = null;
@@ -1704,7 +1789,12 @@ function Run({ list, tone, progress, onClose, onAddItem }) {
       return { ...it, n };
     })
     .filter(it => it.n === null || it.n > 0); // a quantity of 0 leaves the item out of this run
-  return h(RunList, { title: list.title, items, sound: list.sound, voice: list.voice, tone, progress, onClose, onAddItem });
+  const sig = runSig(items);
+  const startDone = resume && resume.sig === sig ? resume.done.filter(k => k >= 0 && k < items.length) : [];
+  return h(RunList, {
+    title: list.title, items, sound: list.sound, voice: list.voice, tone, progress, onClose, onAddItem, startDone,
+    onProgress: done => onProgress && onProgress({ id: list.id, answers: answers || {}, done, total: items.length, sig, at: Date.now() }),
+  });
 }
 
 // Run: first item at the bottom, working upward. Checkmarks on the right.
@@ -1722,8 +1812,10 @@ function Confetti() {
   }, []);
   return h('div', { className: 'confetti', 'aria-hidden': 'true' }, pieces.map((st, i) => h('i', { key: i, style: st })));
 }
-function RunList({ title, items, sound, voice, tone, progress, onClose, onAddItem }) {
-  const [done, setDone] = useState([]); // ticked item indexes
+function RunList({ title, items, sound, voice, tone, progress, onClose, onAddItem, startDone, onProgress }) {
+  const [done, setDone] = useState(() => startDone || []); // ticked item indexes
+  const first = useRef(true);
+  useEffect(() => { if (first.current) { first.current = false; return; } if (onProgress) onProgress(done); }, [done, items.length]);
   const [adding, setAdding] = useState(false); // the + field is open
   const [draft, setDraft] = useState('');
   const [fresh, setFresh] = useState(-1); // index of the item just added: it animates in and is scrolled into view
@@ -1787,6 +1879,7 @@ function RunList({ title, items, sound, voice, tone, progress, onClose, onAddIte
         key: i, ref: el => { itemEls.current[i] = el; },
         className: 'item' + (done.includes(i) ? ' done' : '') + (i === nextOpen ? ' next' : '') + (i === fresh ? ' fresh' : ''), role: 'checkbox', 'aria-checked': done.includes(i) ? 'true' : 'false', onClick: () => toggle(i),
       },
+        i === nextOpen && h('span', { className: 'next-tag', 'aria-hidden': 'true' }, 'next'),
         h('span', { className: 'label' },
           h('span', null, it.text + (it.n !== null && it.n !== 1 ? ' ×' + fmtQty(it.n) : '')),
           it.required && h('span', { className: 'detail' }, 'required'),
@@ -1799,7 +1892,7 @@ function RunList({ title, items, sound, voice, tone, progress, onClose, onAddIte
         onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); add(); } else if (e.key === 'Escape') { setDraft(''); setAdding(false); } },
       })),
     h('div', { className: 'bar run-bar' },
-      h('button', { className: complete ? '' : 'muted', onClick: onClose }, complete ? 'Done' : 'Close'),
+      h('button', { className: complete ? '' : 'muted', onClick: () => onClose(complete) }, complete ? 'Done' : 'Close'),
       h(ToneControls, { sound: sound && done.length < items.length, tone }),
       onAddItem && h('button', {
         id: 'run-add', className: 'add-item', 'aria-label': 'Add item', 'aria-expanded': adding ? 'true' : 'false',
@@ -1987,6 +2080,8 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
   const [dragId, setDragId] = useState(null);
   const [freshId, setFreshId] = useState(null); // the item just added: it animates in and is scrolled into view
   const [offset, setOffset] = useState(0);
+  const [delArmed, setDelArmed] = useState(false); // Delete needs a second tap; it disarms itself after a few seconds
+  useEffect(() => { if (!delArmed) return; const t = setTimeout(() => setDelArmed(false), 4000); return () => clearTimeout(t); }, [delArmed]);
   // New checklists start by asking for the name; existing ones open straight on their points.
   const [step, setStep] = useState(list ? 'points' : 'name');
   const draftRef = useRef(null);
@@ -2316,10 +2411,12 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
           h('span', { className: 'label' },
             h('span', null, item.text),
             note && h('span', { className: 'detail' }, note)),
-          h('span', { className: 'mark' }, '•'));
+          h('span', { className: 'grip', 'aria-hidden': 'true' },
+            h('svg', { viewBox: '0 0 14 20', focusable: 'false' }, [3, 10, 17].flatMap(y => [h('circle', { key: 'a' + y, cx: 4, cy: y, r: 1.8 }), h('circle', { key: 'b' + y, cx: 10, cy: y, r: 1.8 })]))));
       }))),
-    h('div', { className: 'hint ' + (error ? 'err' : 'muted') },
-      error || (items.length > 0 ? 'Tap an item to edit it. Hold and drag to reorder. Tap the name to rename.' : '')),
+    h('div', { className: 'hint ' + (error || delArmed ? 'err' : 'muted') },
+      error || (delArmed ? 'Tap again to delete "' + (title || list.title) + '" for good. This cannot be undone.'
+        : items.length > 0 ? 'Tap an item to edit it. Hold it and drag the dots to reorder. Tap the name to rename.' : '')),
     h('div', { className: 'entry' },
       h('input', {
         id: 'draft', ref: draftRef, value: draft, placeholder: 'Add item', enterKeyHint: 'next',
@@ -2327,7 +2424,7 @@ function Editor({ list, draft: isDraft, voiceDefault, onSave, onDelete, onCancel
         onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); add(); } },
       })),
     h('div', { className: 'actions tools' },
-      list && !isDraft && h('button', { id: 'delete', className: 'muted', onClick: () => onDelete(list.id) }, 'Delete'),
+      list && !isDraft && h('button', { id: 'delete', className: 'muted' + (delArmed ? ' armed' : ''), onClick: () => (delArmed ? onDelete(list.id) : setDelArmed(true)) }, delArmed ? 'Tap again' : 'Delete'),
       h('button', { id: 'questions', className: 'muted', onClick: () => { setError(''); setQstage('list'); setStep('questions'); } }, '+ Question'),
       h('button', { id: 'cues', className: 'muted', onClick: () => { setError(''); setFbFrom('points'); setStep('feedback'); } }, 'Cues')),
     h('div', { className: 'actions final' },
@@ -2342,7 +2439,16 @@ function App() {
   const [lists, setLists] = useState(load);
   const [settings, setSettings] = useState(loadSettings);
   const [screen, setScreen] = useState({ name: 'home' });
+  const [openRun, setOpenRun] = useState(loadRun);
   useEffect(() => save(lists), [lists]);
+  const keepRun = r => { saveRun(r); setOpenRun(r); };
+  // Starting a list notes when it was used (Home can sort by it) and forgets any older unfinished run.
+  const startRun = (list, resume) => {
+    const stamped = { ...list, lastRun: Date.now() };
+    setLists(prev => prev.map(l => (l.id === list.id ? stamped : l)));
+    if (!resume) keepRun(null);
+    setScreen({ name: 'run', list: stamped, resume: resume || null });
+  };
   useEffect(() => { saveSettings(settings); window.applyAppearance(settings); const fx = settings.design === 'modern' || settings.design === 'airplane'; window.__clickKind = settings.design; window.__clicksOn = fx && settings.clicks; window.__hapticsOn = fx && settings.haptics; }, [settings]);
   const home = () => setScreen({ name: 'home' });
   const update = next => { setLists(next); home(); };
@@ -2352,13 +2458,16 @@ function App() {
   const toSettings = () => setScreen({ name: 'settings' });
 
   if (screen.name === 'run') return h(Run, {
-    list: screen.list, tone: settings.tone, progress: settings.progress, onClose: home,
+    list: screen.list, resume: screen.resume, tone: settings.tone, progress: settings.progress,
+    // Done (everything required ticked) or closing with nothing ticked forgets the run; closing halfway keeps it for Home.
+    onClose: complete => { const r = loadRun(); if (complete || !r || r.id !== screen.list.id || r.done.length === 0) keepRun(null); else setOpenRun(r); home(); },
+    onProgress: r => saveRun(r),
     // An item added mid-run is appended to the saved checklist too, and the run keeps going with the updated list.
     onAddItem: text => {
       const it = { text, detail: '', qty: '', required: false };
       const next = { ...screen.list, items: [...screen.list.items, it] };
       setLists(prev => prev.map(l => (l.id === next.id ? next : l)));
-      setScreen({ name: 'run', list: next });
+      setScreen({ name: 'run', list: next, resume: screen.resume });
     },
   });
   if (screen.name === 'edit') return h(Editor, {
@@ -2375,9 +2484,12 @@ function App() {
   if (screen.name === 'manifesto') return h(ManifestoPage, { onBack: home });
   if (screen.name === 'quick') return h(QuickIntro, { onBack: home, onStart: () => setScreen({ name: 'quick-make' }) });
   if (screen.name === 'quick-make') return h(QuickMake, { lists, voiceDefault: settings.voiceDefault, onCancel: home, onSave: list => update([...lists, list]) });
+  // Last used first: the most recently run list sits next to the buttons (or at the top when lists read downwards).
+  const shown = settings.homeOrder === 'created' ? lists : [...lists].sort((a, b) => (b.lastRun || 0) - (a.lastRun || 0));
+  const run = openRun && openRun.done.length > 0 && openRun.done.length < openRun.total ? openRun : null;
   return h(Home, {
-    lists, onSettings: toSettings, onQuick: () => setScreen({ name: 'quick' }),
-    onRun: list => setScreen({ name: 'run', list }), onEdit: list => setScreen({ name: 'edit', list }), onManifesto: () => setScreen({ name: 'manifesto' }),
+    lists: shown, openRun: run, onSettings: toSettings, onQuick: () => setScreen({ name: 'quick' }),
+    onRun: list => startRun(list), onResume: (list, r) => startRun(list, r), onDiscard: () => keepRun(null), onEdit: list => setScreen({ name: 'edit', list }), onManifesto: () => setScreen({ name: 'manifesto' }),
   });
 }
 
