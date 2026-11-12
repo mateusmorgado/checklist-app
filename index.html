@@ -1489,9 +1489,12 @@ const SET_ICONS = {
   'set-ai': 'M13.5 2 5 13.5h5.5L9.5 22 19 9.5h-5.8L13.5 2Z',
   'set-refs': 'M4 5a2 2 0 0 1 2-2h12v15H6a2 2 0 0 0-2 2V5zM4 20a2 2 0 0 1 2-2h12M9 7h6',
   'set-report': 'M9 7a3 3 0 0 1 6 0M8 10h8v6a4 4 0 0 1-8 0v-6zM4 12h4M16 12h4M5.5 18.5L8 16.5M18.5 18.5L16 16.5M12 10v10',
+  'set-site': 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z',
   'set-reset': 'M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5',
 };
 const settingIcon = id => SET_ICONS[id] ? h0('svg', { key: 'si', className: 'ico', viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' }, h0('path', { d: SET_ICONS[id] })) : null;
+// The promo website (repo checklist-app-website), opened from Settings > Website.
+const SITE_URL = 'https://checklist.morgado.tech';
 const AIRFRAME_NAMES = { airbus: 'Airbus', boeing: 'Boeing', embraer: 'Embraer' };
 const AIRFRAME_NOTES = {
   airbus: 'Inspired by Airbus: the B612 typeface was designed with Airbus for cockpit screens, with ECAM-style colours (green normal, amber caution, cyan information).',
@@ -1555,6 +1558,7 @@ function SettingsHome({ settings, onChange, onNav, onBack }) {
           QUICK_LIST_ENABLED && row('set-ai', 'Quick list (AI)', settings.ai.key ? 'Key saved' : 'No key', () => onNav('settings-ai')),
           row('set-refs', 'References', '', () => onNav('references')),
           row('set-report', 'Report a bug', '', () => onNav('report')),
+          row('set-site', 'Website', '↗', () => window.open(SITE_URL, '_blank', 'noopener')),
           row('set-reset', 'Reset app', '', () => onNav('reset'))),
         h('p', { className: 'tone-note', id: 'voice-note' }, 'Confirmation cue repeats each item out loud when you tick it. This sets the starting choice for new checklists; each checklist can change it under Cues.'))),
     h('div', { className: 'actions' }, h('button', { id: 'settings-back', onClick: onBack }, 'Back')));
